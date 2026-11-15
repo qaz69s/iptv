@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_epg_empty_title">No program guide yet</string>
+    <string name="feature_epg_empty_message">Add an XMLTV guide, or a playlist that includes one, to see what\'s on.</string>
+</resources>

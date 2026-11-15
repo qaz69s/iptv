@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_epg_empty_title">暂无节目单</string>
+    <string name="feature_epg_empty_message">添加 XMLTV 节目单，或带节目单的播放列表后，节目信息会显示在这里。</string>
+</resources>

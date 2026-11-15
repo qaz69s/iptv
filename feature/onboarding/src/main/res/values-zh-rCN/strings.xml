@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_onboarding_welcome_title">欢迎使用 StreamBox Player</string>
+    <string name="feature_onboarding_welcome_body">在手机、平板和电视上播放你自己的 IPTV 播放列表（M3U、M3U8、Xtream Codes），并查看节目单（XMLTV）。</string>
+    <string name="feature_onboarding_get_started">开始使用</string>
+    <string name="feature_onboarding_disclaimer_title">使用前请阅读</string>
+    <string name="feature_onboarding_disclaimer_body">本应用仅为播放器，不提供任何内容，也不内置任何频道。用户需自行承担所添加播放列表及内容的合法性。</string>
+    <string name="feature_onboarding_privacy_body">StreamBox Player 不收集任何个人数据。你的播放列表、收藏和设置仅保存在本设备上。</string>
+    <string name="feature_onboarding_disclaimer_consent">我已阅读并同意</string>
+    <string name="feature_onboarding_accept">同意并继续</string>
+    <string name="feature_onboarding_back">返回</string>
+</resources>

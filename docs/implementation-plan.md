@@ -1,0 +1,111 @@
+# 实施计划 v1（待确认）
+
+> 依据：docs/requirements.md（第 12、13 节流程）。版本号于 2026-11-15 从 Google Maven / Maven Central / Gradle Plugin Portal 实时核对，均为当时最新稳定版。
+
+## 1. 模块划分
+
+在说明书第 6 节基础上，把解析器拆成纯 Kotlin/JVM 模块，并给每个 feature 配 domain 接口，避免 feature 互相依赖。
+
+| 模块 | 类型 | 职责 |
+|---|---|---|
+| `app` | Android app | 入口 Activity（手机 + TV Leanback 入口）、NavHost、Hilt 根、自适应导航（底部栏 / NavigationRail / TV 侧栏） |
+| `build-logic/convention` | Gradle included build | 约定插件：android-library、compose、hilt、jvm-library、test、detekt/ktlint，统一 SDK 与编译选项 |
+| `core:common` | JVM | Result/AppError、DispatcherProvider、时钟抽象 `Clock`、URL 日志脱敏 |
+| `core:model` | JVM | 领域实体（Playlist、Channel、Program、CatchupSpec…） |
+| `core:domain` | JVM | Repository 接口 + UseCase（feature 只依赖这里） |
+| `core:parser` | JVM | M3U 流式解析器、XMLTV Pull 解析器（纯 Kotlin，配大量单测） |
+| `core:catchup` | JVM | 回看 URL 生成器（说明书的 feature/catchup 下沉为纯 Kotlin 核心模块，供 player-ui 与 epg 共用） |
+| `core:network` | Android lib | OkHttp（gzip/重定向/自定义 Header/UA、按列表允许明文）、Retrofit Xtream API |
+| `core:database` | Android lib | Room 实体/DAO/FTS4、迁移、Paging Source |
+| `core:datastore` | Android lib | DataStore 设置；Keystore 加密的凭据存储 |
+| `core:data` | Android lib | Repository 实现、导入管线（临时表 → 校验 → 原子替换）、WorkManager Worker |
+| `core:player` | Android lib | PlayerController 单例 + MediaSessionService、按频道注入 Header 的 DataSource.Factory、重连策略、轨道管理 |
+| `core:designsystem` | Android lib | M3 主题（浅/深/AMOLED/动态色）、通用组件、TV 焦点组件、空/加载/错误状态组件 |
+| `core:ui` | Android lib | 共享 UI 工具：WindowSizeClass、设备类型（手机/平板/TV）判断、字符串资源 |
+| `feature:onboarding` | Android lib | 欢迎页 → 合规声明 → 添加列表 → 导入进度 |
+| `feature:playlist` | Android lib | 列表管理（URL / SAF 文件 / Xtream）、列表编辑器 |
+| `feature:channels` | Android lib | 分组/频道（列表/网格/紧凑）、搜索、数字直输 |
+| `feature:player-ui` | Android lib | 播放界面、覆盖层、手势、遥控器、PiP、睡眠定时 |
+| `feature:epg` | Android lib | 频道节目单、网格 EPG、提醒 |
+| `feature:vod` | Android lib | 电影/剧集、续播 |
+| `feature:settings` | Android lib | 设置、家长控制、备份恢复 |
+| `feature:cast` | Android lib | Chromecast（仅手机/平板） |
+| `feature:monetization` | Android lib | 广告/内购接口 + 空实现（`NoOp`）+ 可选真实实现 |
+
+规则：feature 只依赖 `core:*`；跨 feature 跳转只用导航路由（类型安全的 `@Serializable` route）。`core:parser`/`core:catchup`/`core:common`/`core:model`/`core:domain` 无 Android 依赖，可直接在 JVM 上跑测试。
+
+## 2. 依赖与版本（2026-11-15 最新稳定版）
+
+| 组件 | 版本 |
+|---|---|
+| Gradle | 9.9.1 |
+| Android Gradle Plugin | 9.5.1（使用 AGP 9 内置 Kotlin 支持） |
+| Kotlin | 2.4.21（Compose Compiler 插件同版本） |
+| KSP | 2.3.14 |
+| JDK（构建） | 17（AGP 9 最低要求） |
+| compileSdk / targetSdk / minSdk | 37 / 37 / 23 |
+| Compose BOM | 2026.09.00 |
+| Compose for TV（tv-material） | 1.1.0 |
+| Activity Compose | 1.13.0 |
+| Lifecycle | 2.11.0 |
+| Navigation Compose | 2.9.8（2.10.x 要求 minSdk 24，与 minSdk 23 冲突，P0 降级） |
+| Core KTX | 1.19.1 |
+| Hilt | 2.60.1；hilt-navigation-compose 1.4.0 |
+| Media3（exoplayer/hls/dash/rtsp/session/ui-compose） | 1.11.1 |
+| Media3 RTMP 扩展 | 无 1.11 稳定版（最新 1.12.0-beta01），见风险 R5 |
+| Room | 2.8.5 |
+| Paging | 3.5.3 |
+| DataStore | 1.1.7（1.2+ 要求更高 minSdk，P0 降级） |
+| WorkManager | 2.12.0 |
+| Coroutines | 1.11.0 |
+| kotlinx.serialization | 1.13.0 |
+| OkHttp | 5.5.1 |
+| Retrofit | 3.0.0（kotlinx-serialization converter） |
+| Coil | 3.6.3（coil-compose + coil-network-okhttp） |
+| Cast Framework | 23.0.0 |
+| Play Billing（可选） | billing-ktx 9.1.0（说明书写 v7，v7 已过期弃用，按最新版） |
+| Google Mobile Ads / UMP（可选） | 25.5.0 / 4.0.0 |
+| JUnit 5 | 6.1.3（JUnit Jupiter 6，含 JUnit 5 API） |
+| MockK / Turbine | 1.14.12 / 1.2.1 |
+| ktlint | ktlint-cli 1.8.0，经 org.jlleitschuh.gradle.ktlint 14.2.0 |
+| detekt | 1.23.8（见风险 R4） |
+| LeakCanary | 2.14（仅 debug） |
+
+## 3. 阶段计划（每阶段结束：跑测试 → 汇报做了/没做/已知问题 → 更新文档 → 等确认）
+
+| 阶段 | 内容 | 本地可验证 | 需用户验收 |
+|---|---|---|---|
+| P0 | 多模块脚手架、约定插件、Version Catalog、Hilt、导航、主题、TV Leanback 入口、首启空状态、CI（GitHub Actions：ktlint + detekt + 单测 + assembleDebug）、README/ARCHITECTURE | 编译 + 单测 + lint | 手机/TV 模拟器启动空壳 |
+| P1 | M3U 流式解析器（≥30 样例）、URL/SAF 导入、Room + FTS、频道列表、基础播放 | 解析器单测、10 万行性能测试（JVM） | 实际导入并播放 |
+| P2 | 轨道、比例、手势、遥控器、重连策略（独立可测）、PiP、后台播放 | 重连策略单测 | 播放清单项 |
+| P3 | 搜索、收藏、历史、分组管理、列表编辑器、更新后保留收藏/排序 | DAO/仓库测试 | 交互验收 |
+| P4 | XMLTV 解析、EPG 匹配、网格 EPG、提醒 | 解析/匹配单测 | TV 焦点验收 |
+| P5 | 回看/时移（≥20 用例含夏令时/跨日/负偏移） | 全部单测 | 真实源验证 |
+| P6 | Xtream 直播 + 点播 | API/映射单测（MockWebServer） | 真实账号验证 |
+| P7 | 设置、家长控制、备份恢复、定时更新、多语言（简中/英文） | PIN/备份单测 | 交互验收 |
+| P8 | Chromecast、（可选）广告/内购、性能、R8 release、商店文案与隐私政策模板 | release 构建 | 全清单 |
+
+## 4. 风险点与方案
+
+- **R1 沙箱没有 JDK / Gradle / Android SDK**：我在沙箱内安装 Temurin JDK 17 + Android cmdline-tools（platform 37）+ Gradle Wrapper 9.9.1，用来编译和跑 JVM 单测、ktlint、detekt。模拟器和真机验收无法在沙箱里做，需要你在自己的 Android Studio 上完成。
+- **R2 沙箱是 ARM64 Linux（aarch64）**：Google 官方只发布 x86_64 Linux 版的 AAPT2 和 build-tools，所以沙箱里很可能打不出 APK（资源编译这一步会失败）。方案：① 纯 Kotlin 模块（解析器、回看、重连、PIN）和 Robolectric 以外的单测在沙箱照常跑；② 用社区编译的 aarch64 版 aapt2，通过 `android.aapt2FromMavenOverride` 本地覆盖（只放在本机 gradle.properties，不进仓库）尝试完整构建；③ 最可靠的完整构建（assembleDebug/Release、Compose UI 测试）放到 GitHub Actions 的 x86_64 runner 上跑。这也是我建议用 GitHub 交付的主要原因。
+- **R3 无法在沙箱跑模拟器**：Compose UI 测试 / 仪器测试写在仓库里，由 CI（Actions 上的模拟器）或你本地运行；每阶段给出可逐条勾选的手动验收清单。
+- **R4 detekt 与 Kotlin 2.4**：detekt 稳定版 1.23.8 内置的是较老的 Kotlin 编译器，2.x 仍是 alpha。方案：用 1.23.8 跑不依赖类型解析的规则集（`detekt` 任务而非 `detektMain`）；若出现兼容错误，再切到 detekt 2.0 alpha 并说明。
+- **R5 RTMP / FFmpeg 扩展**：Media3 RTMP 扩展目前没有与 1.11.1 对齐的稳定版；FFmpeg 软解扩展 Google 不发布预编译包（需用 NDK 自己编译，或用 Jellyfin 的预编译包 1.9.0+1，与 Media3 1.11 版本不对齐且有 GPL/LGPL 许可问题）。方案：RTMP 等 1.12 稳定版发布后接入；在此之前“仅软件解码”开关先用 Media3 自带的软件解码器优先策略（MediaCodec 选择器优先软件 codec），FFmpeg 扩展作为可选项，等你决定（见问题 5）。
+- **R6 UDP/RTP 组播**：Media3 支持 `udp://`，但很多手机网络/路由不转发组播，需 `CHANGE_WIFI_MULTICAST_STATE` 权限并持有 MulticastLock；只在播放组播源时申请锁。RTP 组播需要剥 RTP 头，我会写一个小的 DataSource 封装，标为“尽力而为”。
+- **R7 minSdk 23**：Compose、Media3 当前最低都是 23，可行；但 Android 6 不支持 PiP（需 8.0+）和部分 TLS 1.3。PiP 在低版本隐藏入口，不做降级模拟。
+- **R8 明文 HTTP**：Network Security Config 只能全局或按域名配置，不能按“播放列表”配置。方案：全局允许明文（IPTV 刚需），由 OkHttp 拦截器 + Media3 DataSource 在代码层按列表开关拦截 http 请求；证书校验始终开启。会在 ARCHITECTURE.md 说明取舍。
+- **R9 性能指标**（10 万行 < 10 秒、内存 < 150MB、1 万频道 60fps、冷启动 < 2 秒）：解析器在 JVM 上用生成的 10 万行样本做基准测试；设备上的帧率/冷启动需你用真机或 Macrobenchmark 验证。
+- **R10 投屏限制**：需要自定义 Header 的流 Chromecast 不能直接播放；“代理转发”需在手机上起本地 HTTP 代理，耗电且对 TV 无意义。方案：先做提示，代理作为 P8 可选项。Cast 只在手机/平板启用。
+- **R11 商标**：暂定名 “StreamDeck Player” 和 Elgato 的注册商标 “Stream Deck” 撞名，上架有被投诉风险，建议换名（见问题 1）。
+
+## 5. 权限（仅必要）
+
+INTERNET、ACCESS_NETWORK_STATE（重连/网络类型限制）、FOREGROUND_SERVICE + FOREGROUND_SERVICE_MEDIA_PLAYBACK（后台播放）、POST_NOTIFICATIONS（播放通知、EPG 提醒，Android 13+ 运行时申请）、WAKE_LOCK（播放时屏幕/CPU 常亮，由 Media3 管理）、SCHEDULE_EXACT_ALARM 不申请（提醒用 WorkManager/非精确闹钟，误差在几十秒内）、CHANGE_WIFI_MULTICAST_STATE（仅 UDP 组播）。文件导入用 SAF，无需存储权限。
+
+## 6. 默认假设（如不同意请指出）
+
+1. 只做中文简体 + English 两种语言。
+2. TV 端用 Compose for TV（tv-material 1.1.0）组件，手机/平板用 M3，共用 ViewModel。
+3. Git 提交遵循 Conventional Commits，每阶段一个或多个小提交。
+4. 测试用 JUnit 5（Jupiter）跑 JVM 单测；Android 仪器测试和 Compose UI 测试按 AndroidX 要求用 JUnit 4 运行器（Compose UI Test 不支持 JUnit 5）。

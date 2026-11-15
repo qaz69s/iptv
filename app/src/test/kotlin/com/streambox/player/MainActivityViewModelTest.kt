@@ -1,0 +1,38 @@
+package com.streambox.player
+
+import com.streambox.player.core.model.AppSettings
+import com.streambox.player.core.model.OnboardingState
+import com.streambox.player.core.model.ThemeMode
+import com.streambox.player.core.testing.FakeSettingsRepository
+import com.streambox.player.core.testing.MainDispatcherExtension
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+
+class MainActivityViewModelTest {
+    @JvmField
+    @RegisterExtension
+    val mainDispatcher = MainDispatcherExtension()
+
+    @Test
+    fun `fresh install starts onboarding`() = runTest {
+        val viewModel = MainActivityViewModel(FakeSettingsRepository())
+
+        assertEquals(MainUiState.Ready(AppSettings(), onboardingComplete = false), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `returning user skips onboarding with saved theme`() = runTest {
+        val repository = FakeSettingsRepository(
+            initialSettings = AppSettings(themeMode = ThemeMode.Dark),
+            initialOnboarding = OnboardingState(welcomeSeen = true, disclaimerAccepted = true),
+        )
+        val viewModel = MainActivityViewModel(repository)
+
+        assertEquals(
+            MainUiState.Ready(AppSettings(themeMode = ThemeMode.Dark), onboardingComplete = true),
+            viewModel.uiState.value,
+        )
+    }
+}

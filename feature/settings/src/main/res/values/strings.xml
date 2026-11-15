@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_settings_section_appearance">Appearance</string>
+    <string name="feature_settings_theme_system">Follow system</string>
+    <string name="feature_settings_theme_light">Light</string>
+    <string name="feature_settings_theme_dark">Dark</string>
+    <string name="feature_settings_theme_amoled">AMOLED black</string>
+    <string name="feature_settings_dynamic_color">Use wallpaper colors</string>
+    <string name="feature_settings_section_about">About</string>
+    <string name="feature_settings_version">Version %1$s</string>
+    <string name="feature_settings_disclaimer">This app is a media player only and does not provide any content. You are solely responsible for the legality of the content you add.</string>
+</resources>

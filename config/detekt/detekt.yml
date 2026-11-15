@@ -1,0 +1,36 @@
+# Builds on detekt's default config (buildUponDefaultConfig = true).
+# Only Compose-specific relaxations are listed here.
+naming:
+  # Type-safe nav files (XxxNavigation.kt) hold one @Serializable route plus extension funcs.
+  MatchingDeclarationName:
+    excludes: ['**/navigation/**']
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9_]*'
+
+complexity:
+  LongParameterList:
+    functionThreshold: 8
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    ignorePrivate: true
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotated: ['Composable', 'Preview']
+    excludes: ['**/test/**', '**/androidTest/**', '**/designsystem/**']
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+  ForbiddenComment:
+    active: true
+    comments:
+      - value: 'TODO:'
+        reason: 'No TODOs in committed code; open an issue instead.'
+      - value: 'FIXME:'
+        reason: 'No FIXMEs in committed code; open an issue instead.'

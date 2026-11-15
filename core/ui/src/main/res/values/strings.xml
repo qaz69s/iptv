@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_ui_error_http">Server responded with HTTP %1$d.</string>
+    <string name="core_ui_error_timeout">The connection timed out.</string>
+    <string name="core_ui_error_no_network">No network connection.</string>
+    <string name="core_ui_error_cleartext">This address uses plain HTTP. Enable \"Allow HTTP\" for this playlist to use it.</string>
+    <string name="core_ui_error_parse_line">Could not read line %1$d: %2$s</string>
+    <string name="core_ui_error_parse">Could not read the file: %1$s</string>
+    <string name="core_ui_error_io">Read/write error: %1$s</string>
+    <string name="core_ui_error_unknown">Unexpected error: %1$s</string>
+    <string name="core_ui_retry">Retry</string>
+    <string name="core_ui_loading">Loading…</string>
+</resources>

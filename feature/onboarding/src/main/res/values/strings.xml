@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_onboarding_welcome_title">Welcome to StreamBox Player</string>
+    <string name="feature_onboarding_welcome_body">Play your own IPTV playlists (M3U, M3U8, Xtream Codes) with program guides (XMLTV) on your phone, tablet and TV.</string>
+    <string name="feature_onboarding_get_started">Get started</string>
+    <string name="feature_onboarding_disclaimer_title">Before you start</string>
+    <string name="feature_onboarding_disclaimer_body">This app is a media player only and does not provide any content. No channels are included. You are solely responsible for the legality of the playlists and streams you add.</string>
+    <string name="feature_onboarding_privacy_body">StreamBox Player does not collect personal data. Your playlists, favorites and settings stay on this device.</string>
+    <string name="feature_onboarding_disclaimer_consent">I have read and agree</string>
+    <string name="feature_onboarding_accept">Agree and continue</string>
+    <string name="feature_onboarding_back">Back</string>
+</resources>
