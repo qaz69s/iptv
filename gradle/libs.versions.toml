@@ -6,19 +6,17 @@ ksp = "2.3.14"
 # SDK levels
 compileSdk = "37"
 targetSdk = "37"
-minSdk = "23"
+minSdk = "24"
 jvmTarget = "17"
 
 # AndroidX
 androidx-core = "1.19.1"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
-# 2.10.x requires minSdk 24; 2.9.8 is the newest stable that supports minSdk 23 (requirement).
-androidx-navigation = "2.9.8"
+androidx-navigation = "2.10.2"
 androidx-compose-bom = "2026.09.00"
 androidx-tv-material = "1.1.0"
-# 1.2+ requires minSdk 24; 1.1.7 is the newest stable that supports minSdk 23 (requirement).
-androidx-datastore = "1.1.7"
+androidx-datastore = "1.3.0"
 androidx-room = "2.8.5"
 androidx-paging = "3.5.3"
 androidx-work = "2.12.0"

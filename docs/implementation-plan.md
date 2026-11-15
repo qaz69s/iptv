@@ -43,19 +43,19 @@
 | Kotlin | 2.4.21（Compose Compiler 插件同版本） |
 | KSP | 2.3.14 |
 | JDK（构建） | 17（AGP 9 最低要求） |
-| compileSdk / targetSdk / minSdk | 37 / 37 / 23 |
+| compileSdk / targetSdk / minSdk | 37 / 37 / 24（用户 2026-11-15 确认由 23 改为 24） |
 | Compose BOM | 2026.09.00 |
 | Compose for TV（tv-material） | 1.1.0 |
 | Activity Compose | 1.13.0 |
 | Lifecycle | 2.11.0 |
-| Navigation Compose | 2.9.8（2.10.x 要求 minSdk 24，与 minSdk 23 冲突，P0 降级） |
+| Navigation Compose | 2.10.2 |
 | Core KTX | 1.19.1 |
 | Hilt | 2.60.1；hilt-navigation-compose 1.4.0 |
 | Media3（exoplayer/hls/dash/rtsp/session/ui-compose） | 1.11.1 |
 | Media3 RTMP 扩展 | 无 1.11 稳定版（最新 1.12.0-beta01），见风险 R5 |
 | Room | 2.8.5 |
 | Paging | 3.5.3 |
-| DataStore | 1.1.7（1.2+ 要求更高 minSdk，P0 降级） |
+| DataStore | 1.3.0 |
 | WorkManager | 2.12.0 |
 | Coroutines | 1.11.0 |
 | kotlinx.serialization | 1.13.0 |
@@ -93,7 +93,7 @@
 - **R4 detekt 与 Kotlin 2.4**：detekt 稳定版 1.23.8 内置的是较老的 Kotlin 编译器，2.x 仍是 alpha。方案：用 1.23.8 跑不依赖类型解析的规则集（`detekt` 任务而非 `detektMain`）；若出现兼容错误，再切到 detekt 2.0 alpha 并说明。
 - **R5 RTMP / FFmpeg 扩展**：Media3 RTMP 扩展目前没有与 1.11.1 对齐的稳定版；FFmpeg 软解扩展 Google 不发布预编译包（需用 NDK 自己编译，或用 Jellyfin 的预编译包 1.9.0+1，与 Media3 1.11 版本不对齐且有 GPL/LGPL 许可问题）。方案：RTMP 等 1.12 稳定版发布后接入；在此之前“仅软件解码”开关先用 Media3 自带的软件解码器优先策略（MediaCodec 选择器优先软件 codec），FFmpeg 扩展作为可选项，等你决定（见问题 5）。
 - **R6 UDP/RTP 组播**：Media3 支持 `udp://`，但很多手机网络/路由不转发组播，需 `CHANGE_WIFI_MULTICAST_STATE` 权限并持有 MulticastLock；只在播放组播源时申请锁。RTP 组播需要剥 RTP 头，我会写一个小的 DataSource 封装，标为“尽力而为”。
-- **R7 minSdk 23**：Compose、Media3 当前最低都是 23，可行；但 Android 6 不支持 PiP（需 8.0+）和部分 TLS 1.3。PiP 在低版本隐藏入口，不做降级模拟。
+- **R7 minSdk 24**（原说明书 23，用户确认改 24 以使用最新 Navigation/DataStore）：但 Android 6 不支持 PiP（需 8.0+）和部分 TLS 1.3。PiP 在低版本隐藏入口，不做降级模拟。
 - **R8 明文 HTTP**：Network Security Config 只能全局或按域名配置，不能按“播放列表”配置。方案：全局允许明文（IPTV 刚需），由 OkHttp 拦截器 + Media3 DataSource 在代码层按列表开关拦截 http 请求；证书校验始终开启。会在 ARCHITECTURE.md 说明取舍。
 - **R9 性能指标**（10 万行 < 10 秒、内存 < 150MB、1 万频道 60fps、冷启动 < 2 秒）：解析器在 JVM 上用生成的 10 万行样本做基准测试；设备上的帧率/冷启动需你用真机或 Macrobenchmark 验证。
 - **R10 投屏限制**：需要自定义 Header 的流 Chromecast 不能直接播放；“代理转发”需在手机上起本地 HTTP 代理，耗电且对 TV 无意义。方案：先做提示，代理作为 P8 可选项。Cast 只在手机/平板启用。

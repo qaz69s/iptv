@@ -9,7 +9,7 @@ Kotlin 2.4 · Jetpack Compose (Material 3) · Compose for TV · Hilt · DataStor
 
 ## 环境要求
 - JDK 17
-- Android SDK（compileSdk 37 / targetSdk 36 / minSdk 23）
+- Android SDK（compileSdk 37 / targetSdk 36 / minSdk 24）
 - Android Studio 最新稳定版
 
 ## 构建
