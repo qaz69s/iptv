@@ -4,7 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
-import com.streambox.player.feature.channels.ChannelsScreen
+import com.streambox.player.feature.channels.ChannelsEntry
 import com.streambox.player.feature.channels.FavoritesScreen
 import kotlinx.serialization.Serializable
 
@@ -18,8 +18,19 @@ fun NavController.navigateToChannels(navOptions: NavOptions? = null) = navigate(
 
 fun NavController.navigateToFavorites(navOptions: NavOptions? = null) = navigate(FavoritesRoute, navOptions)
 
-fun NavGraphBuilder.channelsScreen() {
-    composable<ChannelsRoute> { ChannelsScreen() }
+/** Navigation targets live in other features, so the app module supplies every callback. */
+fun NavGraphBuilder.channelsScreen(
+    onAddPlaylist: () -> Unit,
+    onManagePlaylists: () -> Unit,
+    onChannelClick: (channelId: Long) -> Unit,
+) {
+    composable<ChannelsRoute> {
+        ChannelsEntry(
+            onAddPlaylist = onAddPlaylist,
+            onManagePlaylists = onManagePlaylists,
+            onChannelClick = onChannelClick,
+        )
+    }
 }
 
 fun NavGraphBuilder.favoritesScreen() {

@@ -1,19 +1,38 @@
 package com.streambox.player.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.navOptions
 import com.streambox.player.feature.channels.navigation.ChannelsRoute
 import com.streambox.player.feature.channels.navigation.channelsScreen
 import com.streambox.player.feature.channels.navigation.favoritesScreen
 import com.streambox.player.feature.epg.navigation.epgScreen
 import com.streambox.player.feature.onboarding.navigation.OnboardingGraphRoute
 import com.streambox.player.feature.onboarding.navigation.onboardingGraph
+import com.streambox.player.feature.playlist.navigation.AddPlaylistRoute
+import com.streambox.player.feature.playlist.navigation.addPlaylistScreen
+import com.streambox.player.feature.playlist.navigation.importProgressScreen
+import com.streambox.player.feature.playlist.navigation.navigateToAddPlaylist
+import com.streambox.player.feature.playlist.navigation.navigateToImportProgress
+import com.streambox.player.feature.playlist.navigation.navigateToPlaylists
+import com.streambox.player.feature.playlist.navigation.playlistsScreen
 import com.streambox.player.feature.settings.navigation.settingsScreen
+import kotlinx.coroutines.launch
 
 @Composable
-fun StreamBoxNavHost(navController: NavHostController, onboardingComplete: Boolean, modifier: Modifier = Modifier) {
+fun StreamBoxNavHost(
+    navController: NavHostController,
+    onboardingComplete: Boolean,
+    hasPlaylists: suspend () -> Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val currentHasPlaylists by rememberUpdatedState(hasPlaylists)
     NavHost(
         navController = navController,
         startDestination = if (onboardingComplete) ChannelsRoute else OnboardingGraphRoute,
@@ -22,15 +41,52 @@ fun StreamBoxNavHost(navController: NavHostController, onboardingComplete: Boole
         onboardingGraph(
             navController = navController,
             onOnboardingComplete = {
-                navController.navigate(ChannelsRoute) {
-                    popUpTo(OnboardingGraphRoute) { inclusive = true }
+                scope.launch {
+                    val needsPlaylist = !currentHasPlaylists()
+                    navController.navigate(ChannelsRoute) {
+                        popUpTo(OnboardingGraphRoute) { inclusive = true }
+                    }
+                    // Channels stays underneath, so Back from "Add playlist" lands on the channel page.
+                    if (needsPlaylist) navController.navigateToAddPlaylist()
                 }
             },
         )
-        channelsScreen()
+        channelsScreen(
+            onAddPlaylist = { navController.navigateToAddPlaylist() },
+            onManagePlaylists = { navController.navigateToPlaylists() },
+            onChannelClick = { channelId -> navController.navigateToPlayerPlaceholder(channelId) },
+        )
         epgScreen()
         favoritesScreen()
         settingsScreen()
+
+        addPlaylistScreen(
+            onBack = { navController.popBackStack() },
+            onPlaylistAdded = { playlistId ->
+                // Replace the form, so Back from the progress page does not reopen a filled-in form.
+                navController.navigateToImportProgress(
+                    playlistId,
+                    navOptions { popUpTo(AddPlaylistRoute) { inclusive = true } },
+                )
+            },
+        )
+        importProgressScreen(
+            onBack = { navController.popBackStack() },
+            onGoToChannels = { navController.backToChannels() },
+        )
+        playlistsScreen(
+            onBack = { navController.popBackStack() },
+            onAddPlaylist = { navController.navigateToAddPlaylist() },
+            onOpenImport = { playlistId -> navController.navigateToImportProgress(playlistId) },
+        )
+        playerPlaceholderScreen(onBack = { navController.popBackStack() })
+    }
+}
+
+/** Channels is the root after onboarding: pop back to it, or open it if it is somehow missing. */
+private fun NavHostController.backToChannels() {
+    if (!popBackStack(ChannelsRoute, inclusive = false)) {
+        navigate(ChannelsRoute) { launchSingleTop = true }
     }
 }
 

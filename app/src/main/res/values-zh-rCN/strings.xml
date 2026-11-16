@@ -4,4 +4,7 @@
     <string name="nav_epg">节目单</string>
     <string name="nav_favorites">收藏</string>
     <string name="nav_settings">设置</string>
+    <string name="player_placeholder_title">播放页即将接入</string>
+    <string name="player_placeholder_message">已选择频道（ID %1$d）。播放页将在下一个版本中接入。</string>
+    <string name="player_placeholder_back">返回频道</string>
 </resources>

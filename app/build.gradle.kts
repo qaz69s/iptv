@@ -62,11 +62,13 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.designsystem)
     implementation(projects.core.ui)
+    implementation(projects.core.network)
 
     implementation(projects.feature.onboarding)
     implementation(projects.feature.channels)
     implementation(projects.feature.epg)
     implementation(projects.feature.settings)
+    implementation(projects.feature.playlist)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -78,6 +80,8 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.tv.material)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     debugImplementation(libs.leakcanary)
 

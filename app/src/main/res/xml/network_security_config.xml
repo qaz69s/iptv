@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Many IPTV playlists, logos and streams are only served over plain HTTP, so the platform allows
+  cleartext. It is NOT open by default in practice: playlist downloads, redirects and streams are
+  checked per playlist in code (CleartextGuardInterceptor + the playlist's "Allow plain HTTP" switch).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -15,6 +15,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -38,15 +39,16 @@ import com.streambox.player.navigation.navigateToTopLevel
 fun StreamBoxApp(
     formFactor: FormFactor,
     onboardingComplete: Boolean,
+    hasPlaylists: suspend () -> Boolean,
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTopLevel = backStackEntry?.destination.topLevelDestination()
 
     if (formFactor == FormFactor.Tv) {
-        TvAppLayout(navController, currentTopLevel, onboardingComplete)
+        TvAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists)
     } else {
-        TouchAppLayout(navController, currentTopLevel, onboardingComplete)
+        TouchAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists)
     }
 }
 
@@ -56,6 +58,7 @@ private fun TouchAppLayout(
     navController: NavHostController,
     currentTopLevel: TopLevelDestination?,
     onboardingComplete: Boolean,
+    hasPlaylists: suspend () -> Boolean,
 ) {
     val layoutType = if (currentTopLevel == null) {
         NavigationSuiteType.None
@@ -78,6 +81,7 @@ private fun TouchAppLayout(
         StreamBoxNavHost(
             navController = navController,
             onboardingComplete = onboardingComplete,
+            hasPlaylists = hasPlaylists,
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -89,30 +93,32 @@ private fun TvAppLayout(
     navController: NavHostController,
     currentTopLevel: TopLevelDestination?,
     onboardingComplete: Boolean,
+    hasPlaylists: suspend () -> Boolean,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
-        if (currentTopLevel == null) {
-            StreamBoxNavHost(navController, onboardingComplete, Modifier.fillMaxSize())
-            return@Surface
-        }
+        // The NavHost always stays in the same place in the tree; only the drawer's items are hidden on
+        // onboarding and sub-pages (add playlist, import, player). Moving the NavHost between two
+        // branches would recreate it and lose screen state.
         NavigationDrawer(
             drawerContent = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(12.dp)
-                        .selectableGroup(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.CenterVertically),
-                ) {
-                    TopLevelDestination.entries.forEach { destination ->
-                        NavigationDrawerItem(
-                            selected = destination == currentTopLevel,
-                            onClick = { navController.navigateToTopLevel(destination) },
-                            leadingContent = {
-                                TvIcon(painterResource(destination.icon), contentDescription = null)
-                            },
-                        ) {
-                            TvText(stringResource(destination.label))
+                if (currentTopLevel != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(12.dp)
+                            .selectableGroup(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                    ) {
+                        TopLevelDestination.entries.forEach { destination ->
+                            NavigationDrawerItem(
+                                selected = destination == currentTopLevel,
+                                onClick = { navController.navigateToTopLevel(destination) },
+                                leadingContent = {
+                                    TvIcon(painterResource(destination.icon), contentDescription = null)
+                                },
+                            ) {
+                                TvText(stringResource(destination.label))
+                            }
                         }
                     }
                 }
@@ -121,9 +127,10 @@ private fun TvAppLayout(
             StreamBoxNavHost(
                 navController = navController,
                 onboardingComplete = onboardingComplete,
+                hasPlaylists = hasPlaylists,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 8.dp),
+                    .padding(start = if (currentTopLevel != null) 8.dp else 0.dp),
             )
         }
     }

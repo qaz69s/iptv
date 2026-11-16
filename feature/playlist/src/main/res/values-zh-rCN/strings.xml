@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_playlist_add_title">添加播放列表</string>
+    <string name="feature_playlist_back">返回</string>
+    <string name="feature_playlist_name_label">名称</string>
+    <string name="feature_playlist_name_missing">请为播放列表填写名称。</string>
+    <string name="feature_playlist_source_url">M3U 网址</string>
+    <string name="feature_playlist_source_file">本地文件</string>
+    <string name="feature_playlist_source_xtream">Xtream Codes</string>
+    <string name="feature_playlist_xtream_soon">Xtream Codes 登录即将支持（P6 阶段）。</string>
+    <string name="feature_playlist_url_label">播放列表网址（M3U / M3U8）</string>
+    <string name="feature_playlist_url_missing">请输入播放列表地址。</string>
+    <string name="feature_playlist_url_invalid">不是有效的 http:// 或 https:// 地址。</string>
+    <string name="feature_playlist_choose_file">选择文件</string>
+    <string name="feature_playlist_file_missing">请选择 .m3u / .m3u8 文件。</string>
+    <string name="feature_playlist_file_selected">已选择：%1$s</string>
+    <string name="feature_playlist_picker_unavailable">此设备没有文件选择器，请改用网址。</string>
+    <string name="feature_playlist_user_agent_label">User-Agent（可选）</string>
+    <string name="feature_playlist_user_agent_hint">部分服务商只响应特定播放器的 User-Agent。</string>
+    <string name="feature_playlist_allow_http">允许此播放列表使用明文 HTTP</string>
+    <string name="feature_playlist_allow_http_hint">很多 IPTV 服务器使用未加密的 HTTP，请只对信任的来源开启。</string>
+    <string name="feature_playlist_http_required">此地址使用明文 HTTP，请打开“允许明文 HTTP”后再试。</string>
+    <string name="feature_playlist_add_button">添加并导入</string>
+    <string name="feature_playlist_unsupported">暂不支持此类播放列表。</string>
+
+    <string name="feature_playlist_import_title">正在导入播放列表</string>
+    <string name="feature_playlist_import_connecting">正在连接…</string>
+    <string name="feature_playlist_import_running">已读取 %1$d 个频道</string>
+    <string name="feature_playlist_import_bytes">%1$s / %2$s</string>
+    <string name="feature_playlist_import_bytes_unknown">已下载 %1$s</string>
+    <string name="feature_playlist_import_finalizing">正在保存 %1$d 个频道…</string>
+    <string name="feature_playlist_import_success">已导入 %1$d 个频道，共 %2$d 个分组。</string>
+    <string name="feature_playlist_import_skipped">已跳过 %1$d 行无法识别的内容。</string>
+    <string name="feature_playlist_import_failed">导入失败</string>
+    <string name="feature_playlist_import_cancelled">已取消导入，原有频道保持不变。</string>
+    <string name="feature_playlist_import_idle">此播放列表当前没有在导入。</string>
+    <string name="feature_playlist_import_old_kept">原有频道保持不变。</string>
+    <string name="feature_playlist_cancel">取消</string>
+    <string name="feature_playlist_retry">重试</string>
+    <string name="feature_playlist_refresh_now">立即刷新</string>
+    <string name="feature_playlist_go_to_channels">查看频道</string>
+    <string name="feature_playlist_manage">管理播放列表</string>
+
+    <string name="feature_playlist_error_http">服务器返回 HTTP %1$d。</string>
+    <string name="feature_playlist_error_timeout">连接超时。</string>
+    <string name="feature_playlist_error_network">无法连接服务器，请检查网络和地址。</string>
+    <string name="feature_playlist_error_cleartext">此播放列表使用明文 HTTP，但未开启。请在“管理播放列表”中打开“允许明文 HTTP”。</string>
+    <string name="feature_playlist_error_empty">播放列表中没有找到频道。</string>
+    <string name="feature_playlist_error_file">无法再读取该文件，请重新选择。</string>
+    <string name="feature_playlist_error_other">意外错误：%1$s</string>
+
+    <string name="feature_playlist_list_title">播放列表</string>
+    <string name="feature_playlist_list_empty_title">没有播放列表</string>
+    <string name="feature_playlist_list_empty_message">添加 M3U 网址或本地文件即可开始观看。</string>
+    <string name="feature_playlist_type_url">M3U 网址</string>
+    <string name="feature_playlist_type_file">本地文件</string>
+    <string name="feature_playlist_type_xtream">Xtream Codes</string>
+    <plurals name="feature_playlist_channel_count">
+        <item quantity="other">%1$d 个频道</item>
+    </plurals>
+    <string name="feature_playlist_updated">更新于 %1$s</string>
+    <string name="feature_playlist_never_updated">尚未导入</string>
+    <string name="feature_playlist_last_error">上次更新失败</string>
+    <string name="feature_playlist_importing">正在导入…</string>
+    <string name="feature_playlist_refresh">刷新</string>
+    <string name="feature_playlist_delete">删除</string>
+    <string name="feature_playlist_delete_title">删除“%1$s”？</string>
+    <string name="feature_playlist_delete_message">其频道将从 StreamBox Player 中移除，不会影响来源本身。</string>
+    <string name="feature_playlist_allow_http_short">允许明文 HTTP</string>
+</resources>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_playlist_add_title">Add playlist</string>
+    <string name="feature_playlist_back">Back</string>
+    <string name="feature_playlist_name_label">Name</string>
+    <string name="feature_playlist_name_missing">Enter a name for this playlist.</string>
+    <string name="feature_playlist_source_url">M3U URL</string>
+    <string name="feature_playlist_source_file">Local file</string>
+    <string name="feature_playlist_source_xtream">Xtream Codes</string>
+    <string name="feature_playlist_xtream_soon">Xtream Codes login is coming soon (phase P6).</string>
+    <string name="feature_playlist_url_label">Playlist URL (M3U / M3U8)</string>
+    <string name="feature_playlist_url_missing">Enter the playlist address.</string>
+    <string name="feature_playlist_url_invalid">This is not a valid http:// or https:// address.</string>
+    <string name="feature_playlist_choose_file">Choose file</string>
+    <string name="feature_playlist_file_missing">Choose an .m3u / .m3u8 file.</string>
+    <string name="feature_playlist_file_selected">Selected: %1$s</string>
+    <string name="feature_playlist_picker_unavailable">This device has no file picker. Use a URL instead.</string>
+    <string name="feature_playlist_user_agent_label">User-Agent (optional)</string>
+    <string name="feature_playlist_user_agent_hint">Some providers only answer to a specific player User-Agent.</string>
+    <string name="feature_playlist_allow_http">Allow plain HTTP for this playlist</string>
+    <string name="feature_playlist_allow_http_hint">Many IPTV servers use unencrypted HTTP. Only enable this for sources you trust.</string>
+    <string name="feature_playlist_http_required">This address uses plain HTTP. Turn on \"Allow plain HTTP\" to use it.</string>
+    <string name="feature_playlist_add_button">Add and import</string>
+    <string name="feature_playlist_unsupported">This playlist type is not supported yet.</string>
+
+    <string name="feature_playlist_import_title">Importing playlist</string>
+    <string name="feature_playlist_import_connecting">Connecting…</string>
+    <string name="feature_playlist_import_running">%1$d channels read</string>
+    <string name="feature_playlist_import_bytes">%1$s of %2$s</string>
+    <string name="feature_playlist_import_bytes_unknown">%1$s downloaded</string>
+    <string name="feature_playlist_import_finalizing">Saving %1$d channels…</string>
+    <string name="feature_playlist_import_success">Imported %1$d channels in %2$d groups.</string>
+    <string name="feature_playlist_import_skipped">%1$d unreadable lines were skipped.</string>
+    <string name="feature_playlist_import_failed">Import failed</string>
+    <string name="feature_playlist_import_cancelled">Import cancelled. Your previous channels are unchanged.</string>
+    <string name="feature_playlist_import_idle">No import is running for this playlist.</string>
+    <string name="feature_playlist_import_old_kept">Your previous channels are unchanged.</string>
+    <string name="feature_playlist_cancel">Cancel</string>
+    <string name="feature_playlist_retry">Retry</string>
+    <string name="feature_playlist_refresh_now">Refresh now</string>
+    <string name="feature_playlist_go_to_channels">Go to channels</string>
+    <string name="feature_playlist_manage">Manage playlists</string>
+
+    <string name="feature_playlist_error_http">The server answered HTTP %1$d.</string>
+    <string name="feature_playlist_error_timeout">The connection timed out.</string>
+    <string name="feature_playlist_error_network">No connection to the server. Check your network and the address.</string>
+    <string name="feature_playlist_error_cleartext">This playlist uses plain HTTP, which is turned off for it. Enable \"Allow plain HTTP\" in Manage playlists.</string>
+    <string name="feature_playlist_error_empty">No channels were found in this playlist.</string>
+    <string name="feature_playlist_error_file">The file can no longer be read. Pick it again.</string>
+    <string name="feature_playlist_error_other">Unexpected error: %1$s</string>
+
+    <string name="feature_playlist_list_title">Playlists</string>
+    <string name="feature_playlist_list_empty_title">No playlists</string>
+    <string name="feature_playlist_list_empty_message">Add an M3U URL or a local file to start watching.</string>
+    <string name="feature_playlist_type_url">M3U URL</string>
+    <string name="feature_playlist_type_file">Local file</string>
+    <string name="feature_playlist_type_xtream">Xtream Codes</string>
+    <plurals name="feature_playlist_channel_count">
+        <item quantity="one">%1$d channel</item>
+        <item quantity="other">%1$d channels</item>
+    </plurals>
+    <string name="feature_playlist_updated">Updated %1$s</string>
+    <string name="feature_playlist_never_updated">Not imported yet</string>
+    <string name="feature_playlist_last_error">Last update failed</string>
+    <string name="feature_playlist_importing">Importing…</string>
+    <string name="feature_playlist_refresh">Refresh</string>
+    <string name="feature_playlist_delete">Delete</string>
+    <string name="feature_playlist_delete_title">Delete \"%1$s\"?</string>
+    <string name="feature_playlist_delete_message">Its channels will be removed from StreamBox Player. The source itself is not affected.</string>
+    <string name="feature_playlist_allow_http_short">Allow plain HTTP</string>
+</resources>

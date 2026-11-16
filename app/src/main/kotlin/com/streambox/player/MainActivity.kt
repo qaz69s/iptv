@@ -35,14 +35,14 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalFormFactor provides formFactor) {
                 if (formFactor == FormFactor.Tv) {
                     StreamBoxTvTheme(themeMode = ready.settings.themeMode) {
-                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch)
+                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists)
                     }
                 } else {
                     StreamBoxTheme(
                         themeMode = ready.settings.themeMode,
                         useDynamicColor = ready.settings.useDynamicColor,
                     ) {
-                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch)
+                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists)
                     }
                 }
             }

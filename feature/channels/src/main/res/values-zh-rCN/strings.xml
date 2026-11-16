@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="feature_channels_title">频道</string>
     <string name="feature_channels_empty_title">还没有播放列表</string>
-    <string name="feature_channels_empty_message">StreamBox Player 不内置任何频道。你添加的播放列表中的频道会显示在这里。</string>
+    <string name="feature_channels_empty_message">StreamBox Player 不内置任何频道。添加 M3U 播放列表网址或文件后，频道会显示在这里。</string>
+    <string name="feature_channels_add_playlist">添加播放列表</string>
+    <string name="feature_channels_manage_playlists">管理播放列表</string>
+    <string name="feature_channels_no_channels_title">还没有频道</string>
+    <string name="feature_channels_no_channels_message">播放列表中暂时没有频道，可能仍在导入或导入失败，请到“管理播放列表”查看。</string>
+    <string name="feature_channels_group_all">全部（%1$d）</string>
+    <string name="feature_channels_group_label">%1$s（%2$d）</string>
+    <string name="feature_channels_group_ungrouped">未分组</string>
+    <string name="feature_channels_load_failed">无法加载频道：%1$s</string>
+    <string name="feature_channels_retry">重试</string>
     <string name="feature_channels_favorites_empty_title">还没有收藏</string>
     <string name="feature_channels_favorites_empty_message">收藏的频道会显示在这里。</string>
 </resources>
