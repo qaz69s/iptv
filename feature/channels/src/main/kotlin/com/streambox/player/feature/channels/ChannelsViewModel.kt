@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
@@ -63,7 +64,15 @@ class ChannelsViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChannelsUiState.Loading)
 
-    val channels: Flow<PagingData<Channel>> = selectedGroup
+    /**
+     * The group actually applied to the list: a saved selection whose group vanished after a refresh
+     * falls back to "all", matching the chips (the saved choice comes back if the group reappears).
+     */
+    private val effectiveGroup: Flow<String?> = combine(selectedGroup, channelRepository.groups) { selected, groups ->
+        selected?.takeIf { name -> groups.any { it.name == name } }
+    }.distinctUntilChanged()
+
+    val channels: Flow<PagingData<Channel>> = effectiveGroup
         .flatMapLatest { channelRepository.pagedChannels(it) }
         .cachedIn(viewModelScope)
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_player_back">Back</string>
+    <string name="feature_player_channel_up">Next channel</string>
+    <string name="feature_player_channel_down">Previous channel</string>
+    <string name="feature_player_buffering">Buffering…</string>
+    <string name="feature_player_retry">Retry</string>
+    <string name="feature_player_error_title">Can\'t play this channel</string>
+    <string name="feature_player_error_http">The server answered HTTP %1$d.</string>
+    <string name="feature_player_error_timeout">The stream did not respond in time.</string>
+    <string name="feature_player_error_network">Network connection failed. Check your connection.</string>
+    <string name="feature_player_error_cleartext">This stream uses plain HTTP, which is not allowed for its playlist. Enable it in Playlists.</string>
+    <string name="feature_player_error_decoder">This device cannot decode the stream.</string>
+    <string name="feature_player_error_format">Unsupported or damaged stream format.</string>
+    <string name="feature_player_error_not_found">This channel no longer exists. The playlist may have been refreshed.</string>
+    <string name="feature_player_error_other">Playback failed (%1$s).</string>
+    <string name="feature_player_hint_touch">Swipe up / down to change channel</string>
+    <string name="feature_player_hint_tv">Up / Down to change channel</string>
+</resources>

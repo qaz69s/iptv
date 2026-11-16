@@ -75,7 +75,7 @@ import com.streambox.player.core.ui.LocalFormFactor
 internal fun ChannelsEntry(
     onAddPlaylist: () -> Unit,
     onManagePlaylists: () -> Unit,
-    onChannelClick: (channelId: Long) -> Unit,
+    onChannelClick: (channelId: Long, groupName: String?) -> Unit,
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -86,7 +86,8 @@ internal fun ChannelsEntry(
         onGroupSelected = viewModel::onGroupSelected,
         onAddPlaylist = onAddPlaylist,
         onManagePlaylists = onManagePlaylists,
-        onChannelClick = onChannelClick,
+        // The player zaps inside the group the user is browsing.
+        onChannelClick = { id -> onChannelClick(id, (state as? ChannelsUiState.Content)?.selectedGroup) },
     )
 }
 

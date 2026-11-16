@@ -14,6 +14,8 @@ import com.streambox.player.feature.channels.navigation.favoritesScreen
 import com.streambox.player.feature.epg.navigation.epgScreen
 import com.streambox.player.feature.onboarding.navigation.OnboardingGraphRoute
 import com.streambox.player.feature.onboarding.navigation.onboardingGraph
+import com.streambox.player.feature.player.navigation.navigateToPlayer
+import com.streambox.player.feature.player.navigation.playerScreen
 import com.streambox.player.feature.playlist.navigation.AddPlaylistRoute
 import com.streambox.player.feature.playlist.navigation.addPlaylistScreen
 import com.streambox.player.feature.playlist.navigation.importProgressScreen
@@ -54,7 +56,7 @@ fun StreamBoxNavHost(
         channelsScreen(
             onAddPlaylist = { navController.navigateToAddPlaylist() },
             onManagePlaylists = { navController.navigateToPlaylists() },
-            onChannelClick = { channelId -> navController.navigateToPlayerPlaceholder(channelId) },
+            onChannelClick = { channelId, groupName -> navController.navigateToPlayer(channelId, groupName) },
         )
         epgScreen()
         favoritesScreen()
@@ -79,7 +81,7 @@ fun StreamBoxNavHost(
             onAddPlaylist = { navController.navigateToAddPlaylist() },
             onOpenImport = { playlistId -> navController.navigateToImportProgress(playlistId) },
         )
-        playerPlaceholderScreen(onBack = { navController.popBackStack() })
+        playerScreen(onBack = { navController.popBackStack() })
     }
 }
 

@@ -22,7 +22,8 @@ fun NavController.navigateToFavorites(navOptions: NavOptions? = null) = navigate
 fun NavGraphBuilder.channelsScreen(
     onAddPlaylist: () -> Unit,
     onManagePlaylists: () -> Unit,
-    onChannelClick: (channelId: Long) -> Unit,
+    /** [groupName] is the group filter the channel was picked from (null = all), for zapping. */
+    onChannelClick: (channelId: Long, groupName: String?) -> Unit,
 ) {
     composable<ChannelsRoute> {
         ChannelsEntry(

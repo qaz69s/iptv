@@ -5,7 +5,4 @@
     <string name="nav_epg">Guide</string>
     <string name="nav_favorites">Favorites</string>
     <string name="nav_settings">Settings</string>
-    <string name="player_placeholder_title">Player coming next</string>
-    <string name="player_placeholder_message">Channel #%1$d was selected. The playback screen is wired up in the next build.</string>
-    <string name="player_placeholder_back">Back to channels</string>
 </resources>

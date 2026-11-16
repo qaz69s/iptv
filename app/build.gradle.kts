@@ -69,6 +69,7 @@ dependencies {
     implementation(projects.feature.epg)
     implementation(projects.feature.settings)
     implementation(projects.feature.playlist)
+    implementation(projects.feature.player)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
