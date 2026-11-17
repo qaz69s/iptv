@@ -53,6 +53,9 @@ internal class DefaultChannelRepository @Inject constructor(private val channelD
         }
     }
 
+    override suspend fun channelIdByNumber(number: Int, groupName: String?): Long? =
+        groupName?.let { channelDao.idByNumber(number, it) } ?: channelDao.idByNumber(number, null)
+
     private companion object {
         const val PAGE_SIZE = 60
     }

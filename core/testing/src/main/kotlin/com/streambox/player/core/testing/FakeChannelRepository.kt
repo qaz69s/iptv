@@ -53,6 +53,11 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
         return list[next].id
     }
 
+    override suspend fun channelIdByNumber(number: Int, groupName: String?): Long? {
+        val inGroup = filtered(groupName).firstOrNull { it.displayNumber == number }
+        return (inGroup ?: filtered(null).firstOrNull { it.displayNumber == number })?.id
+    }
+
     private fun filtered(groupName: String?) =
         channelsFlow.value.filter { groupName == null || it.first == groupName }.map { it.second }
 

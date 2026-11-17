@@ -1,9 +1,17 @@
 package com.streambox.player.feature.player
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.pm.ActivityInfo
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.view.KeyEvent as AndroidKeyEvent
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -49,10 +57,12 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,12 +73,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
-import androidx.media3.ui.compose.ContentFrame
 import com.streambox.player.core.designsystem.component.focusRing
 import com.streambox.player.core.designsystem.icon.StreamBoxIcons
 import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
+import com.streambox.player.core.ui.labelRes
 
 private val SWIPE_THRESHOLD = 72.dp
 
@@ -82,6 +92,7 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val player by viewModel.player.collectAsStateWithLifecycle()
     val isTv = LocalFormFactor.current == FormFactor.Tv
+    val context = LocalContext.current
 
     LifecycleStartEffect(viewModel) {
         viewModel.onStart()
@@ -89,6 +100,18 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
     }
     KeepScreenOn(enabled = state.error == null && (state.isPlaying || state.isBuffering))
     ImmersiveLandscape(forceLandscape = !isTv)
+
+    // External subtitles: SAF picker (no storage permission needed).
+    val subtitlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val loaded = viewModel.loadExternalSubtitle(
+                uri = uri.toString(),
+                displayName = context.displayName(uri),
+                providerMimeType = context.contentResolver.getType(uri),
+            )
+            if (!loaded) context.toast(R.string.feature_player_subtitles_unsupported)
+        }
+    }
 
     PlayerScreen(
         state = state,
@@ -99,10 +122,46 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
         onRetry = viewModel::retry,
         onToggleOverlay = viewModel::toggleOverlay,
         onShowOverlay = viewModel::showOverlay,
+        keys = PlayerKeyActions(
+            onDigit = viewModel::onDigit,
+            onCommitNumber = viewModel::commitNumberInput,
+            onBackspace = viewModel::onNumberBackspace,
+            onHorizontal = viewModel::onHorizontalKey,
+            onTogglePanel = viewModel::togglePanel,
+            onOpenPanel = viewModel::openPanel,
+        ),
+        onCycleAspect = viewModel::cycleAspectRatio,
+        panelActions = PlayerPanelActions(
+            onDismiss = viewModel::closePanel,
+            onVideoTrack = viewModel::selectVideoTrack,
+            onAudioTrack = viewModel::selectAudioTrack,
+            onSubtitleTrack = viewModel::selectSubtitleTrack,
+            onLoadSubtitleFile = {
+                try {
+                    subtitlePicker.launch(SubtitleFiles.PICKER_MIME_TYPES)
+                } catch (_: ActivityNotFoundException) {
+                    context.toast(R.string.feature_player_no_file_picker)
+                }
+            },
+            onAspectRatio = viewModel::setAspectRatio,
+            onSubtitleStyle = viewModel::setSubtitleStyle,
+        ),
     )
 }
 
-@Suppress("LongMethod", "LongParameterList")
+/** Remote-control callbacks beyond zapping (P2a). */
+internal data class PlayerKeyActions(
+    val onDigit: (Int) -> Unit = {},
+    /** @return true when a typed number was committed (OK consumed). */
+    val onCommitNumber: () -> Boolean = { false },
+    /** @return true when a typed digit was removed (key consumed). */
+    val onBackspace: () -> Boolean = { false },
+    val onHorizontal: (forward: Boolean) -> Unit = {},
+    val onTogglePanel: () -> Unit = {},
+    val onOpenPanel: () -> Unit = {},
+)
+
+@Suppress("LongMethod", "LongParameterList", "CyclomaticComplexMethod")
 @Composable
 internal fun PlayerScreen(
     state: PlayerUiState,
@@ -114,19 +173,23 @@ internal fun PlayerScreen(
     onToggleOverlay: () -> Unit,
     onShowOverlay: () -> Unit,
     modifier: Modifier = Modifier,
+    keys: PlayerKeyActions = PlayerKeyActions(),
+    onCycleAspect: () -> Unit = {},
+    panelActions: PlayerPanelActions? = null,
 ) {
     val rootFocus = remember { FocusRequester() }
     val retryFocus = remember { FocusRequester() }
     val currentState by rememberUpdatedState(state)
     val zap by rememberUpdatedState(onZap)
     val toggle by rememberUpdatedState(onToggleOverlay)
+    val keyActions by rememberUpdatedState(keys)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
             .onPreviewKeyEvent { event ->
-                handleKey(event, currentState.overlayVisible, onZap = zap, onShowOverlay = onShowOverlay)
+                handleKey(event, currentState, onZap = zap, onShowOverlay = onShowOverlay, keys = keyActions)
             }
             .focusRequester(rootFocus)
             .focusable()
@@ -150,11 +213,8 @@ internal fun PlayerScreen(
             },
     ) {
         if (player != null) {
-            ContentFrame(
-                player = player,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
+            VideoSurface(player = player, aspectRatio = state.aspectRatio)
+            SubtitleLayer(player = player, style = state.subtitleStyle)
         }
 
         if (state.isBuffering) {
@@ -173,13 +233,24 @@ internal fun PlayerScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             Box(Modifier.fillMaxSize()) {
-                TopBar(state = state, showBack = !isTv, onBack = onBack, modifier = Modifier.align(Alignment.TopStart))
+                TopBar(
+                    state = state,
+                    isTv = isTv,
+                    onBack = onBack,
+                    onOpenPanel = keys.onOpenPanel,
+                    onCycleAspect = onCycleAspect,
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
                 if (!isTv) {
                     ZapButtons(onZap = onZap, modifier = Modifier.align(Alignment.CenterEnd))
                 }
                 Text(
                     text = stringResource(
-                        if (isTv) R.string.feature_player_hint_tv else R.string.feature_player_hint_touch,
+                        when {
+                            !isTv -> R.string.feature_player_hint_touch
+                            state.isSeekable -> R.string.feature_player_hint_tv_vod
+                            else -> R.string.feature_player_hint_tv_live
+                        },
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.7f),
@@ -189,6 +260,11 @@ internal fun PlayerScreen(
                         .padding(16.dp),
                 )
             }
+        }
+
+        StatusMessages(state = state, modifier = Modifier.align(Alignment.TopCenter))
+        state.numberInput?.let { digits ->
+            NumberInputBadge(digits = digits, modifier = Modifier.align(Alignment.TopEnd))
         }
 
         state.error?.let { error ->
@@ -201,21 +277,45 @@ internal fun PlayerScreen(
         }
     }
 
+    // Remote Back while typing a channel number deletes a digit; otherwise Back keeps leaving the player.
+    BackHandler(enabled = state.numberInput != null && !state.panelOpen) { keyActions.onBackspace() }
+
+    if (state.panelOpen && panelActions != null) {
+        PlayerPanel(state = state, isTv = isTv, actions = panelActions)
+    }
+
     // TV: the retry button takes focus while an error is shown; otherwise the root keeps it for keys.
     val hasError = state.error != null
-    LaunchedEffect(hasError) {
-        runCatching { if (hasError && isTv) retryFocus.requestFocus() else rootFocus.requestFocus() }
+    val panelOpen = state.panelOpen
+    LaunchedEffect(hasError, panelOpen) {
+        if (!panelOpen) runCatching { if (hasError && isTv) retryFocus.requestFocus() else rootFocus.requestFocus() }
     }
 }
 
+@Suppress("CyclomaticComplexMethod", "ReturnCount")
 private fun handleKey(
     event: KeyEvent,
-    overlayVisible: Boolean,
+    state: PlayerUiState,
     onZap: (ZapDirection) -> Unit,
     onShowOverlay: () -> Unit,
+    keys: PlayerKeyActions,
 ): Boolean {
+    val code = event.key.nativeKeyCode
+    // The panel (sheet / dialog) handles its own keys; Menu closes it there.
+    if (state.panelOpen) return false
     if (event.type != KeyEventType.KeyDown) return false
-    return when (event.key.nativeKeyCode) {
+    digitOf(code)?.let { digit ->
+        keys.onDigit(digit)
+        return true
+    }
+    return when (code) {
+        AndroidKeyEvent.KEYCODE_DEL -> keys.onBackspace()
+
+        AndroidKeyEvent.KEYCODE_MENU, AndroidKeyEvent.KEYCODE_SETTINGS -> {
+            keys.onTogglePanel()
+            true
+        }
+
         AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_CHANNEL_UP -> {
             onZap(ZapDirection.NEXT)
             true
@@ -226,13 +326,36 @@ private fun handleKey(
             true
         }
 
+        AndroidKeyEvent.KEYCODE_DPAD_LEFT, AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
+            if (state.error != null) return false
+            keys.onHorizontal(false)
+            true
+        }
+
+        AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+            if (state.error != null) return false
+            keys.onHorizontal(true)
+            true
+        }
+
         AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER, AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
         AndroidKeyEvent.KEYCODE_INFO,
-        -> {
+        -> when {
+            keys.onCommitNumber() -> true
+
+            // Holding OK opens the settings panel (for remotes without a Menu key).
+            event.nativeKeyEvent.repeatCount == 1 && state.error == null &&
+                code != AndroidKeyEvent.KEYCODE_INFO -> {
+                keys.onOpenPanel()
+                true
+            }
+
+            event.nativeKeyEvent.repeatCount > 0 -> true
+
             // OK shows channel info; when the overlay is already up, let the focused button handle it.
-            if (overlayVisible) {
-                false
-            } else {
+            state.overlayVisible -> false
+
+            else -> {
                 onShowOverlay()
                 true
             }
@@ -242,8 +365,22 @@ private fun handleKey(
     }
 }
 
+private fun digitOf(keyCode: Int): Int? = when (keyCode) {
+    in AndroidKeyEvent.KEYCODE_0..AndroidKeyEvent.KEYCODE_9 -> keyCode - AndroidKeyEvent.KEYCODE_0
+    in AndroidKeyEvent.KEYCODE_NUMPAD_0..AndroidKeyEvent.KEYCODE_NUMPAD_9 -> keyCode - AndroidKeyEvent.KEYCODE_NUMPAD_0
+    else -> null
+}
+
+@Suppress("LongParameterList")
 @Composable
-private fun TopBar(state: PlayerUiState, showBack: Boolean, onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun TopBar(
+    state: PlayerUiState,
+    isTv: Boolean,
+    onBack: () -> Unit,
+    onOpenPanel: () -> Unit,
+    onCycleAspect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -252,7 +389,7 @@ private fun TopBar(state: PlayerUiState, showBack: Boolean, onBack: () -> Unit, 
             .padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showBack) {
+        if (!isTv) {
             IconButton(onClick = onBack, modifier = Modifier.focusRing()) {
                 Icon(
                     painter = painterResource(StreamBoxIcons.Back),
@@ -277,9 +414,82 @@ private fun TopBar(state: PlayerUiState, showBack: Boolean, onBack: () -> Unit, 
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        // TV uses Menu / long-press OK instead, so D-pad up / down stay free for zapping.
+        if (!isTv) {
+            IconButton(onClick = onCycleAspect, modifier = Modifier.focusRing()) {
+                Icon(
+                    painter = painterResource(StreamBoxIcons.AspectRatio),
+                    contentDescription = stringResource(
+                        R.string.feature_player_aspect_button,
+                        stringResource(state.aspectRatio.labelRes()),
+                    ),
+                    tint = Color.White,
+                )
+            }
+            IconButton(onClick = onOpenPanel, modifier = Modifier.focusRing()) {
+                Icon(
+                    painter = painterResource(StreamBoxIcons.Settings),
+                    contentDescription = stringResource(R.string.feature_player_settings),
+                    tint = Color.White,
+                )
+            }
+        }
+    }
+}
+
+/** Reconnect progress, decoder fallback and "no such channel number" notices. */
+@Composable
+private fun StatusMessages(state: PlayerUiState, modifier: Modifier = Modifier) {
+    val messages = buildList {
+        state.reconnect?.let {
+            add(stringResource(R.string.feature_player_reconnecting, it.attempt, it.maxAttempts))
+        }
+        state.numberNotFound?.let { add(stringResource(R.string.feature_player_number_not_found, it)) }
+        if (state.softwareDecoderFallback && state.overlayVisible) {
+            add(stringResource(R.string.feature_player_software_decoder))
+        }
+    }
+    if (messages.isEmpty()) return
+    Column(
+        modifier = modifier
+            .safeDrawingPadding()
+            .padding(top = 72.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        messages.forEach { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White,
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
     }
+}
+
+/** Big channel number being typed on the remote, top-right like a set-top box. */
+@Composable
+private fun NumberInputBadge(digits: String, modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.feature_player_number_input, digits)
+    Text(
+        text = digits,
+        style = MaterialTheme.typography.displayMedium,
+        color = Color.White,
+        modifier = modifier
+            .safeDrawingPadding()
+            .padding(24.dp)
+            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .semantics { contentDescription = description },
+    )
 }
 
 @Composable
@@ -374,3 +584,11 @@ private fun ImmersiveLandscape(forceLandscape: Boolean) {
         }
     }
 }
+
+private fun Context.displayName(uri: Uri): String? = runCatching {
+    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0) else null
+    }
+}.getOrNull()
+
+private fun Context.toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()

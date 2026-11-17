@@ -6,6 +6,20 @@
     <string name="feature_settings_theme_dark">Dark</string>
     <string name="feature_settings_theme_amoled">AMOLED black</string>
     <string name="feature_settings_dynamic_color">Use wallpaper colors</string>
+    <string name="feature_settings_section_playback">Playback</string>
+    <string name="feature_settings_buffer_profile">Buffering</string>
+    <string name="feature_settings_buffer_low_latency">Low latency</string>
+    <string name="feature_settings_buffer_balanced">Balanced</string>
+    <string name="feature_settings_buffer_stable">Stable</string>
+    <string name="feature_settings_software_decoding">Software decoding only (software first)</string>
+    <string name="feature_settings_software_decoding_summary">Prefer software decoders over hardware ones. Try this if video shows a black screen or artifacts.</string>
+    <string name="feature_settings_reconnect_attempts">Automatic reconnect attempts</string>
+    <string name="feature_settings_reconnect_off">Off (don\'t retry)</string>
+    <plurals name="feature_settings_reconnect_count">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <string name="feature_settings_default_aspect_ratio">Default aspect ratio</string>
     <string name="feature_settings_section_about">About</string>
     <string name="feature_settings_version">Version %1$s</string>
     <string name="feature_settings_disclaimer">This app is a media player only and does not provide any content. You are solely responsible for the legality of the content you add.</string>

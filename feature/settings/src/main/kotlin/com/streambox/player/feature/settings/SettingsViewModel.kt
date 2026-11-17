@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.streambox.player.core.domain.repository.SettingsRepository
 import com.streambox.player.core.model.AppSettings
+import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,6 +22,7 @@ sealed interface SettingsUiState {
     data class Success(val settings: AppSettings) : SettingsUiState
 }
 
+@Suppress("TooManyFunctions") // One handler per preference.
 @HiltViewModel
 class SettingsViewModel @Inject constructor(private val settingsRepository: SettingsRepository) : ViewModel() {
     val uiState: StateFlow<SettingsUiState> = settingsRepository.settings
@@ -35,6 +39,29 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
 
     fun onDynamicColorChanged(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDynamicColor(enabled) }
+    }
+
+    // --- Playback ----------------------------------------------------------------------------------
+
+    fun onBufferProfileSelected(profile: BufferProfile) {
+        viewModelScope.launch { settingsRepository.setBufferProfile(profile) }
+    }
+
+    fun onSoftwareDecodingChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSoftwareDecodingOnly(enabled) }
+    }
+
+    /** 0 turns automatic reconnecting off. */
+    fun onReconnectAttemptsSelected(attempts: Int) {
+        viewModelScope.launch { settingsRepository.setMaxReconnectAttempts(attempts) }
+    }
+
+    fun onDefaultAspectRatioSelected(mode: AspectRatioMode) {
+        viewModelScope.launch { settingsRepository.setDefaultAspectRatio(mode) }
+    }
+
+    fun onSubtitleStyleChanged(style: SubtitleStyle) {
+        viewModelScope.launch { settingsRepository.setSubtitleStyle(style) }
     }
 
     private companion object {

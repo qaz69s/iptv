@@ -162,4 +162,17 @@ interface ChannelDao {
         """,
     )
     suspend fun last(groupName: String?): Long?
+
+    /** Display number = tvg-chno, else 1-based playlist position; explicit numbers win over positions. */
+    @Query(
+        """
+        SELECT c.id FROM channels c
+        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
+        WHERE p.enabled = 1 AND c.hidden = 0
+          AND (:groupName IS NULL OR c.groupId IN (SELECT g.id FROM channel_groups g WHERE g.name = :groupName))
+          AND (c.number = :number OR (c.number IS NULL AND c.sortOrder + 1 = :number))
+        ORDER BY CASE WHEN c.number IS NULL THEN 1 ELSE 0 END, p.sortOrder, c.playlistId, c.sortOrder LIMIT 1
+        """,
+    )
+    suspend fun idByNumber(number: Int, groupName: String?): Long?
 }

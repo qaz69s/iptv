@@ -1,66 +1,134 @@
 package com.streambox.player.core.player
 
 import android.content.Context
+import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.ExtractorsFactory
+import androidx.media3.extractor.text.DefaultSubtitleParserFactory
+import androidx.media3.extractor.text.SubtitleExtractor
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import com.streambox.player.core.common.result.AppError
 import com.streambox.player.core.common.result.AppException
+import com.streambox.player.core.model.BufferProfile
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
+import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.network.CleartextGuardInterceptor
 import com.streambox.player.core.network.PlaylistDownloader
+import com.streambox.player.core.player.reconnect.FailureKind
+import com.streambox.player.core.player.reconnect.ReconnectConfig
+import com.streambox.player.core.player.reconnect.ReconnectPolicy
+import com.streambox.player.core.player.reconnect.Reconnector
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
+/**
+ * Media3 implementation. Recoverable failures go through [Reconnector] (exponential backoff, immediate
+ * retry when the network returns); decoder failures rebuild the player once with software decoders
+ * first; buffer profile and decoder mode are fixed per ExoPlayer instance, so a change rebuilds it.
+ */
 @Singleton
+@Suppress("TooManyFunctions")
 internal class Media3PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val okHttpClient: OkHttpClient,
+    private val networkMonitor: NetworkMonitor,
 ) : PlaybackController {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private val _player = MutableStateFlow<ExoPlayer?>(null)
     override val player: StateFlow<Player?> = _player.asStateFlow()
 
     private val _state = MutableStateFlow(PlaybackState())
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
+    private var settings = PlaybackSettings()
+
+    /** Buffer profile and decoder mode the current ExoPlayer was built with. */
+    private var playerConfig: PlayerConfig? = null
     private var currentType: StreamType = StreamType.PROGRESSIVE
     private var triedHlsFallback = false
+    private var decoderMode = DecoderMode.HARDWARE_FIRST
+    private var fellBackToSoftware = false
+    private val externalSubtitles = mutableListOf<MediaItem.SubtitleConfiguration>()
+    private var networkJob: Job? = null
+
+    private val reconnector = Reconnector(scope, policyFor(settings)) { reconnectNow() }
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
-            _state.update { it.copy(isBuffering = playbackState == Player.STATE_BUFFERING) }
+            _state.update {
+                it.copy(isBuffering = playbackState == Player.STATE_BUFFERING || reconnector.status.value != null)
+            }
+            if (playbackState == Player.STATE_ENDED) onEnded()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            _state.update { it.copy(isPlaying = isPlaying, error = if (isPlaying) null else it.error) }
+            if (isPlaying) reconnector.onPlaying()
+            _state.update {
+                it.copy(
+                    isPlaying = isPlaying,
+                    error = if (isPlaying) null else it.error,
+                    reconnect = reconnector.status.value,
+                )
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) = handleError(error)
+
+        override fun onTracksChanged(tracks: Tracks) = publishTracks()
+
+        override fun onTrackSelectionParametersChanged(parameters: TrackSelectionParameters) = publishTracks()
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            val seekable = player.isCurrentMediaItemSeekable && !player.isCurrentMediaItemLive
+            if (seekable != _state.value.isSeekable) _state.update { it.copy(isSeekable = seekable) }
+        }
     }
 
     override fun play(item: PlaybackItem) {
+        reconnector.reset()
         triedHlsFallback = false
+        fellBackToSoftware = false
+        decoderMode = DecoderFallback.initialMode(settings.softwareDecodingOnly)
+        externalSubtitles.clear()
+        _player.value?.let { it.trackSelectionParameters = it.trackSelectionParameters.defaultsForNewItem() }
         _state.value = PlaybackState(item = item, isBuffering = true)
         if (item.streamUrl.startsWith("http://", ignoreCase = true) && !item.allowCleartext) {
             obtainPlayer().stop()
@@ -76,33 +144,144 @@ internal class Media3PlaybackController @Inject constructor(
     }
 
     override fun release() {
+        networkJob?.cancel()
+        networkJob = null
+        reconnector.reset()
         _player.value?.let {
             it.removeListener(listener)
             it.release()
         }
         _player.value = null
+        playerConfig = null
         _state.value = PlaybackState()
     }
 
-    private fun start(item: PlaybackItem, type: StreamType) {
+    override fun applySettings(settings: PlaybackSettings) {
+        this.settings = settings
+        reconnector.updatePolicy(policyFor(settings))
+    }
+
+    override fun selectVideoTrack(id: TrackId?) = updateParameters { builder ->
+        if (id == null) {
+            builder.clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+        } else {
+            overrideFor(id)?.let(builder::setOverrideForType)
+        }
+    }
+
+    override fun selectAudioTrack(id: TrackId) = updateParameters { builder ->
+        overrideFor(id)?.let { builder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).setOverrideForType(it) }
+    }
+
+    override fun selectSubtitleTrack(id: TrackId?) = updateParameters { builder ->
+        if (id == null) {
+            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        } else {
+            overrideFor(id)?.let { builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).setOverrideForType(it) }
+        }
+    }
+
+    override fun addExternalSubtitle(uri: String, mimeType: String, label: String) {
+        val item = _state.value.item ?: return
+        externalSubtitles += MediaItem.SubtitleConfiguration.Builder(Uri.parse(uri))
+            .setMimeType(mimeType)
+            .setLabel(label)
+            .setId("$EXTERNAL_SUBTITLE_PREFIX${externalSubtitles.size}")
+            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+            .build()
+        val player = _player.value ?: return
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+            .build()
+        start(item, currentType, startPositionMs = player.currentPosition.takeIf { _state.value.isSeekable })
+    }
+
+    override fun seekBy(offsetMs: Long) {
+        val player = _player.value ?: return
+        if (!player.isCurrentMediaItemSeekable) return
+        val target = (player.currentPosition + offsetMs).coerceAtLeast(0)
+        val duration = player.duration
+        player.seekTo(if (duration != C.TIME_UNSET) target.coerceAtMost(duration) else target)
+    }
+
+    override fun adjustVolume(raise: Boolean) {
+        val player = _player.value ?: return
+        if (raise) {
+            player.increaseDeviceVolume(C.VOLUME_FLAG_SHOW_UI)
+        } else {
+            player.decreaseDeviceVolume(C.VOLUME_FLAG_SHOW_UI)
+        }
+    }
+
+    private fun start(item: PlaybackItem, type: StreamType, startPositionMs: Long? = null) {
         currentType = type
         val player = obtainPlayer()
-        player.setMediaSource(buildMediaSource(item, type))
+        val source = buildMediaSource(item, type)
+        if (startPositionMs != null) player.setMediaSource(source, startPositionMs) else player.setMediaSource(source)
         player.prepare()
         player.playWhenReady = true
     }
 
-    private fun obtainPlayer(): ExoPlayer = _player.value ?: ExoPlayer.Builder(context)
-        .setAudioAttributes(
-            AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
-            true,
-        )
-        .setHandleAudioBecomingNoisy(true)
-        .build()
-        .also {
-            it.addListener(listener)
-            _player.value = it
+    /** Reconnect: rebuilds the source; live rejoins at the live edge, on-demand resumes where it stopped. */
+    private fun reconnectNow() {
+        val item = _state.value.item ?: return
+        val position = _player.value?.currentPosition?.takeIf { _state.value.isSeekable }
+        _state.update { it.copy(isBuffering = true, error = null, reconnect = reconnector.status.value) }
+        start(item, currentType, position)
+    }
+
+    private fun obtainPlayer(): ExoPlayer {
+        val wanted = PlayerConfig(settings.bufferProfile, decoderMode)
+        val existing = _player.value
+        if (existing != null && playerConfig == wanted) return existing
+        existing?.let {
+            it.removeListener(listener)
+            it.release()
         }
+        val buffer = BufferConfig.of(wanted.bufferProfile)
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                buffer.minBufferMs,
+                buffer.maxBufferMs,
+                buffer.bufferForPlaybackMs,
+                buffer.bufferForPlaybackAfterRebufferMs,
+            )
+            .build()
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+            .setMediaCodecSelector(codecSelector(wanted.decoderMode))
+        return ExoPlayer.Builder(context, renderersFactory)
+            .setLoadControl(loadControl)
+            .setDeviceVolumeControlEnabled(true)
+            .setAudioAttributes(
+                AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+                true,
+            )
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+            .also {
+                it.addListener(listener)
+                playerConfig = wanted
+                _player.value = it
+                watchNetwork()
+            }
+    }
+
+    private fun watchNetwork() {
+        if (networkJob?.isActive == true) return
+        networkJob = scope.launch {
+            var wasOnline: Boolean? = null
+            networkMonitor.isOnline.collect { online ->
+                if (online && wasOnline == false && reconnector.onNetworkAvailable()) {
+                    _state.update {
+                        it.copy(isBuffering = true, error = null, reconnect = reconnector.status.value)
+                    }
+                }
+                wasOnline = online
+            }
+        }
+    }
 
     private fun buildMediaSource(item: PlaybackItem, type: StreamType): MediaSource {
         // Per-playlist cleartext guard on every hop (redirects included); certificates stay validated.
@@ -115,7 +294,7 @@ internal class Media3PlaybackController @Inject constructor(
             .setDefaultRequestProperties(item.referrer?.let { mapOf("Referer" to it) } ?: emptyMap())
         // DefaultDataSource adds udp://, file://, content:// and asset support around the HTTP factory.
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
-        val mediaItem = MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setUri(item.streamUrl)
             .setMimeType(
                 when (type) {
@@ -124,8 +303,11 @@ internal class Media3PlaybackController @Inject constructor(
                     else -> null
                 },
             )
-            .build()
-        return when (type) {
+        BufferConfig.of(settings.bufferProfile).liveTargetOffsetMs?.let { offset ->
+            builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(offset).build())
+        }
+        val mediaItem = builder.build()
+        val main = when (type) {
             StreamType.HLS -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
 
             StreamType.DASH -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
@@ -140,38 +322,152 @@ internal class Media3PlaybackController @Inject constructor(
                 ),
             ).createMediaSource(mediaItem)
         }
+        val subtitles = externalSubtitles.mapNotNull { subtitleSource(it, dataSourceFactory) }
+
+        // Spread is fine here: a handful of side-loaded subtitle sources, built once per item.
+        @Suppress("SpreadOperator")
+        val merged = if (subtitles.isEmpty()) main else MergingMediaSource(main, *subtitles.toTypedArray())
+        return merged
+    }
+
+    /** Same wiring DefaultMediaSourceFactory uses for side-loaded subtitles (parsed during extraction). */
+    private fun subtitleSource(config: MediaItem.SubtitleConfiguration, factory: DataSource.Factory): MediaSource? {
+        val format = Format.Builder()
+            .setSampleMimeType(config.mimeType)
+            .setLanguage(config.language)
+            .setSelectionFlags(config.selectionFlags)
+            .setRoleFlags(config.roleFlags)
+            .setLabel(config.label)
+            .setId(config.id)
+            .build()
+        val parserFactory = DefaultSubtitleParserFactory()
+        if (!parserFactory.supportsFormat(format)) return null
+        val extractors = ExtractorsFactory { arrayOf(SubtitleExtractor(parserFactory.create(format), format)) }
+        return ProgressiveMediaSource.Factory(factory, extractors)
+            .createMediaSource(MediaItem.fromUri(config.uri))
+    }
+
+    private fun onEnded() {
+        val player = _player.value ?: return
+        val live = player.isCurrentMediaItemLive || player.duration == C.TIME_UNSET
+        if (!live) return
+        // A live stream must never "finish": the source closed the connection.
+        if (reconnector.onFailure(FailureKind.SOURCE_ENDED)) {
+            _state.update { it.copy(isBuffering = true, isPlaying = false, reconnect = reconnector.status.value) }
+        } else {
+            showError(PlaybackError.StreamEnded)
+        }
     }
 
     private fun handleError(error: PlaybackException) {
-        val item = _state.value.item
-        val player = _player.value
+        val item = _state.value.item ?: return
+        if (currentType == StreamType.PROGRESSIVE && !triedHlsFallback &&
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+        ) {
+            // Extension-less HLS URL: retry once as HLS.
+            triedHlsFallback = true
+            start(item, StreamType.HLS)
+            return
+        }
+        val httpStatus = error.httpStatus()
+        val cleartextBlocked = error.isCleartextBlocked()
+        val kind = FailureClassifier.classify(error.errorCode, httpStatus, cleartextBlocked)
+        val fallbackMode = DecoderFallback.next(kind, decoderMode, fellBackToSoftware)
         when {
-            error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW && player != null -> {
-                player.seekToDefaultPosition()
-                player.prepare()
+            fallbackMode != null -> {
+                fellBackToSoftware = true
+                decoderMode = fallbackMode
+                _state.update { it.copy(isBuffering = true, error = null, softwareDecoderFallback = true) }
+                // obtainPlayer() sees the new decoder mode and rebuilds the ExoPlayer.
+                start(item, currentType, _player.value?.currentPosition?.takeIf { _state.value.isSeekable })
             }
 
-            item != null && currentType == StreamType.PROGRESSIVE && !triedHlsFallback &&
-                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> {
-                // Extension-less HLS URL: retry once as HLS.
-                triedHlsFallback = true
-                start(item, StreamType.HLS)
+            reconnector.onFailure(kind) -> _state.update {
+                it.copy(isBuffering = true, isPlaying = false, error = null, reconnect = reconnector.status.value)
             }
 
-            else -> _state.update {
-                it.copy(
-                    isBuffering = false,
-                    isPlaying = false,
-                    error = PlaybackErrorMapper.map(
-                        errorCode = error.errorCode,
-                        httpStatus = error.httpStatus(),
-                        cleartextBlocked = error.isCleartextBlocked(),
-                        detail = error.errorCodeName,
-                    ),
-                )
-            }
+            else -> showError(
+                PlaybackErrorMapper.map(
+                    errorCode = error.errorCode,
+                    httpStatus = httpStatus,
+                    cleartextBlocked = cleartextBlocked,
+                    detail = error.errorCodeName,
+                ),
+            )
         }
     }
+
+    private fun showError(error: PlaybackError) = _state.update {
+        it.copy(isBuffering = false, isPlaying = false, error = error, reconnect = null)
+    }
+
+    private fun publishTracks() {
+        val player = _player.value ?: return
+        val parameters = player.trackSelectionParameters
+        val video = mutableListOf<VideoTrackOption>()
+        val audio = mutableListOf<MediaTrackOption>()
+        val text = mutableListOf<MediaTrackOption>()
+        player.currentTracks.groups.forEachIndexed { groupIndex, group ->
+            for (trackIndex in 0 until group.length) {
+                if (!group.isTrackSupported(trackIndex)) continue
+                val format = group.getTrackFormat(trackIndex)
+                val id = TrackId(groupIndex, trackIndex)
+                val selected = group.isTrackSelected(trackIndex)
+                when (group.type) {
+                    C.TRACK_TYPE_VIDEO -> video += VideoTrackOption(
+                        id = id,
+                        width = format.width,
+                        height = format.height,
+                        bitrate = format.bitrate.takeIf { it != Format.NO_VALUE },
+                        selected = selected,
+                    )
+
+                    C.TRACK_TYPE_AUDIO -> audio += MediaTrackOption(id, format.label, format.language, selected)
+
+                    C.TRACK_TYPE_TEXT -> text += MediaTrackOption(
+                        id = id,
+                        label = format.label,
+                        language = format.language,
+                        selected = selected,
+                        external = format.id?.contains(EXTERNAL_SUBTITLE_PREFIX) == true,
+                    )
+                }
+            }
+        }
+        _state.update {
+            it.copy(
+                tracks = PlaybackTracks(
+                    video = video.sortedWith(
+                        compareByDescending<VideoTrackOption> { v -> v.height }
+                            .thenByDescending { v -> v.bitrate ?: 0 },
+                    ),
+                    videoAuto = parameters.overrides.values.none { o -> o.type == C.TRACK_TYPE_VIDEO },
+                    audio = audio,
+                    subtitles = text,
+                    subtitlesOff = C.TRACK_TYPE_TEXT in parameters.disabledTrackTypes || text.none { t -> t.selected },
+                ),
+            )
+        }
+    }
+
+    private fun overrideFor(id: TrackId): TrackSelectionOverride? {
+        val group = _player.value?.currentTracks?.groups?.getOrNull(id.group)
+        return when {
+            group == null -> null
+            id.track !in 0 until group.length -> null
+            else -> TrackSelectionOverride(group.mediaTrackGroup, id.track)
+        }
+    }
+
+    private fun updateParameters(change: (TrackSelectionParameters.Builder) -> Unit) {
+        val player = _player.value ?: return
+        val builder = player.trackSelectionParameters.buildUpon()
+        change(builder)
+        player.trackSelectionParameters = builder.build()
+    }
+
+    private fun TrackSelectionParameters.defaultsForNewItem(): TrackSelectionParameters =
+        buildUpon().clearOverrides().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).build()
 
     private fun Throwable.causes(): Sequence<Throwable> = generateSequence(this) { it.cause }
 
@@ -180,4 +476,23 @@ internal class Media3PlaybackController @Inject constructor(
 
     private fun PlaybackException.isCleartextBlocked(): Boolean =
         causes().any { it is AppException && it.error == AppError.CleartextNotAllowed }
+
+    private data class PlayerConfig(val bufferProfile: BufferProfile, val decoderMode: DecoderMode)
+
+    private companion object {
+        const val EXTERNAL_SUBTITLE_PREFIX = "streambox-ext-"
+
+        fun policyFor(settings: PlaybackSettings) =
+            ReconnectPolicy(ReconnectConfig(maxAttempts = settings.maxReconnectAttempts))
+
+        fun codecSelector(mode: DecoderMode): MediaCodecSelector = when (mode) {
+            DecoderMode.HARDWARE_FIRST -> MediaCodecSelector.DEFAULT
+
+            DecoderMode.SOFTWARE_FIRST -> MediaCodecSelector { mimeType, secure, tunneling ->
+                MediaCodecUtil.getDecoderInfosSortedBySoftwareOnly(
+                    MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, secure, tunneling),
+                )
+            }
+        }
+    }
 }

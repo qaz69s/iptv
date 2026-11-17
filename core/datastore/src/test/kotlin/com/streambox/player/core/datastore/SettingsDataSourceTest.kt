@@ -1,7 +1,19 @@
 package com.streambox.player.core.datastore
 
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BufferProfile
 import com.streambox.player.core.model.OnboardingState
+import com.streambox.player.core.model.PlaybackSettings
+import com.streambox.player.core.model.SubtitleBackground
+import com.streambox.player.core.model.SubtitleColor
+import com.streambox.player.core.model.SubtitleSize
+import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
 import java.io.File
 import kotlinx.coroutines.flow.first
@@ -18,12 +30,12 @@ class SettingsDataSourceTest {
     @TempDir
     lateinit var tempDir: File
 
-    private fun TestScope.createDataSource() = SettingsDataSource(
-        PreferenceDataStoreFactory.create(
-            scope = backgroundScope,
-            produceFile = { File(tempDir, "test.preferences_pb") },
-        ),
+    private fun TestScope.createDataStore(): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+        scope = backgroundScope,
+        produceFile = { File(tempDir, "test.preferences_pb") },
     )
+
+    private fun TestScope.createDataSource() = SettingsDataSource(createDataStore())
 
     @Test
     fun `fresh install has defaults and incomplete onboarding`() = runTest(UnconfinedTestDispatcher()) {
@@ -55,5 +67,100 @@ class SettingsDataSourceTest {
 
         source.acceptDisclaimer()
         assertTrue(source.onboardingState.first().isComplete)
+    }
+
+    @Test
+    fun `fresh install has default playback settings`() = runTest(UnconfinedTestDispatcher()) {
+        val playback = createDataSource().settings.first().playback
+
+        assertEquals(PlaybackSettings(), playback)
+        assertEquals(BufferProfile.Balanced, playback.bufferProfile)
+        assertFalse(playback.softwareDecodingOnly)
+        assertEquals(PlaybackSettings.DEFAULT_RECONNECT_ATTEMPTS, playback.maxReconnectAttempts)
+        assertEquals(AspectRatioMode.Fit, playback.defaultAspectRatio)
+        assertEquals(SubtitleStyle(), playback.subtitleStyle)
+    }
+
+    @Test
+    fun `persists every playback key`() = runTest(UnconfinedTestDispatcher()) {
+        val source = createDataSource()
+        val style = SubtitleStyle(
+            size = SubtitleSize.ExtraLarge,
+            color = SubtitleColor.Yellow,
+            background = SubtitleBackground.Opaque,
+        )
+
+        source.setBufferProfile(BufferProfile.LowLatency)
+        source.setSoftwareDecodingOnly(true)
+        source.setMaxReconnectAttempts(0)
+        source.setDefaultAspectRatio(AspectRatioMode.Stretch)
+        source.setSubtitleStyle(style)
+
+        assertEquals(
+            PlaybackSettings(
+                bufferProfile = BufferProfile.LowLatency,
+                softwareDecodingOnly = true,
+                maxReconnectAttempts = 0,
+                defaultAspectRatio = AspectRatioMode.Stretch,
+                subtitleStyle = style,
+            ),
+            source.settings.first().playback,
+        )
+    }
+
+    @Test
+    fun `each playback key is stored independently`() = runTest(UnconfinedTestDispatcher()) {
+        val source = createDataSource()
+        val defaults = PlaybackSettings()
+
+        source.setBufferProfile(BufferProfile.Stable)
+        assertEquals(defaults.copy(bufferProfile = BufferProfile.Stable), source.settings.first().playback)
+
+        source.setSoftwareDecodingOnly(true)
+        assertTrue(source.settings.first().playback.softwareDecodingOnly)
+        source.setSoftwareDecodingOnly(false)
+        assertFalse(source.settings.first().playback.softwareDecodingOnly)
+
+        source.setMaxReconnectAttempts(10)
+        assertEquals(10, source.settings.first().playback.maxReconnectAttempts)
+
+        source.setDefaultAspectRatio(AspectRatioMode.Original)
+        assertEquals(AspectRatioMode.Original, source.settings.first().playback.defaultAspectRatio)
+
+        source.setSubtitleStyle(SubtitleStyle(size = SubtitleSize.Small))
+        assertEquals(SubtitleStyle(size = SubtitleSize.Small), source.settings.first().playback.subtitleStyle)
+        assertEquals(BufferProfile.Stable, source.settings.first().playback.bufferProfile)
+    }
+
+    @Test
+    fun `unknown enum names fall back to defaults`() = runTest(UnconfinedTestDispatcher()) {
+        val store = createDataStore()
+        val source = SettingsDataSource(store)
+        store.edit {
+            it[stringPreferencesKey("playback_buffer_profile")] = "Turbo"
+            it[stringPreferencesKey("playback_default_aspect_ratio")] = "21:9"
+            it[stringPreferencesKey("playback_subtitle_size")] = "Huge"
+            it[stringPreferencesKey("playback_subtitle_color")] = ""
+            it[stringPreferencesKey("playback_subtitle_background")] = "blur"
+        }
+
+        assertEquals(PlaybackSettings(), source.settings.first().playback)
+    }
+
+    @Test
+    fun `out of range reconnect attempts are clamped`() = runTest(UnconfinedTestDispatcher()) {
+        val store = createDataStore()
+        val source = SettingsDataSource(store)
+        val key = intPreferencesKey("playback_max_reconnect_attempts")
+
+        store.edit { it[key] = -3 }
+        assertEquals(0, source.settings.first().playback.maxReconnectAttempts)
+        store.edit { it[key] = 999 }
+        assertEquals(PlaybackSettings.MAX_RECONNECT_ATTEMPTS, source.settings.first().playback.maxReconnectAttempts)
+
+        source.setMaxReconnectAttempts(-1)
+        assertEquals(0, source.settings.first().playback.maxReconnectAttempts)
+        source.setMaxReconnectAttempts(PlaybackSettings.MAX_RECONNECT_ATTEMPTS + 1)
+        assertEquals(PlaybackSettings.MAX_RECONNECT_ATTEMPTS, source.settings.first().playback.maxReconnectAttempts)
     }
 }

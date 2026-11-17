@@ -20,4 +20,6 @@ object StreamBoxIcons {
     val Folder = R.drawable.sb_ic_folder
     val Link = R.drawable.sb_ic_link
     val Success = R.drawable.sb_ic_check_circle
+    val AspectRatio = R.drawable.sb_ic_aspect_ratio
+    val Subtitles = R.drawable.sb_ic_subtitles
 }

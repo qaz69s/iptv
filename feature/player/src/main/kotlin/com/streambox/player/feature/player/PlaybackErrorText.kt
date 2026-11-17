@@ -12,6 +12,7 @@ internal fun PlaybackError.message(): String = when (this) {
     PlaybackError.Network -> stringResource(R.string.feature_player_error_network)
     PlaybackError.CleartextNotAllowed -> stringResource(R.string.feature_player_error_cleartext)
     PlaybackError.Decoder -> stringResource(R.string.feature_player_error_decoder)
+    PlaybackError.StreamEnded -> stringResource(R.string.feature_player_error_stream_ended)
     PlaybackError.UnsupportedFormat -> stringResource(R.string.feature_player_error_format)
     PlaybackError.ChannelNotFound -> stringResource(R.string.feature_player_error_not_found)
     is PlaybackError.Other -> stringResource(R.string.feature_player_error_other, detail ?: code.toString())

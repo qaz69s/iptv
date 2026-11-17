@@ -12,6 +12,9 @@ sealed interface PlaybackError {
 
     data object Decoder : PlaybackError
 
+    /** A live stream stopped sending data and reconnecting did not bring it back. */
+    data object StreamEnded : PlaybackError
+
     data object UnsupportedFormat : PlaybackError
 
     data object ChannelNotFound : PlaybackError

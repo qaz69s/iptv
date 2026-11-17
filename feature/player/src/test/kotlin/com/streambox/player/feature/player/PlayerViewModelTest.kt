@@ -1,10 +1,12 @@
 package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
+import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeSettingsRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -34,11 +36,13 @@ class PlayerViewModelTest {
         ),
     )
     private val controller = FakePlaybackController()
+    private val settings = FakeSettingsRepository()
 
     private fun viewModel(channelId: Long = 1, group: String? = null) = PlayerViewModel(
         SavedStateHandle(mapOf("channelId" to channelId, "groupName" to group)),
         repository,
         controller,
+        settings,
     )
 
     private fun TestScope.collect(viewModel: PlayerViewModel) {
@@ -167,5 +171,95 @@ class PlayerViewModelTest {
         controller.fail(PlaybackError.Timeout)
 
         assertNull(viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `typed channel number jumps to that channel after the timeout`() = runTest {
+        val viewModel = viewModel(channelId = 1)
+        collect(viewModel)
+        viewModel.onStart()
+
+        viewModel.onDigit(3)
+        assertEquals("3", viewModel.uiState.value.numberInput)
+        advanceTimeBy(ChannelNumberInput.DEFAULT_TIMEOUT_MS + 1)
+        runCurrent()
+
+        assertNull(viewModel.uiState.value.numberInput)
+        assertEquals(3L, viewModel.uiState.value.channel?.channelId)
+    }
+
+    @Test
+    fun `unknown channel number is reported and then cleared`() = runTest {
+        val viewModel = viewModel(channelId = 1)
+        collect(viewModel)
+        viewModel.onStart()
+
+        viewModel.onDigit(9)
+        assertTrue(viewModel.commitNumberInput())
+        runCurrent()
+        assertEquals(9, viewModel.uiState.value.numberNotFound)
+        assertEquals(1L, viewModel.uiState.value.channel?.channelId)
+
+        advanceTimeBy(PlayerViewModel.NOT_FOUND_VISIBLE_MS + 1)
+        runCurrent()
+        assertNull(viewModel.uiState.value.numberNotFound)
+        assertFalse(viewModel.commitNumberInput())
+    }
+
+    @Test
+    fun `back while typing removes digits and is not consumed once the entry is empty`() = runTest {
+        val viewModel = viewModel(channelId = 1)
+        collect(viewModel)
+        viewModel.onStart()
+        assertFalse(viewModel.onNumberBackspace())
+
+        viewModel.onDigit(1)
+        viewModel.onDigit(2)
+        assertTrue(viewModel.onNumberBackspace())
+        assertEquals("1", viewModel.uiState.value.numberInput)
+        assertTrue(viewModel.onNumberBackspace())
+        assertNull(viewModel.uiState.value.numberInput)
+
+        // Nothing left to delete: Back falls through to the normal behaviour, and no jump happens.
+        assertFalse(viewModel.onNumberBackspace())
+        advanceTimeBy(ChannelNumberInput.DEFAULT_TIMEOUT_MS + 1)
+        runCurrent()
+        assertEquals(1L, viewModel.uiState.value.channel?.channelId)
+    }
+
+    @Test
+    fun `left and right change volume on live streams`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+
+        viewModel.onHorizontalKey(forward = true)
+        viewModel.onHorizontalKey(forward = false)
+
+        assertEquals(listOf(true, false), controller.volumeChanges)
+        assertTrue(controller.seeks.isEmpty())
+    }
+
+    @Test
+    fun `cycling the aspect ratio persists the next mode`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        viewModel.cycleAspectRatio()
+        runCurrent()
+
+        assertEquals(AspectRatioMode.Ratio16x9, viewModel.uiState.value.aspectRatio)
+        assertEquals(AspectRatioMode.Ratio16x9, controller.appliedSettings.last().defaultAspectRatio)
+    }
+
+    @Test
+    fun `menu toggles the panel`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        viewModel.togglePanel()
+        assertTrue(viewModel.uiState.value.panelOpen)
+        viewModel.togglePanel()
+        assertFalse(viewModel.uiState.value.panelOpen)
     }
 }

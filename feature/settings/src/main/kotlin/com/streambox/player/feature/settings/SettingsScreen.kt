@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -27,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -39,9 +41,17 @@ import com.streambox.player.core.designsystem.component.LoadingState
 import com.streambox.player.core.designsystem.component.focusRing
 import com.streambox.player.core.designsystem.theme.StreamBoxTheme
 import com.streambox.player.core.model.AppSettings
+import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.PlaybackSettings
+import com.streambox.player.core.model.SubtitleBackground
+import com.streambox.player.core.model.SubtitleColor
+import com.streambox.player.core.model.SubtitleSize
+import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
+import com.streambox.player.core.ui.labelRes
 
 @Composable
 internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
@@ -50,8 +60,24 @@ internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
         uiState = uiState,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onDynamicColorChanged = viewModel::onDynamicColorChanged,
+        playbackActions = PlaybackSettingsActions(
+            onBufferProfileSelected = viewModel::onBufferProfileSelected,
+            onSoftwareDecodingChanged = viewModel::onSoftwareDecodingChanged,
+            onReconnectAttemptsSelected = viewModel::onReconnectAttemptsSelected,
+            onDefaultAspectRatioSelected = viewModel::onDefaultAspectRatioSelected,
+            onSubtitleStyleChanged = viewModel::onSubtitleStyleChanged,
+        ),
     )
 }
+
+/** Callbacks of the "Playback" section. */
+internal data class PlaybackSettingsActions(
+    val onBufferProfileSelected: (BufferProfile) -> Unit = {},
+    val onSoftwareDecodingChanged: (Boolean) -> Unit = {},
+    val onReconnectAttemptsSelected: (Int) -> Unit = {},
+    val onDefaultAspectRatioSelected: (AspectRatioMode) -> Unit = {},
+    val onSubtitleStyleChanged: (SubtitleStyle) -> Unit = {},
+)
 
 @Composable
 internal fun SettingsScreen(
@@ -59,6 +85,7 @@ internal fun SettingsScreen(
     onThemeModeSelected: (ThemeMode) -> Unit,
     onDynamicColorChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    playbackActions: PlaybackSettingsActions = PlaybackSettingsActions(),
 ) {
     when (uiState) {
         SettingsUiState.Loading -> LoadingState(
@@ -70,6 +97,7 @@ internal fun SettingsScreen(
             settings = uiState.settings,
             onThemeModeSelected = onThemeModeSelected,
             onDynamicColorChanged = onDynamicColorChanged,
+            playbackActions = playbackActions,
             modifier = modifier,
         )
     }
@@ -80,6 +108,7 @@ private fun SettingsContent(
     settings: AppSettings,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onDynamicColorChanged: (Boolean) -> Unit,
+    playbackActions: PlaybackSettingsActions,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -96,7 +125,7 @@ private fun SettingsContent(
         item {
             Column(Modifier.selectableGroup()) {
                 ThemeMode.entries.forEach { mode ->
-                    ThemeOptionRow(
+                    OptionRow(
                         label = stringResource(mode.labelRes()),
                         selected = settings.themeMode == mode,
                         onClick = { onThemeModeSelected(mode) },
@@ -113,6 +142,8 @@ private fun SettingsContent(
                 )
             }
         }
+        item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
+        playbackSection(settings.playback, playbackActions)
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
         item { SectionHeader(stringResource(R.string.feature_settings_section_about)) }
         item {
@@ -133,6 +164,112 @@ private fun SettingsContent(
     }
 }
 
+private fun LazyListScope.playbackSection(playback: PlaybackSettings, actions: PlaybackSettingsActions) {
+    item { SectionHeader(stringResource(R.string.feature_settings_section_playback)) }
+    item {
+        ChoiceGroup(
+            title = stringResource(R.string.feature_settings_buffer_profile),
+            options = BufferProfile.entries,
+            selected = playback.bufferProfile,
+            label = { stringResource(it.labelRes()) },
+            onSelect = actions.onBufferProfileSelected,
+        )
+    }
+    item {
+        SwitchRow(
+            label = stringResource(R.string.feature_settings_software_decoding),
+            summary = stringResource(R.string.feature_settings_software_decoding_summary),
+            checked = playback.softwareDecodingOnly,
+            onCheckedChange = actions.onSoftwareDecodingChanged,
+        )
+    }
+    item {
+        ChoiceGroup(
+            title = stringResource(R.string.feature_settings_reconnect_attempts),
+            // Keep a stored value outside the offered choices visible and selected.
+            options = (PlaybackSettings.RECONNECT_ATTEMPT_CHOICES + playback.maxReconnectAttempts).distinct().sorted(),
+            selected = playback.maxReconnectAttempts,
+            label = { reconnectLabel(it) },
+            onSelect = actions.onReconnectAttemptsSelected,
+        )
+    }
+    item {
+        ChoiceGroup(
+            title = stringResource(R.string.feature_settings_default_aspect_ratio),
+            options = AspectRatioMode.entries,
+            selected = playback.defaultAspectRatio,
+            label = { stringResource(it.labelRes()) },
+            onSelect = actions.onDefaultAspectRatioSelected,
+        )
+    }
+    subtitleStyleItems(playback.subtitleStyle, actions.onSubtitleStyleChanged)
+}
+
+private fun LazyListScope.subtitleStyleItems(style: SubtitleStyle, onChange: (SubtitleStyle) -> Unit) {
+    item {
+        ChoiceGroup(
+            title = stringResource(com.streambox.player.core.ui.R.string.core_ui_subtitle_size),
+            options = SubtitleSize.entries,
+            selected = style.size,
+            label = { stringResource(it.labelRes()) },
+            onSelect = { onChange(style.copy(size = it)) },
+        )
+    }
+    item {
+        ChoiceGroup(
+            title = stringResource(com.streambox.player.core.ui.R.string.core_ui_subtitle_color),
+            options = SubtitleColor.entries,
+            selected = style.color,
+            label = { stringResource(it.labelRes()) },
+            onSelect = { onChange(style.copy(color = it)) },
+        )
+    }
+    item {
+        ChoiceGroup(
+            title = stringResource(com.streambox.player.core.ui.R.string.core_ui_subtitle_background),
+            options = SubtitleBackground.entries,
+            selected = style.background,
+            label = { stringResource(it.labelRes()) },
+            onSelect = { onChange(style.copy(background = it)) },
+        )
+    }
+}
+
+@Composable
+private fun reconnectLabel(attempts: Int): String = if (attempts == 0) {
+    stringResource(R.string.feature_settings_reconnect_off)
+} else {
+    pluralStringResource(R.plurals.feature_settings_reconnect_count, attempts, attempts)
+}
+
+/** A titled single-choice radio group. */
+@Composable
+private fun <T> ChoiceGroup(
+    title: String,
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    Column(Modifier.padding(top = 8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+        )
+        Column(Modifier.selectableGroup()) {
+            options.forEach { option ->
+                OptionRow(
+                    label = label(option),
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun SectionHeader(text: String) {
     Text(
@@ -146,7 +283,7 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun ThemeOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun OptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,7 +300,7 @@ private fun ThemeOptionRow(label: String, selected: Boolean, onClick: () -> Unit
 }
 
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, summary: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -173,7 +310,17 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            if (summary != null) {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.width(16.dp))
         Switch(checked = checked, onCheckedChange = null)
     }
 }
@@ -183,6 +330,12 @@ private fun ThemeMode.labelRes(): Int = when (this) {
     ThemeMode.Light -> R.string.feature_settings_theme_light
     ThemeMode.Dark -> R.string.feature_settings_theme_dark
     ThemeMode.Amoled -> R.string.feature_settings_theme_amoled
+}
+
+private fun BufferProfile.labelRes(): Int = when (this) {
+    BufferProfile.LowLatency -> R.string.feature_settings_buffer_low_latency
+    BufferProfile.Balanced -> R.string.feature_settings_buffer_balanced
+    BufferProfile.Stable -> R.string.feature_settings_buffer_stable
 }
 
 private fun Context.appVersionName(): String = try {

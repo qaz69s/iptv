@@ -18,13 +18,19 @@ core:testing（仅测试）：Fake 仓库、Main 调度器扩展
 - **core:database**（Android）：Room（Playlist / ChannelGroup / Channel + FTS4），schema 导出到 `core/database/schemas`；频道按 `generation` 分代，导入写新一代、校验通过后原子切换，失败则丢弃，旧数据不受影响。
 - **core:datastore**：DataStore Preferences 读写；读失败回退默认值。
 - **core:data**：仓库实现与导入管线（下载/SAF 读取 → 流式解析 → 分批写入新一代 → 校验提交），导入在应用级作用域运行，离开页面不中断；Hilt 绑定。
-- **core:player**（Android）：`PlaybackController` 应用级单例（Media3 ExoPlayer），按 URL 选择 HLS / DASH / RTSP / Progressive（无扩展名的 URL 先按 TS/MP4 嗅探，容器不识别时自动改用 HLS 一次）；按播放列表注入 User-Agent / Referer 与明文开关；`PlaybackErrorMapper` 把 Media3 错误码翻译为 HTTP 状态码 / 超时 / 网络 / 解码 / 格式等原因。
+- **core:player**（Android）：`PlaybackController` 应用级单例（Media3 ExoPlayer），按 URL 选择 HLS / DASH / RTSP / Progressive（无扩展名的 URL 先按 TS/MP4 嗅探，容器不识别时自动改用 HLS 一次）；按播放列表注入 User-Agent / Referer 与明文开关；`PlaybackErrorMapper` 把 Media3 错误码翻译为 HTTP 状态码 / 超时 / 网络 / 解码 / 格式等原因。P2a 新增组件：
+  - `reconnect/`（纯 Kotlin）：`FailureKind`（可重试：网络、超时、HTTP 5xx / 408 / 429、落后直播窗口、直播断流；不可重试：其余 4xx、明文被拒、格式、解码、未知）、`ReconnectPolicy` + `ReconnectConfig`（1 s 起 ×2、上限 30 s、±20% 抖动，默认 5 次，0 = 关闭）、`Reconnector`（重连循环与状态 `ReconnectStatus`；网络恢复立即重试；稳定播放 30 s 计数清零）。
+  - `FailureClassifier`：Media3 错误码 + HTTP 状态 / 明文标记 → `FailureKind`。
+  - `BufferConfig`：低延迟 / 均衡 / 稳定三档 `DefaultLoadControl` 参数与直播目标延迟（低延迟 3 s、稳定 30 s）。
+  - `DecoderFallback`：硬解优先，解码失败时以软件优先 `MediaCodecSelector` 重建一次；「仅软件解码」= 一开始就软件优先。
+  - `NetworkMonitor`：默认网络回调 → `Flow<Boolean>`，供重连在网络恢复时立即重试。
+  - `PlaybackTracks`：清晰度 / 音轨 / 字幕选项（`TrackId` 为 track group 下标，轨道变化后失效）；外挂 SRT / VTT 以 `MergingMediaSource` 合并，`Format.id` 前缀 `streambox-ext-` 标识。
 - **core:designsystem**：Material 3 主题（浅色 / 深色 / AMOLED 纯黑 / 动态取色）、TV 主题、图标、焦点环、空/加载/错误状态组件。
 - **core:ui**：设备形态判断（手机 / 平板 / TV）、AppError 的本地化文案。
 - **feature:onboarding / channels / epg / settings**：各自的界面、ViewModel、导航入口。
 - **feature:playlist**：添加播放列表（URL / SAF 本地文件，Xtream 占位）、导入进度页、播放列表管理（刷新、删除、单列表明文开关）。
-- **feature:player**：全屏播放页 `PlayerRoute(channelId, groupName?)`。覆盖层（频道号 + 名称、返回、切台按钮、提示）4 秒自动隐藏、点击/OK 显示；缓冲指示；错误原因 + 重试；手机上下滑动 / TV 方向键上下与 CHANNEL_UP/DOWN 切台（在来源分组内循环）；播放时保持亮屏；进入时隐藏系统栏并（非 TV）横屏，离开恢复；ON_STOP 释放播放器、回到前台重新播放，ViewModel 销毁时 release()。
-
+- **feature:player**：全屏播放页 `PlayerRoute(channelId, groupName?)`。覆盖层（频道号 + 名称、返回、切台按钮、画面比例 / 播放设置按钮、提示）4 秒自动隐藏、点击/OK 显示；缓冲指示；重连进度、软解回退提示；错误原因 + 重试；手机上下滑动 / TV 方向键上下与 CHANNEL_UP/DOWN 切台（在来源分组内循环）；播放面板（手机底部 ModalBottomSheet、TV 右侧 Dialog：清晰度、音轨、字幕、外挂字幕、字幕样式、画面比例）；`VideoSurface` 实现六种画面比例，`SubtitleLayer` 用 media3-ui `SubtitleView` 渲染字幕；TV 遥控器：菜单键 / 长按 OK 开面板、左右键快进退（点播）或调音量（直播）、数字键台号输入（`ChannelNumberInput`：1.5 s 超时 / 满 4 位 / OK 提交，返回键删位）；播放时保持亮屏；进入时隐藏系统栏并（非 TV）横屏，离开恢复；ON_STOP 释放播放器、回到前台重新播放，ViewModel 销毁时 release()。
+- **feature:settings**：外观分组；「播放」分组（缓冲档位、仅软件解码、自动重连次数 0/3/5/10、默认画面比例）。播放设置模型 `PlaybackSettings` 位于 core:model，作为 `AppSettings.playback` 由 DataStore 持久化，PlayerViewModel 订阅后经 `PlaybackController.applySettings` 下发。
 ## 约束（由 build-logic 强制）
 - feature 模块之间**禁止互相依赖**，只能通过 core:domain 或导航路由协作；违反时 Gradle 配置阶段直接报错。
 - 所有模块的 Android / Kotlin / Compose / 测试配置集中在 `build-logic` 约定插件中。
@@ -40,7 +46,7 @@ ViewModel 对外暴露 `StateFlow<UiState>`，界面用 `collectAsStateWithLifec
 - 播放：频道页只回调 `onChannelClick(channelId, groupName)`，由 app 模块导航到 feature:player 的 `PlayerRoute`；当前分组经路由参数传入（频道页自身的分组保存在 SavedStateHandle key `selectedGroup`），播放页据此在同一分组内切台。
 
 ## 播放生命周期
-`PlaybackController` 是单例（不绑 Activity，配置变更不重建）。播放页 ViewModel 在 `onStart` 时 `play()`，`onStop` / 离开页面时 `release()`（释放解码器与网络；直播回到前台从直播点重新开始），`onCleared` 再次 `release()` 兜底。MainActivity 声明了 orientation 等 configChanges，横竖屏切换不会重建 Activity。P2 将加入轨道、重连策略、PiP、后台播放（MediaSession）。
+`PlaybackController` 是单例（不绑 Activity，配置变更不重建）。播放页 ViewModel 在 `onStart` 时 `play()`，`onStop` / 离开页面时 `release()`（释放解码器与网络；直播回到前台从直播点重新开始），`onCleared` 再次 `release()` 兜底。MainActivity 声明了 orientation 等 configChanges，横竖屏切换不会重建 Activity。P2a 起：可重试的失败由 `Reconnector` 按退避自动重连（换台、手动重试、release 时重置）；缓冲档位与解码模式在下一次 `play()` 时生效（配置变化时重建 ExoPlayer），重连次数立即生效。P2b 将加入 PiP 与后台播放（MediaSession + 前台服务），届时 ON_STOP 不再无条件释放。
 
 ## 单 APK 多形态
 同一 APK 同时声明 `LAUNCHER` 和 `LEANBACK_LAUNCHER`，触摸屏与 leanback 均为非必需特性，并提供 TV banner。TV 判断依据系统 UI 模式 / leanback 特性，而非屏幕尺寸。

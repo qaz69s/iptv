@@ -3,6 +3,8 @@ package com.streambox.player.core.player
 import androidx.media3.common.Player
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
+import com.streambox.player.core.model.PlaybackSettings
+import com.streambox.player.core.player.reconnect.ReconnectStatus
 import kotlinx.coroutines.flow.StateFlow
 
 data class PlaybackState(
@@ -10,12 +12,21 @@ data class PlaybackState(
     val isBuffering: Boolean = false,
     val isPlaying: Boolean = false,
     val error: PlaybackError? = null,
+    /** Non-null while an automatic reconnect is pending or in progress. */
+    val reconnect: ReconnectStatus? = null,
+    /** True for on-demand content where seeking makes sense (not live). */
+    val isSeekable: Boolean = false,
+    /** True after a decoder failure switched this stream to software decoders. */
+    val softwareDecoderFallback: Boolean = false,
+    val tracks: PlaybackTracks = PlaybackTracks(),
 )
 
 /**
  * App-wide player (requirements §8.8: not tied to an Activity, survives configuration changes).
- * Must be called on the main thread. P2 adds tracks, reconnect policy, PiP and background playback.
+ * Must be called on the main thread. P2a adds reconnects, buffering profiles, decoder fallback and
+ * tracks; PiP and background playback follow in P2b.
  */
+@Suppress("TooManyFunctions")
 interface PlaybackController {
     /** The Media3 player to render, or null when released. */
     val player: StateFlow<Player?>
@@ -24,8 +35,29 @@ interface PlaybackController {
 
     fun play(item: PlaybackItem)
 
+    /** Manual retry: resets the reconnect counter and starts the current item again. */
     fun retry()
 
     /** Stops playback and frees decoders / network; the next [play] creates a fresh player. */
     fun release()
+
+    /** Buffer profile / decoder mode apply from the next [play]; reconnect attempts immediately. */
+    fun applySettings(settings: PlaybackSettings)
+
+    /** Null = automatic quality. */
+    fun selectVideoTrack(id: TrackId?)
+
+    fun selectAudioTrack(id: TrackId)
+
+    /** Null = subtitles off. */
+    fun selectSubtitleTrack(id: TrackId?)
+
+    /** Adds an SRT / VTT file (any readable uri, e.g. from SAF) to the current item and selects it. */
+    fun addExternalSubtitle(uri: String, mimeType: String, label: String)
+
+    /** Seeks relative to the current position when the content is seekable. */
+    fun seekBy(offsetMs: Long)
+
+    /** Raises / lowers the device media volume, showing the system volume UI. */
+    fun adjustVolume(raise: Boolean)
 }

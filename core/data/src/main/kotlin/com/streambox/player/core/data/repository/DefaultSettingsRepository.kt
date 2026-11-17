@@ -3,11 +3,15 @@ package com.streambox.player.core.data.repository
 import com.streambox.player.core.datastore.SettingsDataSource
 import com.streambox.player.core.domain.repository.SettingsRepository
 import com.streambox.player.core.model.AppSettings
+import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BufferProfile
 import com.streambox.player.core.model.OnboardingState
+import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("TooManyFunctions")
 internal class DefaultSettingsRepository @Inject constructor(private val dataSource: SettingsDataSource) :
     SettingsRepository {
     override val settings: Flow<AppSettings> = dataSource.settings
@@ -16,6 +20,16 @@ internal class DefaultSettingsRepository @Inject constructor(private val dataSou
     override suspend fun setThemeMode(mode: ThemeMode) = dataSource.setThemeMode(mode)
 
     override suspend fun setDynamicColor(enabled: Boolean) = dataSource.setDynamicColor(enabled)
+
+    override suspend fun setBufferProfile(profile: BufferProfile) = dataSource.setBufferProfile(profile)
+
+    override suspend fun setSoftwareDecodingOnly(enabled: Boolean) = dataSource.setSoftwareDecodingOnly(enabled)
+
+    override suspend fun setMaxReconnectAttempts(attempts: Int) = dataSource.setMaxReconnectAttempts(attempts)
+
+    override suspend fun setDefaultAspectRatio(mode: AspectRatioMode) = dataSource.setDefaultAspectRatio(mode)
+
+    override suspend fun setSubtitleStyle(style: SubtitleStyle) = dataSource.setSubtitleStyle(style)
 
     override suspend fun markWelcomeSeen() = dataSource.markWelcomeSeen()
 
