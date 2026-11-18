@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package com.streambox.player.core.designsystem.component
 
 import androidx.compose.foundation.layout.Column
