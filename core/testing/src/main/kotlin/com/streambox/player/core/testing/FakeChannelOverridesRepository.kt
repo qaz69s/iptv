@@ -3,20 +3,58 @@ package com.streambox.player.core.testing
 import com.streambox.player.core.domain.repository.ChannelOverridesRepository
 import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.ChannelOverride
+import com.streambox.player.core.model.EditorChannel
+import com.streambox.player.core.model.EditorGroup
 import com.streambox.player.core.model.GroupOverride
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
  * In-memory [ChannelOverridesRepository] that only stores the overrides (it does not change any
- * channel list). Reordering hands out positions 0..n-1 in the given order.
+ * channel list). Reordering hands out positions 0..n-1 in the given order. The editor lists are what
+ * tests put into [editorGroupsFlow] / [editorChannelsFlow] (keyed by group name), with the stored
+ * overrides applied (hidden, name, order), like the database does.
  */
 @Suppress("TooManyFunctions")
 class FakeChannelOverridesRepository : ChannelOverridesRepository {
     val channels = MutableStateFlow<Map<ChannelKey, ChannelOverride>>(emptyMap())
     val groups = MutableStateFlow<Map<Pair<Long, String>, GroupOverride>>(emptyMap())
+    val editorGroupsFlow = MutableStateFlow<List<EditorGroup>>(emptyList())
+    val editorChannelsFlow = MutableStateFlow<Map<String, List<EditorChannel>>>(emptyMap())
+
+    override fun editorGroups(playlistId: Long): Flow<List<EditorGroup>> =
+        combine(editorGroupsFlow, groups) { list, overrides ->
+            list.filter { it.playlistId == playlistId }
+                .map { group ->
+                    val o = overrides[playlistId to group.name]
+                    group.copy(hidden = o?.hidden ?: group.hidden, customName = o?.customName ?: group.customName)
+                }
+                .withIndex()
+                .sortedBy { (index, group) -> overrides[playlistId to group.name]?.customSortOrder ?: index }
+                .map { it.value }
+        }
+
+    override fun editorChannels(playlistId: Long, groupName: String): Flow<List<EditorChannel>> =
+        combine(editorChannelsFlow, channels, groups) { lists, overrides, groupOverrides ->
+            val groupHidden = groupOverrides[playlistId to groupName]?.hidden == true
+            lists[groupName].orEmpty()
+                .filter { it.key.playlistId == playlistId }
+                .map { channel ->
+                    val o = overrides[channel.key]
+                    val self = o?.hidden ?: channel.selfHidden
+                    channel.copy(
+                        selfHidden = self,
+                        hidden = self || groupHidden,
+                        customName = o?.customName ?: channel.customName,
+                    )
+                }
+                .withIndex()
+                .sortedBy { (index, channel) -> overrides[channel.key]?.customSortOrder ?: index }
+                .map { it.value }
+        }
 
     override fun channelOverrides(playlistId: Long): Flow<List<ChannelOverride>> =
         channels.map { map -> map.values.filter { it.key.playlistId == playlistId } }

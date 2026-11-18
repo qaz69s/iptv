@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.streambox.player.core.database.StreamBoxDatabase
 import com.streambox.player.core.database.dao.ChannelDao
+import com.streambox.player.core.database.dao.CustomGroupDao
 import com.streambox.player.core.database.dao.FavoriteDao
 import com.streambox.player.core.database.dao.OverrideDao
 import com.streambox.player.core.database.dao.PlaylistDao
@@ -39,4 +40,7 @@ object DatabaseModule {
 
     @Provides
     fun providesOverrideDao(database: StreamBoxDatabase): OverrideDao = database.overrideDao()
+
+    @Provides
+    fun providesCustomGroupDao(database: StreamBoxDatabase): CustomGroupDao = database.customGroupDao()
 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -117,6 +118,30 @@ class DefaultPlaylistRepositoryTest {
 
         assertTrue(repo.observePlaylist(id).first()!!.allowCleartext)
     }
+
+    @Test
+    fun `disabling a playlist keeps it listed with its data`() = runTest {
+        val repo = repository { _, _ -> ImportStatus.Success(1, 1, 0) }
+        val id = repo.addPlaylist(PlaylistDraft("A", PlaylistType.M3U_URL, "https://a"))
+
+        repo.setEnabled(id, false)
+        assertFalse(repo.observePlaylist(id).first()!!.enabled)
+
+        repo.setEnabled(id, true)
+        assertTrue(repo.observePlaylist(id).first()!!.enabled)
+    }
+
+    @Test
+    fun `reordering puts the listed playlists first and the rest after them`() = runTest {
+        val repo = repository { _, _ -> ImportStatus.Success(1, 1, 0) }
+        val a = repo.addPlaylist(PlaylistDraft("A", PlaylistType.M3U_URL, "https://a"))
+        val b = repo.addPlaylist(PlaylistDraft("B", PlaylistType.M3U_URL, "https://b"))
+        val c = repo.addPlaylist(PlaylistDraft("C", PlaylistType.M3U_URL, "https://c"))
+
+        repo.reorderPlaylists(listOf(c, a))
+
+        assertEquals(listOf(c, a, b), repo.playlists.first().map { it.id })
+    }
 }
 
 private class RecordingUriPermissions : UriPermissions {
@@ -159,6 +184,10 @@ private class FakePlaylistDao : PlaylistDao {
     }
 
     override suspend fun setLastError(id: Long, error: String?) = modify(id) { it.copy(lastError = error) }
+
+    override suspend fun setEnabled(id: Long, enabled: Boolean) = modify(id) { it.copy(enabled = enabled) }
+
+    override suspend fun setSortOrder(id: Long, sortOrder: Int) = modify(id) { it.copy(sortOrder = sortOrder) }
 
     override suspend fun activateGeneration(
         id: Long,

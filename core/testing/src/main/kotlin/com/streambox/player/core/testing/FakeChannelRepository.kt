@@ -20,13 +20,17 @@ import kotlinx.coroutines.flow.map
 /**
  * In-memory [ChannelRepository] with simple list semantics: filter by group name, sort with
  * [ChannelSorting] (Default and Custom keep the list order), zapping with [ChannelSequence].
- * Favorites / recently watched are the channel ids in [favoriteIds] / [recentIds], in their list order.
+ * Favorites / recently watched / custom groups are the channel ids in [favoriteIds] / [recentIds] /
+ * [customGroupIds], in their list order.
  */
 class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList()) : ChannelRepository {
     /** (groupName, channel) in playlist order. */
     val channelsFlow = MutableStateFlow(channels)
     val favoriteIds = MutableStateFlow<List<Long>>(emptyList())
     val recentIds = MutableStateFlow<List<Long>>(emptyList())
+
+    /** Channel ids of each custom group, in the group's order. */
+    val customGroupIds = MutableStateFlow<Map<Long, List<Long>>>(emptyMap())
     val requestedGroups = mutableListOf<String?>()
     val requestedSorts = mutableListOf<ChannelSortOrder>()
     val searches = mutableListOf<String>()
@@ -72,7 +76,8 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
 
     override suspend fun channelIdByNumber(number: Int, source: ChannelSource, sort: ChannelSortOrder): Long? =
         when (source) {
-            ChannelSource.Favorites, ChannelSource.Recent -> ChannelSequence.atNumber(ordered(source, sort), number)?.id
+            ChannelSource.Favorites, ChannelSource.Recent, is ChannelSource.Custom ->
+                ChannelSequence.atNumber(ordered(source, sort), number)?.id
 
             else -> {
                 val group = (source as? ChannelSource.Group)?.name
@@ -102,6 +107,7 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
         is ChannelSource.Group -> ChannelSorting.sort(filtered(source.name), sort)
         ChannelSource.Favorites -> ChannelSorting.sort(byIds(favoriteIds.value), sort)
         ChannelSource.Recent -> byIds(recentIds.value)
+        is ChannelSource.Custom -> ChannelSorting.sort(byIds(customGroupIds.value[source.groupId].orEmpty()), sort)
     }
 
     private fun byIds(ids: List<Long>): List<Channel> {

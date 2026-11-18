@@ -45,6 +45,14 @@ class FakePlaylistRepository(initial: List<Playlist> = emptyList()) : PlaylistRe
     override suspend fun setAllowCleartext(id: Long, allowed: Boolean) =
         items.update { list -> list.map { if (it.id == id) it.copy(allowCleartext = allowed) else it } }
 
+    override suspend fun setEnabled(id: Long, enabled: Boolean) =
+        items.update { list -> list.map { if (it.id == id) it.copy(enabled = enabled) else it } }
+
+    override suspend fun reorderPlaylists(orderedIds: List<Long>) = items.update { list ->
+        val listed = orderedIds.distinct().mapNotNull { id -> list.firstOrNull { it.id == id } }
+        (listed + list.filterNot { it in listed }).mapIndexed { index, playlist -> playlist.copy(sortOrder = index) }
+    }
+
     override fun startImport(id: Long) {
         startedImports += id
         emitStatus(id, ImportStatus.Connecting)

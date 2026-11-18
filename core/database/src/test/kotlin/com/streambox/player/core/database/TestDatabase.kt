@@ -18,6 +18,7 @@ internal class TestDatabase {
     val favorites = db.favoriteDao()
     val history = db.watchHistoryDao()
     val overrides = db.overrideDao()
+    val customGroups = db.customGroupDao()
 
     suspend fun playlist(name: String = "P", sortOrder: Int = 0): Long = playlists.insert(
         PlaylistEntity(name = name, type = "M3U_URL", url = "https://x/$name.m3u", sortOrder = sortOrder),

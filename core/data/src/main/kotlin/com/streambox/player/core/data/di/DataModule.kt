@@ -9,6 +9,7 @@ import com.streambox.player.core.data.importer.RoomPlaylistImportStore
 import com.streambox.player.core.data.repository.AndroidUriPermissions
 import com.streambox.player.core.data.repository.DefaultChannelOverridesRepository
 import com.streambox.player.core.data.repository.DefaultChannelRepository
+import com.streambox.player.core.data.repository.DefaultCustomGroupsRepository
 import com.streambox.player.core.data.repository.DefaultFavoritesRepository
 import com.streambox.player.core.data.repository.DefaultLastChannelRepository
 import com.streambox.player.core.data.repository.DefaultPlaylistRepository
@@ -17,6 +18,7 @@ import com.streambox.player.core.data.repository.DefaultWatchHistoryRepository
 import com.streambox.player.core.data.repository.UriPermissions
 import com.streambox.player.core.domain.repository.ChannelOverridesRepository
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.CustomGroupsRepository
 import com.streambox.player.core.domain.repository.FavoritesRepository
 import com.streambox.player.core.domain.repository.LastChannelRepository
 import com.streambox.player.core.domain.repository.PlaylistRepository
@@ -48,6 +50,9 @@ internal abstract class DataModule {
 
     @Binds
     abstract fun bindsChannelOverridesRepository(impl: DefaultChannelOverridesRepository): ChannelOverridesRepository
+
+    @Binds
+    abstract fun bindsCustomGroupsRepository(impl: DefaultCustomGroupsRepository): CustomGroupsRepository
 
     @Binds
     abstract fun bindsLastChannelRepository(impl: DefaultLastChannelRepository): LastChannelRepository

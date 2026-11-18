@@ -22,8 +22,9 @@ import org.robolectric.RuntimeEnvironment
 
 /**
  * Upgrades a real v1 database (created from the committed schema `1.json`, as P1 / P2 shipped it)
- * with [StreamBoxDatabase.MIGRATIONS]. Opening it through Room validates every table, index and FTS
- * table against the v2 entities, so a migration that does not produce exactly `2.json` fails here.
+ * with [StreamBoxDatabase.MIGRATIONS] (v1 -> v2 -> v3). Opening it through Room validates every table,
+ * index and FTS table against the current entities, so a migration that does not produce exactly the
+ * latest exported schema fails here.
  */
 @RunWith(RobolectricTestRunner::class)
 class MigrationTest {
@@ -76,6 +77,20 @@ class MigrationTest {
     }
 
     @Test
+    fun `migrated database accepts custom groups (v3)`() = runTest {
+        createV1Database()
+        val db = openWithMigrations()
+
+        val group = db.customGroupDao().createGroup("Mine", createdAt = 1)
+        db.customGroupDao().addMember(group, 1, "tvg:old", addedAt = 2)
+
+        assertEquals(listOf(10L), db.customGroupDao().observeChannels(group).first().map { it.id })
+        assertEquals(1, db.customGroupDao().observeGroups().first().single().channelCount)
+        db.playlistDao().delete(1)
+        assertEquals(emptyList<Long>(), db.customGroupDao().memberKeys(group).map { it.playlistId })
+    }
+
+    @Test
     fun `full text index keeps working after the migration`() = runTest {
         createV1Database()
         val db = openWithMigrations()
@@ -101,7 +116,7 @@ class MigrationTest {
         assertEquals((1..current).toList(), versions)
         val covered = StreamBoxDatabase.MIGRATIONS.map { it.startVersion to it.endVersion }
         assertEquals((1 until current).map { it to it + 1 }, covered)
-        assertTrue(current >= 2)
+        assertTrue(current >= 3)
     }
 
     private fun openWithMigrations(): StreamBoxDatabase =

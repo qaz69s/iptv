@@ -10,6 +10,7 @@ import com.streambox.player.core.model.Playlist
 import com.streambox.player.core.model.PlaylistType
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeCustomGroupsRepository
 import com.streambox.player.core.testing.FakeFavoritesRepository
 import com.streambox.player.core.testing.FakePlaylistRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
@@ -41,11 +42,21 @@ class ChannelsViewModelTest {
     private val favorites = FakeFavoritesRepository(library)
     private val history = FakeWatchHistoryRepository(library)
     private val settings = FakeSettingsRepository()
+    private val customGroups = FakeCustomGroupsRepository(library.value)
 
     private fun viewModel(
         playlists: FakePlaylistRepository = FakePlaylistRepository(listOf(playlist)),
         handle: SavedStateHandle = SavedStateHandle(),
-    ) = ChannelsViewModel(handle, playlists, channels, favorites, history, settings, ToggleFavoriteUseCase(favorites))
+    ) = ChannelsViewModel(
+        handle,
+        playlists,
+        channels,
+        favorites,
+        history,
+        customGroups,
+        settings,
+        ToggleFavoriteUseCase(favorites),
+    )
 
     private fun TestScope.collect(viewModel: ChannelsViewModel) {
         backgroundScope.launch(mainDispatcher.testDispatcher) { viewModel.uiState.collect {} }
@@ -83,6 +94,26 @@ class ChannelsViewModelTest {
             viewModel.uiState.value,
         )
         assertEquals(listOf<String?>(null), channels.requestedGroups)
+    }
+
+    @Test
+    fun `a custom group is listed, can be selected and falls back to all when deleted`() = runTest {
+        val handle = SavedStateHandle()
+        val viewModel = viewModel(handle = handle)
+        collect(viewModel)
+        val id = checkNotNull(customGroups.create("Kids"))
+        customGroups.addChannel(id, channel(3).key)
+
+        viewModel.onSourceSelected(ChannelSource.Custom(id))
+
+        val content = viewModel.uiState.value as ChannelsUiState.Content
+        assertEquals(ChannelSource.Custom(id), content.source)
+        assertEquals(listOf("Kids"), content.customGroups.map { it.name })
+        assertEquals(1, content.customGroups.single().channelCount)
+        assertEquals("custom:$id", handle.get<String>("selectedVirtual"))
+
+        customGroups.delete(id)
+        assertEquals(ChannelSource.All, (viewModel.uiState.value as ChannelsUiState.Content).source)
     }
 
     @Test

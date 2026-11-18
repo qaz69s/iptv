@@ -25,6 +25,29 @@ data class PlaybackRow(
     val uniqueKey: String,
 )
 
+/** A group of one playlist as the list editor shows it: hidden groups included, with all their channels. */
+data class EditorGroupRow(
+    val name: String,
+    val customName: String?,
+    val hidden: Boolean,
+    val channelCount: Int,
+)
+
+/**
+ * A channel as the list editor shows it. [hidden] is the effective flag (itself or its group),
+ * [selfHidden] whether the user hid the channel itself.
+ */
+data class EditorChannelRow(
+    val uniqueKey: String,
+    val name: String,
+    val customName: String?,
+    val logoUrl: String?,
+    val hidden: Boolean,
+    val selfHidden: Boolean,
+    val number: Int?,
+    val sortOrder: Int,
+)
+
 /** Values of the `sort` argument of [ChannelDao.pagingSource] / [ChannelDao.orderedIds]. */
 object SortCode {
     /** Playlist order: playlist by playlist, import order inside each. */
@@ -228,6 +251,39 @@ interface ChannelDao {
         """,
     )
     suspend fun groupPositions(playlistId: Long, groupNames: List<String>): List<KeyPositionRow>
+
+    /** List editor (P3c): every group of the playlist's current data, hidden ones included, in user order. */
+    @Query(
+        """
+        SELECT g.name AS name, g.customName AS customName, g.hidden AS hidden,
+            (SELECT COUNT(*) FROM channels c WHERE c.groupId = g.id) AS channelCount
+        FROM channel_groups g
+        INNER JOIN playlists p ON p.id = g.playlistId AND g.generation = p.activeGeneration
+        WHERE g.playlistId = :playlistId
+        ORDER BY COALESCE(g.customSortOrder, g.sortOrder), g.sortOrder
+        """,
+    )
+    fun observeEditorGroups(playlistId: Long): Flow<List<EditorGroupRow>>
+
+    /**
+     * List editor (P3c): every channel of one group ([groupName] as the playlist names it) of the
+     * playlist's current data, hidden ones included, in user order.
+     */
+    @Query(
+        """
+        SELECT c.uniqueKey AS uniqueKey, c.name AS name, c.customName AS customName, c.logoUrl AS logoUrl,
+            c.hidden AS hidden,
+            COALESCE((SELECT o.hidden FROM channel_overrides o
+                      WHERE o.playlistId = c.playlistId AND o.uniqueKey = c.uniqueKey), 0) AS selfHidden,
+            c.number AS number, c.sortOrder AS sortOrder
+        FROM channels c
+        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
+        INNER JOIN channel_groups g ON g.id = c.groupId
+        WHERE c.playlistId = :playlistId AND g.name = :groupName
+        ORDER BY COALESCE(c.customSortOrder, c.sortOrder), c.sortOrder
+        """,
+    )
+    fun observeEditorChannels(playlistId: Long, groupName: String): Flow<List<EditorChannelRow>>
 }
 
 /** A channel key (or group name) with its effective position. */

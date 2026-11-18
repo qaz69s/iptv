@@ -7,6 +7,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.streambox.player.core.domain.channel.ChannelSorting
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.CustomGroupsRepository
 import com.streambox.player.core.domain.repository.FavoritesRepository
 import com.streambox.player.core.domain.repository.PlaylistRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
@@ -19,6 +20,7 @@ import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.ChannelSortOrder
 import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.core.model.ChannelViewMode
+import com.streambox.player.core.model.CustomGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,6 +58,8 @@ sealed interface ChannelsUiState {
         val favoriteKeys: Set<ChannelKey> = emptySet(),
         val viewMode: ChannelViewMode = ChannelViewMode.List,
         val sortOrder: ChannelSortOrder = ChannelSortOrder.Default,
+        /** The user's own groups (P3c), listed after the virtual groups. */
+        val customGroups: List<CustomGroup> = emptyList(),
     ) : ChannelsUiState
 }
 
@@ -65,6 +69,7 @@ private data class Library(
     val favoriteKeys: Set<ChannelKey>,
     val recent: List<Channel>,
     val browse: BrowseSettings,
+    val customGroups: List<CustomGroup>,
 )
 
 /**
@@ -80,6 +85,7 @@ class ChannelsViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val favoritesRepository: FavoritesRepository,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val customGroupsRepository: CustomGroupsRepository,
     private val settingsRepository: SettingsRepository,
     private val toggleFavorite: ToggleFavoriteUseCase,
 ) : ViewModel() {
@@ -93,6 +99,7 @@ class ChannelsViewModel @Inject constructor(
         favoritesRepository.favoriteKeys,
         watchHistoryRepository.history.map { entries -> entries.map { it.channel } },
         browse,
+        customGroupsRepository.groups,
         ::Library,
     )
 
@@ -104,10 +111,16 @@ class ChannelsViewModel @Inject constructor(
         selectedGroup,
         selectedVirtual,
         channelRepository.groups,
-    ) { group, virtual, groups ->
+        customGroupsRepository.groups,
+    ) { group, virtual, groups, customGroups ->
+        val customId = virtual
+            ?.takeIf { it.startsWith(VIRTUAL_CUSTOM_PREFIX) }
+            ?.removePrefix(VIRTUAL_CUSTOM_PREFIX)
+            ?.toLongOrNull()
         when {
             virtual == VIRTUAL_FAVORITES -> ChannelSource.Favorites
             virtual == VIRTUAL_RECENT -> ChannelSource.Recent
+            customId != null && customGroups.any { it.id == customId } -> ChannelSource.Custom(customId)
             group != null && groups.any { it.name == group } -> ChannelSource.Group(group)
             else -> ChannelSource.All
         }
@@ -136,6 +149,7 @@ class ChannelsViewModel @Inject constructor(
                 favoriteKeys = library.favoriteKeys,
                 viewMode = library.browse.viewMode,
                 sortOrder = library.browse.sortOrder,
+                customGroups = library.customGroups,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChannelsUiState.Loading)
@@ -159,6 +173,10 @@ class ChannelsViewModel @Inject constructor(
                 ChannelSource.Recent -> watchHistoryRepository.history.map { entries ->
                     PagingData.from(entries.map { it.channel })
                 }
+
+                is ChannelSource.Custom -> customGroupsRepository.channels(source.groupId).map { list ->
+                    PagingData.from(ChannelSorting.sort(list, sort))
+                }
             }
         }
         .cachedIn(viewModelScope)
@@ -168,6 +186,7 @@ class ChannelsViewModel @Inject constructor(
         savedStateHandle[KEY_VIRTUAL] = when (source) {
             ChannelSource.Favorites -> VIRTUAL_FAVORITES
             ChannelSource.Recent -> VIRTUAL_RECENT
+            is ChannelSource.Custom -> VIRTUAL_CUSTOM_PREFIX + source.groupId
             else -> null
         }
     }
@@ -196,6 +215,9 @@ class ChannelsViewModel @Inject constructor(
         const val KEY_VIRTUAL = "selectedVirtual"
         const val VIRTUAL_FAVORITES = "favorites"
         const val VIRTUAL_RECENT = "recent"
+
+        /** A custom group is saved as this prefix plus its id. */
+        const val VIRTUAL_CUSTOM_PREFIX = "custom:"
         private const val STOP_TIMEOUT_MS = 5_000L
     }
 }

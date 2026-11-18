@@ -17,6 +17,12 @@ interface PlaylistRepository {
 
     suspend fun setAllowCleartext(id: Long, allowed: Boolean)
 
+    /** A disabled playlist keeps its data, favorites and edits; its channels are just not shown (P3c). */
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
+    /** Puts the playlists in this order (P3c: move up / down); playlists not listed follow. */
+    suspend fun reorderPlaylists(orderedIds: List<Long>)
+
     /**
      * Starts (or restarts) downloading + parsing the playlist in an application-wide scope so it
      * survives leaving the screen. A running import for the same playlist is left untouched.

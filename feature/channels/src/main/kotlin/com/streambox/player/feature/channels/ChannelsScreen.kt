@@ -81,6 +81,7 @@ import com.streambox.player.core.model.Channel
 import com.streambox.player.core.model.ChannelSortOrder
 import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.core.model.ChannelViewMode
+import com.streambox.player.core.model.CustomGroup
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
 
@@ -236,6 +237,7 @@ private fun ChannelsUiState.Content.sourceEntries(): List<SourceEntry> = buildLi
     add(SourceEntry(ChannelSource.All, totalChannels))
     add(SourceEntry(ChannelSource.Favorites, favoriteCount))
     add(SourceEntry(ChannelSource.Recent, recentCount))
+    customGroups.forEach { add(SourceEntry(ChannelSource.Custom(it.id), it.channelCount)) }
     groups.forEach { add(SourceEntry(ChannelSource.Group(it.name), it.channelCount)) }
 }
 
@@ -244,10 +246,11 @@ private fun ChannelSource.itemKey(): String = when (this) {
     ChannelSource.Favorites -> "__favorites__"
     ChannelSource.Recent -> "__recent__"
     is ChannelSource.Group -> "g:$name"
+    is ChannelSource.Custom -> "c:$groupId"
 }
 
 @Composable
-private fun sourceLabel(entry: SourceEntry): String = when (val source = entry.source) {
+private fun sourceLabel(entry: SourceEntry, custom: List<CustomGroup>): String = when (val source = entry.source) {
     ChannelSource.All -> stringResource(R.string.feature_channels_group_all, entry.count)
 
     ChannelSource.Favorites -> stringResource(R.string.feature_channels_group_favorites, entry.count)
@@ -257,6 +260,12 @@ private fun sourceLabel(entry: SourceEntry): String = when (val source = entry.s
     is ChannelSource.Group -> stringResource(
         R.string.feature_channels_group_label,
         source.name.ifBlank { stringResource(R.string.feature_channels_group_ungrouped) },
+        entry.count,
+    )
+
+    is ChannelSource.Custom -> stringResource(
+        R.string.feature_channels_group_custom,
+        custom.firstOrNull { it.id == source.groupId }?.name.orEmpty(),
         entry.count,
     )
 }
@@ -271,7 +280,7 @@ private fun SourceChips(state: ChannelsUiState.Content, onSelected: (ChannelSour
             FilterChip(
                 selected = entry.source == state.source,
                 onClick = { onSelected(entry.source) },
-                label = { Text(sourceLabel(entry), maxLines = 1) },
+                label = { Text(sourceLabel(entry, state.customGroups), maxLines = 1) },
                 modifier = Modifier.focusRing(shape = RoundedCornerShape(8.dp)),
             )
         }
@@ -305,7 +314,7 @@ private fun GroupPane(
             val selected = entry.source == state.source
             val shape = RoundedCornerShape(8.dp)
             Text(
-                text = sourceLabel(entry),
+                text = sourceLabel(entry, state.customGroups),
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -361,7 +370,8 @@ private fun ChannelPane(
     }
 }
 
-private fun ChannelSource.isVirtual() = this == ChannelSource.Favorites || this == ChannelSource.Recent
+private fun ChannelSource.isVirtual() =
+    this == ChannelSource.Favorites || this == ChannelSource.Recent || this is ChannelSource.Custom
 
 @Composable
 private fun VirtualGroupEmpty(source: ChannelSource, modifier: Modifier) {
@@ -369,6 +379,10 @@ private fun VirtualGroupEmpty(source: ChannelSource, modifier: Modifier) {
         ChannelSource.Recent ->
             R.string.feature_channels_recent_empty_title to
                 R.string.feature_channels_recent_empty_message
+
+        is ChannelSource.Custom ->
+            R.string.feature_channels_custom_empty_title to
+                R.string.feature_channels_custom_empty_message
 
         else -> R.string.feature_channels_favorites_empty_title to R.string.feature_channels_favorites_empty_message
     }

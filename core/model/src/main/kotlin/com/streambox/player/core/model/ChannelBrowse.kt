@@ -20,7 +20,8 @@ data class BrowseSettings(
 
 /**
  * Where the user picked a channel, which is also the list the player zaps through: everything, one
- * group (by display name), or the virtual groups "favorites" and "recently watched".
+ * group (by display name), the virtual groups "favorites" and "recently watched", or one of the
+ * user's custom groups (P3c; zapped and numbered like favorites).
  */
 sealed interface ChannelSource {
     data object All : ChannelSource
@@ -30,6 +31,8 @@ sealed interface ChannelSource {
     data object Favorites : ChannelSource
 
     data object Recent : ChannelSource
+
+    data class Custom(val groupId: Long) : ChannelSource
 }
 
 /** Global search hits (requirements §4.2): matching groups and channels. */

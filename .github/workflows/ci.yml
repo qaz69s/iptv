@@ -31,6 +31,12 @@ jobs:
       - name: Unit tests
         run: ./gradlew test --continue
 
+      - name: Print Room schemas that are not committed
+        if: always()
+        run: |
+          git status --porcelain core/database/schemas
+          for f in $(git ls-files --others --exclude-standard core/database/schemas); do echo "=== $f"; cat "$f"; done
+
       - name: Android lint
         run: ./gradlew :app:lintDebug
 

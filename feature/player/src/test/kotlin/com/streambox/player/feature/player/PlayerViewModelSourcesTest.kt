@@ -6,6 +6,7 @@ import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.BrowseSettings
 import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.player.sleep.MonotonicClock
@@ -131,6 +132,25 @@ class PlayerViewModelSourcesTest {
         assertEquals(1L, viewModel.channelId())
         viewModel.zap(ZapDirection.PREVIOUS)
         assertEquals(3L, viewModel.channelId())
+    }
+
+    @Test
+    fun `a custom group zaps in its own order and wraps (P3c, like favorites)`() = runTest {
+        repository.customGroupIds.value = mapOf(7L to listOf(4L, 2L, 3L))
+        val viewModel = started(channelId = 3, source = PlayerSource.CUSTOM, group = "7")
+
+        viewModel.zap(ZapDirection.NEXT)
+        assertEquals(4L, viewModel.channelId())
+        viewModel.zap(ZapDirection.NEXT)
+        assertEquals(2L, viewModel.channelId())
+    }
+
+    @Test
+    fun `custom group routes round-trip, and a broken id falls back to all channels`() {
+        val source = ChannelSource.Custom(12)
+        val (name, group) = PlayerSource.encode(source)
+        assertEquals(source, PlayerSource.decode(name, group))
+        assertEquals(ChannelSource.All, PlayerSource.decode(PlayerSource.CUSTOM, "x"))
     }
 
     @Test

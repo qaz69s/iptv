@@ -1,6 +1,8 @@
 package com.streambox.player.core.data.repository
 
 import com.streambox.player.core.database.dao.ChannelDao
+import com.streambox.player.core.database.dao.EditorChannelRow
+import com.streambox.player.core.database.dao.EditorGroupRow
 import com.streambox.player.core.database.dao.KeyPositionRow
 import com.streambox.player.core.database.dao.OverrideDao
 import com.streambox.player.core.database.entity.ChannelOverrideEntity
@@ -8,6 +10,8 @@ import com.streambox.player.core.database.entity.GroupOverrideEntity
 import com.streambox.player.core.domain.repository.ChannelOverridesRepository
 import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.ChannelOverride
+import com.streambox.player.core.model.EditorChannel
+import com.streambox.player.core.model.EditorGroup
 import com.streambox.player.core.model.GroupOverride
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +27,12 @@ internal class DefaultChannelOverridesRepository @Inject constructor(
 
     override fun groupOverrides(playlistId: Long): Flow<List<GroupOverride>> =
         overrideDao.observeGroupOverrides(playlistId).map { rows -> rows.map { it.toModel() } }
+
+    override fun editorGroups(playlistId: Long): Flow<List<EditorGroup>> =
+        channelDao.observeEditorGroups(playlistId).map { rows -> rows.map { it.toModel(playlistId) } }
+
+    override fun editorChannels(playlistId: Long, groupName: String): Flow<List<EditorChannel>> =
+        channelDao.observeEditorChannels(playlistId, groupName).map { rows -> rows.map { it.toModel(playlistId) } }
 
     override suspend fun setChannelHidden(key: ChannelKey, hidden: Boolean) =
         overrideDao.updateChannel(key.playlistId, key.uniqueKey) { it.copy(hidden = hidden) }
@@ -84,4 +94,22 @@ private fun GroupOverrideEntity.toModel() = GroupOverride(
     hidden = hidden,
     customName = customName,
     customSortOrder = customSortOrder,
+)
+
+private fun EditorGroupRow.toModel(playlistId: Long) = EditorGroup(
+    playlistId = playlistId,
+    name = name,
+    customName = customName,
+    hidden = hidden,
+    channelCount = channelCount,
+)
+
+private fun EditorChannelRow.toModel(playlistId: Long) = EditorChannel(
+    key = ChannelKey(playlistId, uniqueKey),
+    name = name,
+    customName = customName,
+    logoUrl = logoUrl,
+    hidden = hidden,
+    selfHidden = selfHidden,
+    displayNumber = number ?: (sortOrder + 1),
 )

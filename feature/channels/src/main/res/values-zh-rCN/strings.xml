@@ -50,4 +50,7 @@
     <string name="feature_channels_view_grid">网格</string>
     <string name="feature_channels_view_list">列表</string>
     <string name="feature_channels_watched_at">%1$s观看</string>
+    <string name="feature_channels_group_custom">%1$s（%2$d）</string>
+    <string name="feature_channels_custom_empty_title">这个分组还没有频道</string>
+    <string name="feature_channels_custom_empty_message">长按频道（遥控器按菜单键），选择“加入分组”。</string>
 </resources>

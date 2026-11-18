@@ -1,6 +1,7 @@
 package com.streambox.player.core.data.repository
 
 import com.streambox.player.core.database.dao.ChannelDao
+import com.streambox.player.core.database.dao.CustomGroupDao
 import com.streambox.player.core.database.dao.FavoriteDao
 import com.streambox.player.core.database.dao.GroupSummaryRow
 import com.streambox.player.core.database.dao.SortCode
@@ -27,7 +28,8 @@ class DefaultChannelRepositoryTest {
     private val channelDao = mockk<ChannelDao>(relaxed = true)
     private val favoriteDao = mockk<FavoriteDao>(relaxed = true)
     private val historyDao = mockk<WatchHistoryDao>(relaxed = true)
-    private val repository = DefaultChannelRepository(channelDao, favoriteDao, historyDao)
+    private val customGroupDao = mockk<CustomGroupDao>(relaxed = true)
+    private val repository = DefaultChannelRepository(channelDao, favoriteDao, historyDao, customGroupDao)
 
     private fun entity(id: Long, name: String, number: Int? = null, sortOrder: Int = id.toInt()) = ChannelEntity(
         id = id,
@@ -104,6 +106,22 @@ class DefaultChannelRepositoryTest {
         assertEquals(9L, repository.adjacentChannel(4, recent, ChannelSortOrder.Name, ZapDirection.NEXT))
         assertEquals(4L, repository.adjacentChannel(9, recent, ChannelSortOrder.Name, ZapDirection.NEXT))
         assertEquals(9L, repository.channelIdByNumber(2, recent, ChannelSortOrder.Default))
+    }
+
+    @Test
+    fun `a custom group zaps and numbers like favorites`() = runTest {
+        // Group order: b(1), c(2), a(3).
+        every { customGroupDao.observeChannels(7) } returns
+            flowOf(listOf(entity(1, "b"), entity(2, "c"), entity(3, "a")))
+
+        val custom = ChannelSource.Custom(7)
+        assertEquals(2L, repository.adjacentChannel(1, custom, ChannelSortOrder.Default, ZapDirection.NEXT))
+        assertEquals(1L, repository.adjacentChannel(3, custom, ChannelSortOrder.Custom, ZapDirection.NEXT))
+        assertEquals(1L, repository.adjacentChannel(3, custom, ChannelSortOrder.Name, ZapDirection.NEXT))
+        assertNull(repository.nextChannel(3, custom, ChannelSortOrder.Default))
+        assertEquals(2L, repository.channelIdByNumber(2, custom, ChannelSortOrder.Default))
+        assertEquals(1L, repository.channelIdByNumber(2, custom, ChannelSortOrder.Name))
+        coVerify(exactly = 0) { channelDao.idByNumber(any(), any()) }
     }
 
     @Test

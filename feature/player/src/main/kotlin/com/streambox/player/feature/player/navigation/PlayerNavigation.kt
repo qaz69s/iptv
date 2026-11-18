@@ -33,18 +33,25 @@ data class PlayerRoute(
     }
 }
 
-/** How [PlayerRoute.source] names a [ChannelSource] (the group's name travels in [PlayerRoute.groupName]). */
+/**
+ * How [PlayerRoute.source] names a [ChannelSource] (the group's name, or a custom group's id, travels in
+ * [PlayerRoute.groupName]).
+ */
 object PlayerSource {
     const val ALL = "all"
     const val GROUP = "group"
     const val FAVORITES = "favorites"
     const val RECENT = "recent"
 
+    /** A custom group (P3c); its id travels in [PlayerRoute.groupName]. */
+    const val CUSTOM = "custom"
+
     fun encode(source: ChannelSource): Pair<String, String?> = when (source) {
         ChannelSource.All -> ALL to null
         is ChannelSource.Group -> GROUP to source.name
         ChannelSource.Favorites -> FAVORITES to null
         ChannelSource.Recent -> RECENT to null
+        is ChannelSource.Custom -> CUSTOM to source.groupId.toString()
     }
 
     /** Null for routes without a source (or an unknown value). */
@@ -53,6 +60,7 @@ object PlayerSource {
         GROUP -> groupName?.let { ChannelSource.Group(it) } ?: ChannelSource.All
         FAVORITES -> ChannelSource.Favorites
         RECENT -> ChannelSource.Recent
+        CUSTOM -> groupName?.toLongOrNull()?.let { ChannelSource.Custom(it) } ?: ChannelSource.All
         else -> null
     }
 }

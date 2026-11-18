@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,6 +60,14 @@ class DefaultPlaylistRepository @Inject internal constructor(
     }
 
     override suspend fun setAllowCleartext(id: Long, allowed: Boolean) = playlistDao.setAllowCleartext(id, allowed)
+
+    override suspend fun setEnabled(id: Long, enabled: Boolean) = playlistDao.setEnabled(id, enabled)
+
+    override suspend fun reorderPlaylists(orderedIds: List<Long>) {
+        val listed = orderedIds.distinct()
+        val rest = playlistDao.observeAll().first().map { it.id }.filterNot { it in listed }
+        (listed + rest).forEachIndexed { index, id -> playlistDao.setSortOrder(id, index) }
+    }
 
     override fun startImport(id: Long) {
         synchronized(jobs) {

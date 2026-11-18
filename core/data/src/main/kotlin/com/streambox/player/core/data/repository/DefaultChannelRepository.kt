@@ -5,6 +5,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
 import com.streambox.player.core.database.dao.ChannelDao
+import com.streambox.player.core.database.dao.CustomGroupDao
 import com.streambox.player.core.database.dao.FavoriteDao
 import com.streambox.player.core.database.dao.SortCode
 import com.streambox.player.core.database.dao.WatchHistoryDao
@@ -35,6 +36,7 @@ internal class DefaultChannelRepository @Inject constructor(
     private val channelDao: ChannelDao,
     private val favoriteDao: FavoriteDao,
     private val watchHistoryDao: WatchHistoryDao,
+    private val customGroupDao: CustomGroupDao,
 ) : ChannelRepository {
     override val groups: Flow<List<ChannelGroupSummary>> = channelDao.observeGroups().map { rows ->
         rows.map { ChannelGroupSummary(it.name, it.channelCount) }
@@ -80,7 +82,7 @@ internal class DefaultChannelRepository @Inject constructor(
             is ChannelSource.Group ->
                 channelDao.idByNumber(number, source.name) ?: channelDao.idByNumber(number, null)
 
-            ChannelSource.Favorites, ChannelSource.Recent ->
+            ChannelSource.Favorites, ChannelSource.Recent, is ChannelSource.Custom ->
                 ChannelSequence.atNumber(orderedIds(source, sort), number)
         }
 
@@ -116,6 +118,11 @@ internal class DefaultChannelRepository @Inject constructor(
         ChannelSource.Recent -> watchHistoryDao.observe(WatchHistoryRepository.MAX_ENTRIES).first().map {
             it.channel.id
         }
+
+        is ChannelSource.Custom -> ChannelSorting.sort(
+            customGroupDao.observeChannels(source.groupId).first().map { it.toModel() },
+            sort,
+        ).map { it.id }
     }
 
     private companion object {

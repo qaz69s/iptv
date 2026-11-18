@@ -2,6 +2,8 @@ package com.streambox.player.core.domain.repository
 
 import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.ChannelOverride
+import com.streambox.player.core.model.EditorChannel
+import com.streambox.player.core.model.EditorGroup
 import com.streambox.player.core.model.GroupOverride
 import kotlinx.coroutines.flow.Flow
 
@@ -14,6 +16,12 @@ interface ChannelOverridesRepository {
     fun channelOverrides(playlistId: Long): Flow<List<ChannelOverride>>
 
     fun groupOverrides(playlistId: Long): Flow<List<GroupOverride>>
+
+    /** List editor: every group of the playlist's current data (hidden ones too), in the user's order. */
+    fun editorGroups(playlistId: Long): Flow<List<EditorGroup>>
+
+    /** List editor: every channel of one group ([groupName] as the playlist names it), in the user's order. */
+    fun editorChannels(playlistId: Long, groupName: String): Flow<List<EditorChannel>>
 
     suspend fun setChannelHidden(key: ChannelKey, hidden: Boolean)
 

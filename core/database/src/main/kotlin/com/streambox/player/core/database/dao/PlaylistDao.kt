@@ -29,6 +29,13 @@ interface PlaylistDao {
     @Query("UPDATE playlists SET allowCleartext = :allowed WHERE id = :id")
     suspend fun setAllowCleartext(id: Long, allowed: Boolean)
 
+    /** A disabled playlist keeps all its data; every browse / zap / search query skips it. */
+    @Query("UPDATE playlists SET enabled = :enabled WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean)
+
+    @Query("UPDATE playlists SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun setSortOrder(id: Long, sortOrder: Int)
+
     @Query("UPDATE playlists SET lastError = :error WHERE id = :id")
     suspend fun setLastError(id: Long, error: String?)
 
