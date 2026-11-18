@@ -52,12 +52,11 @@ internal fun LazyListScope.streamInfoSection(info: StreamInfo) {
 }
 
 @Composable
-private fun describe(format: MediaFormatInfo, decoder: String?): String =
-    stringResource(
-        R.string.feature_player_stream_format_decoder,
-        format.describe(),
-        decoder ?: stringResource(R.string.feature_player_stream_decoder_unknown),
-    )
+private fun describe(format: MediaFormatInfo, decoder: String?): String = stringResource(
+    R.string.feature_player_stream_format_decoder,
+    format.describe(),
+    decoder ?: stringResource(R.string.feature_player_stream_decoder_unknown),
+)
 
 @Composable
 private fun InfoHeader() {

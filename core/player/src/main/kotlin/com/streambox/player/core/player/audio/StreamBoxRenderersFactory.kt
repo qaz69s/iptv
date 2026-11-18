@@ -18,10 +18,8 @@ import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.FfmpegAudioRenderer
  * MediaCodec normally, in front of it for software-first decoding. Video keeps using MediaCodec only.
  */
 @OptIn(UnstableApi::class)
-internal class StreamBoxRenderersFactory(
-    context: Context,
-    decoderMode: DecoderMode,
-) : DefaultRenderersFactory(context) {
+internal class StreamBoxRenderersFactory(context: Context, decoderMode: DecoderMode) :
+    DefaultRenderersFactory(context) {
     init {
         setExtensionRendererMode(AudioRendererPolicy.extensionMode(decoderMode))
     }
