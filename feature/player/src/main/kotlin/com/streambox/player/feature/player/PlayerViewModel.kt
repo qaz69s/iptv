@@ -408,6 +408,11 @@ class PlayerViewModel @Inject constructor(
     /** Back / Del while typing a number removes the last digit. @return true when a number was being typed. */
     fun onNumberBackspace(): Boolean = numberInput.backspace()
 
+    /** Remote / keyboard media keys while the player is in the foreground (K14). */
+    fun onMediaKey(action: MediaKeyAction) {
+        if (action == MediaKeyAction.TOGGLE && local.value.panelOpen) return
+    }
+
     /** Left / right: seek ±10 s on seekable content, otherwise change the volume (live TV). */
     fun onHorizontalKey(forward: Boolean) {
         if (playbackController.state.value.isSeekable) {

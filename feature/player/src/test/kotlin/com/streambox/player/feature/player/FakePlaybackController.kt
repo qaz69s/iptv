@@ -30,6 +30,7 @@ class FakePlaybackController : PlaybackController {
     var subtitleTrack: TrackId? = null
     val backgroundModes = mutableListOf<Boolean>()
     var pauses = 0
+    var resumes = 0
     val volumes = mutableListOf<Float>()
     val volume: Float get() = volumes.lastOrNull() ?: 1f
     override var channelNavigator: ChannelNavigator? = null
@@ -51,6 +52,10 @@ class FakePlaybackController : PlaybackController {
     override fun pause() {
         pauses++
         state.update { it.copy(isPlaying = false) }
+    }
+
+    override fun resume() {
+        resumes++
     }
 
     override fun setVolume(volume: Float) {

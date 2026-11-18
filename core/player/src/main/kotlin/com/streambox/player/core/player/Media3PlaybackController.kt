@@ -164,6 +164,15 @@ internal class Media3PlaybackController @Inject constructor(
         _player.value?.pause()
     }
 
+    override fun resume() {
+        val player = _player.value
+        if (player == null || player.playbackState == Player.STATE_IDLE || _state.value.error != null) {
+            retry()
+            return
+        }
+        player.play()
+    }
+
     override fun setVolume(volume: Float) {
         this.volume = volume.coerceIn(0f, 1f)
         _player.value?.volume = this.volume

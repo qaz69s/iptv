@@ -651,4 +651,20 @@ class PlayerViewModelTest {
         assertTrue(controller.seeks.isEmpty())
         assertEquals(0, controller.playPauseToggles)
     }
+
+    @Test
+    fun `remote media keys control the foreground player (K14)`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+
+        viewModel.onMediaKey(MediaKeyAction.TOGGLE)
+        viewModel.onMediaKey(MediaKeyAction.PAUSE)
+        viewModel.onMediaKey(MediaKeyAction.PLAY)
+
+        assertEquals(1, controller.playPauseToggles)
+        assertEquals(1, controller.pauses)
+        assertEquals(1, controller.resumes)
+        assertTrue(viewModel.uiState.value.overlayVisible)
+    }
 }
