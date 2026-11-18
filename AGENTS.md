@@ -7,7 +7,7 @@
 **StreamBox Player**（`com.streambox.player`）：一款 Android IPTV **纯播放器**，功能对标 Televizo，覆盖手机 / 平板 / Android TV（同一个 APK）。
 - **不内置、不预置任何频道源或内容**。首次启动是空状态，用户自己添加 M3U / M3U8 / Xtream Codes 播放列表和 XMLTV 节目单。
 - 技术栈：Kotlin 2.4 · Jetpack Compose（Material 3）+ Compose for TV · Hilt · Room + Paging · DataStore · OkHttp · Media3 ExoPlayer · Coil 3 · 多模块 Clean Architecture。
-- 当前进度：**P0、P1、P2（P2a + P2b）、P3a（数据层）、P3b（界面）已完成，均未经真机验收**；下一步 **P3c（列表编辑器）**，需用户确认后开始。GitHub CI 已全绿（2026-11-18，P3b `d73695e`，run 44261053492）。 详见 `docs/DEVELOPMENT-STATUS.md`。
+- 当前进度：**P0、P1、P2（P2a + P2b）、P3a（数据层）、P3b（界面）已完成，均未经真机验收**；**P3c（列表编辑器）已获用户确认**；当前先修真机 bug K26（有画面无声音），再做 P3c。GitHub CI 已全绿（2026-11-18，P3b `d73695e`，run 44261053492）。 详见 `docs/DEVELOPMENT-STATUS.md`。
 - GitHub：`https://github.com/qaz69s/iptv`，分支 `main`，push 触发 GitHub Actions CI。
 
 ## 2. 阅读顺序
@@ -49,7 +49,7 @@
 | compileSdk / targetSdk | 37 / 37（见 `gradle/libs.versions.toml`） |
 | TV | 同一 APK 含 **TV Leanback 入口**（`LEANBACK_LAUNCHER` + banner），触屏与 leanback 均非必需 |
 | 广告 / 内购（P8） | **只做接口 + 空实现（NoOp）**，不接入任何广告或计费 SDK |
-| FFmpeg 扩展 | **暂不接入**。「仅软件解码」用 Media3 自带软件解码器优先策略实现 |
+| FFmpeg 扩展 | 2026-11-18 起**接入音频解码**（修 K26，用户要求；许可证见 implementation-plan R5）；视频仍用 MediaCodec。「仅软件解码」= 软件优先（音频 FFmpeg 优先） |
 | RTMP | 等 Media3 RTMP 扩展出与当前 Media3 对齐的稳定版再接（风险 R5） |
 | 语言 | 简体中文 + English |
 

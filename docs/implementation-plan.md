@@ -88,6 +88,7 @@
 | P8 | Chromecast、（可选）广告/内购、性能、R8 release、商店文案与隐私政策模板 | release 构建 | 全清单 |
 
 ### 阶段状态（2026-11-18）
+- **P3c 已获用户确认（2026-11-18）**，决定见 `docs/DEVELOPMENT-STATUS.md` 第 0 节（编辑器入口、隐藏项显示、重排序切「自定义」、自定义分组 Room v3、停用保留数据 + 上移 / 下移排序、重名分组合并显示、不做 PIN）。开工前先修真机 bug **K26（部分频道有画面无声音）**：计划接入与 Media3 1.11.1 对齐的 FFmpeg 音频解码扩展（候选 NextLib `nextlib-media3ext` 1.11.1-0.18.0，GPL-3.0，见 R5）+ 音轨回退 + 不支持提示 + 流信息。
 - **P3b 完成**（界面，CI run 44261053492 全绿，单元测试 468 项（+71），待真机验收；报告 `docs/phase-reports/P3b.md`）：设置「播放」二级页（K8）；全局搜索（FTS4 词前缀 + customName LIKE + 中文 LIKE，300 ms 防抖）；收藏页（上移 / 下移、删除、恢复时间序）与最近观看（移除、清空）；虚拟分组「全部 / 收藏 / 最近观看」，切台 / 台号 / 自动下一个 / 通知与 PiP 上下一个按来源与排序进行（用户决定：显示顺序、循环，自动下一个不循环，虚拟分组台号 = 组内序号）；`PlayerRoute` 带 source + playlistId / uniqueKey（K20）；列表 / 网格 / 紧凑三种视图与四种排序（DataStore）；TV 双栏。修 K1（台标明文，`CleartextHeaderCallFactory`）、K14（前台媒体键）。新 artifact：`coil-network-core` 3.6.3（同 Coil 版本）。无新模块、无新权限、Room 仍 v2。P3c 待用户确认后开始。
 - **P3a 完成**（数据层，CI run 44248545012 全绿，单元测试 397 项（+49），待真机验收；报告 `docs/phase-reports/P3a.md`）：Room schema v2 + `Migration1To2`；收藏 / 观看历史 / 频道与分组覆盖表（以 `(playlistId, uniqueKey)` / `(playlistId, 分组名)` 为键，物化到频道表）；上次频道改为 uniqueKey（修 K18、K20 的续播部分）；台号输入超时 2 s。新依赖：Robolectric 4.18.1（testImplementation，core:database）；新约定插件 `streambox.android.robolectric`。无新模块、无新权限、无新用户可见字符串。P3b / P3c 待用户确认后开始。
 - P0：完成（报告 `docs/phase-reports/P0.md`）。
@@ -105,7 +106,7 @@
 - **R2 沙箱是 ARM64 Linux（aarch64）**：Google 官方只发布 x86_64 Linux 版的 AAPT2 和 build-tools，所以沙箱里很可能打不出 APK（资源编译这一步会失败）。方案：① 纯 Kotlin 模块（解析器、回看、重连、PIN）和 Robolectric 以外的单测在沙箱照常跑；② 用社区编译的 aarch64 版 aapt2，通过 `android.aapt2FromMavenOverride` 本地覆盖（只放在本机 gradle.properties，不进仓库）尝试完整构建；③ 最可靠的完整构建（assembleDebug/Release、Compose UI 测试）放到 GitHub Actions 的 x86_64 runner 上跑。这也是我建议用 GitHub 交付的主要原因。
 - **R3 无法在沙箱跑模拟器**：Compose UI 测试 / 仪器测试写在仓库里，由 CI（Actions 上的模拟器）或你本地运行；每阶段给出可逐条勾选的手动验收清单。
 - **R4 detekt 与 Kotlin 2.4**：detekt 稳定版 1.23.8 内置的是较老的 Kotlin 编译器，2.x 仍是 alpha。方案：用 1.23.8 跑不依赖类型解析的规则集（`detekt` 任务而非 `detektMain`）；若出现兼容错误，再切到 detekt 2.0 alpha 并说明。
-- **R5 RTMP / FFmpeg 扩展**：Media3 RTMP 扩展目前没有与 1.11.1 对齐的稳定版；FFmpeg 软解扩展 Google 不发布预编译包（需用 NDK 自己编译，或用 Jellyfin 的预编译包 1.9.0+1，与 Media3 1.11 版本不对齐且有 GPL/LGPL 许可问题）。方案：RTMP 等 1.12 稳定版发布后接入；在此之前“仅软件解码”开关先用 Media3 自带的软件解码器优先策略（MediaCodec 选择器优先软件 codec），FFmpeg 扩展作为可选项，等你决定（见问题 5）。
+- **R5 RTMP / FFmpeg 扩展**：Media3 RTMP 扩展目前没有与 1.11.1 对齐的稳定版；FFmpeg 软解扩展 Google 不发布预编译包（需用 NDK 自己编译，或用 Jellyfin 的预编译包 1.9.0+1，与 Media3 1.11 版本不对齐且有 GPL/LGPL 许可问题）。**更新（2026-11-18）**：为修 K26，用户要求接入 FFmpeg **音频**解码；Maven Central 上有与 Media3 1.11.1 对齐的预编译包 NextLib `io.github.anilbeesetti:nextlib-media3ext:1.11.1-0.18.0`（GPL-3.0；其 FFmpeg 为 LGPL v3 构建，含 aac/ac3/eac3/dca/truehd/mp3 等解码器，不含 mp2），Jellyfin 包最新 1.9.0+1 与 1.11 不对齐。以下为原方案：RTMP 等 1.12 稳定版发布后接入；在此之前“仅软件解码”开关先用 Media3 自带的软件解码器优先策略（MediaCodec 选择器优先软件 codec），FFmpeg 扩展作为可选项，等你决定（见问题 5）。
 - **R6 UDP/RTP 组播**：Media3 支持 `udp://`，但很多手机网络/路由不转发组播，需 `CHANGE_WIFI_MULTICAST_STATE` 权限并持有 MulticastLock；只在播放组播源时申请锁。RTP 组播需要剥 RTP 头，我会写一个小的 DataSource 封装，标为“尽力而为”。
 - **R7 minSdk 24**（原说明书 23，用户确认改 24 以使用最新 Navigation/DataStore）：但 Android 6 不支持 PiP（需 8.0+）和部分 TLS 1.3。PiP 在低版本隐藏入口，不做降级模拟。
 - **R8 明文 HTTP**：Network Security Config 只能全局或按域名配置，不能按“播放列表”配置。方案：全局允许明文（IPTV 刚需），由 OkHttp 拦截器 + Media3 DataSource 在代码层按列表开关拦截 http 请求；证书校验始终开启。会在 ARCHITECTURE.md 说明取舍。
