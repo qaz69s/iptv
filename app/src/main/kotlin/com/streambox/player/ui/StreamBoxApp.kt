@@ -40,15 +40,16 @@ fun StreamBoxApp(
     formFactor: FormFactor,
     onboardingComplete: Boolean,
     hasPlaylists: suspend () -> Boolean,
+    resumeChannel: suspend () -> Long? = { null },
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentTopLevel = backStackEntry?.destination.topLevelDestination()
 
     if (formFactor == FormFactor.Tv) {
-        TvAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists)
+        TvAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists, resumeChannel)
     } else {
-        TouchAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists)
+        TouchAppLayout(navController, currentTopLevel, onboardingComplete, hasPlaylists, resumeChannel)
     }
 }
 
@@ -59,6 +60,7 @@ private fun TouchAppLayout(
     currentTopLevel: TopLevelDestination?,
     onboardingComplete: Boolean,
     hasPlaylists: suspend () -> Boolean,
+    resumeChannel: suspend () -> Long?,
 ) {
     val layoutType = if (currentTopLevel == null) {
         NavigationSuiteType.None
@@ -82,6 +84,7 @@ private fun TouchAppLayout(
             navController = navController,
             onboardingComplete = onboardingComplete,
             hasPlaylists = hasPlaylists,
+            resumeChannel = resumeChannel,
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -94,6 +97,7 @@ private fun TvAppLayout(
     currentTopLevel: TopLevelDestination?,
     onboardingComplete: Boolean,
     hasPlaylists: suspend () -> Boolean,
+    resumeChannel: suspend () -> Long?,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         // The NavHost always stays in the same place in the tree; only the drawer's items are hidden on
@@ -128,6 +132,7 @@ private fun TvAppLayout(
                 navController = navController,
                 onboardingComplete = onboardingComplete,
                 hasPlaylists = hasPlaylists,
+                resumeChannel = resumeChannel,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(start = if (currentTopLevel != null) 8.dp else 0.dp),

@@ -70,6 +70,8 @@ internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
             onBackgroundPlaybackChanged = viewModel::onBackgroundPlaybackChanged,
             onPictureInPictureChanged = viewModel::onPictureInPictureChanged,
             onPlaybackGesturesChanged = viewModel::onPlaybackGesturesChanged,
+            onResumeLastChannelChanged = viewModel::onResumeLastChannelChanged,
+            onAutoPlayNextChanged = viewModel::onAutoPlayNextChanged,
         ),
     )
 }
@@ -84,6 +86,8 @@ internal data class PlaybackSettingsActions(
     val onBackgroundPlaybackChanged: (Boolean) -> Unit = {},
     val onPictureInPictureChanged: (Boolean) -> Unit = {},
     val onPlaybackGesturesChanged: (Boolean) -> Unit = {},
+    val onResumeLastChannelChanged: (Boolean) -> Unit = {},
+    val onAutoPlayNextChanged: (Boolean) -> Unit = {},
 )
 
 @Composable
@@ -200,6 +204,7 @@ private fun LazyListScope.playbackSection(
             onCheckedChange = actions.onBackgroundPlaybackChanged,
         )
     }
+    continuationItems(playback, actions)
     touchOnlyItems(playback, actions, showPictureInPicture, showGestures)
     item {
         SwitchRow(
@@ -384,6 +389,26 @@ private fun SettingsScreenPreview() {
             uiState = SettingsUiState.Success(AppSettings(themeMode = ThemeMode.Dark)),
             onThemeModeSelected = {},
             onDynamicColorChanged = {},
+        )
+    }
+}
+
+/** "Continue last channel on launch" and "auto play next" (phones, tablets and TV). */
+private fun LazyListScope.continuationItems(playback: PlaybackSettings, actions: PlaybackSettingsActions) {
+    item {
+        SwitchRow(
+            label = stringResource(R.string.feature_settings_resume_last_channel),
+            summary = stringResource(R.string.feature_settings_resume_last_channel_summary),
+            checked = playback.resumeLastChannel,
+            onCheckedChange = actions.onResumeLastChannelChanged,
+        )
+    }
+    item {
+        SwitchRow(
+            label = stringResource(R.string.feature_settings_auto_play_next),
+            summary = stringResource(R.string.feature_settings_auto_play_next_summary),
+            checked = playback.autoPlayNext,
+            onCheckedChange = actions.onAutoPlayNextChanged,
         )
     }
 }

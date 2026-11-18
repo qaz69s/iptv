@@ -29,4 +29,8 @@
     <string name="feature_settings_section_about">About</string>
     <string name="feature_settings_version">Version %1$s</string>
     <string name="feature_settings_disclaimer">This app is a media player only and does not provide any content. You are solely responsible for the legality of the content you add.</string>
+    <string name="feature_settings_resume_last_channel">Continue last channel on launch</string>
+    <string name="feature_settings_resume_last_channel_summary">Open the channel you watched last when the app starts</string>
+    <string name="feature_settings_auto_play_next">Auto-play next</string>
+    <string name="feature_settings_auto_play_next_summary">When on-demand content ends, play the next item in the same group. Live channels are not affected</string>
 </resources>

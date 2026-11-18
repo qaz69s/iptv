@@ -28,4 +28,8 @@
     <string name="feature_settings_section_about">关于</string>
     <string name="feature_settings_version">版本 %1$s</string>
     <string name="feature_settings_disclaimer">本应用仅为播放器，不提供任何内容。用户需自行承担所添加内容的合法性。</string>
+    <string name="feature_settings_resume_last_channel">启动时继续播放上次频道</string>
+    <string name="feature_settings_resume_last_channel_summary">打开应用时直接进入上次观看的频道</string>
+    <string name="feature_settings_auto_play_next">自动播放下一个</string>
+    <string name="feature_settings_auto_play_next_summary">点播内容播完后自动播放同分组的下一个；直播不受影响</string>
 </resources>

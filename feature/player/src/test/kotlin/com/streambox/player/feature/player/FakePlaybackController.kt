@@ -29,6 +29,9 @@ class FakePlaybackController : PlaybackController {
     var videoTrack: TrackId? = null
     var subtitleTrack: TrackId? = null
     val backgroundModes = mutableListOf<Boolean>()
+    var pauses = 0
+    val volumes = mutableListOf<Float>()
+    val volume: Float get() = volumes.lastOrNull() ?: 1f
     override var channelNavigator: ChannelNavigator? = null
 
     override fun play(item: PlaybackItem) {
@@ -43,6 +46,15 @@ class FakePlaybackController : PlaybackController {
 
     override fun togglePlayPause() {
         playPauseToggles++
+    }
+
+    override fun pause() {
+        pauses++
+        state.update { it.copy(isPlaying = false) }
+    }
+
+    override fun setVolume(volume: Float) {
+        volumes += volume
     }
 
     override fun release() {
@@ -81,6 +93,9 @@ class FakePlaybackController : PlaybackController {
     }
 
     fun startPlaying() = state.update { it.copy(isBuffering = false, isPlaying = true) }
+
+    /** On-demand content reached its end (STATE_ENDED, not live). */
+    fun end() = state.update { it.copy(isBuffering = false, isPlaying = false, ended = true, isSeekable = true) }
 
     fun fail(error: PlaybackError) = state.update { it.copy(isBuffering = false, isPlaying = false, error = error) }
 }

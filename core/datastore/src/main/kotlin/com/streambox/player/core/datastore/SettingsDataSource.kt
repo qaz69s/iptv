@@ -6,10 +6,12 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.SubtitleBackground
@@ -47,6 +49,13 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
             welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
             disclaimerAccepted = prefs[Keys.DISCLAIMER_ACCEPTED] ?: false,
         )
+    }.distinctUntilChanged()
+
+    /** Last channel that started playing; null when none was saved (or it was cleared). */
+    val lastPlayedChannel: Flow<LastPlayedChannel?> = safeData.map { prefs ->
+        val playlistId = prefs[Keys.LAST_PLAYLIST_ID]
+        val channelId = prefs[Keys.LAST_CHANNEL_ID]
+        if (playlistId != null && channelId != null) LastPlayedChannel(playlistId, channelId) else null
     }.distinctUntilChanged()
 
     suspend fun setThemeMode(mode: ThemeMode) {
@@ -95,6 +104,28 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.PLAYBACK_GESTURES] = enabled }
     }
 
+    suspend fun setResumeLastChannel(enabled: Boolean) {
+        dataStore.edit { it[Keys.RESUME_LAST_CHANNEL] = enabled }
+    }
+
+    suspend fun setAutoPlayNext(enabled: Boolean) {
+        dataStore.edit { it[Keys.AUTO_PLAY_NEXT] = enabled }
+    }
+
+    suspend fun setLastPlayedChannel(channel: LastPlayedChannel) {
+        dataStore.edit {
+            it[Keys.LAST_PLAYLIST_ID] = channel.playlistId
+            it[Keys.LAST_CHANNEL_ID] = channel.channelId
+        }
+    }
+
+    suspend fun clearLastPlayedChannel() {
+        dataStore.edit {
+            it.remove(Keys.LAST_PLAYLIST_ID)
+            it.remove(Keys.LAST_CHANNEL_ID)
+        }
+    }
+
     suspend fun markWelcomeSeen() {
         dataStore.edit { it[Keys.WELCOME_SEEN] = true }
     }
@@ -122,6 +153,8 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
             backgroundPlayback = this[Keys.BACKGROUND_PLAYBACK] ?: defaults.backgroundPlayback,
             pictureInPicture = this[Keys.PICTURE_IN_PICTURE] ?: defaults.pictureInPicture,
             playbackGestures = this[Keys.PLAYBACK_GESTURES] ?: defaults.playbackGestures,
+            resumeLastChannel = this[Keys.RESUME_LAST_CHANNEL] ?: defaults.resumeLastChannel,
+            autoPlayNext = this[Keys.AUTO_PLAY_NEXT] ?: defaults.autoPlayNext,
         )
     }
 
@@ -144,5 +177,9 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         val BACKGROUND_PLAYBACK = booleanPreferencesKey("playback_background_playback")
         val PICTURE_IN_PICTURE = booleanPreferencesKey("playback_picture_in_picture")
         val PLAYBACK_GESTURES = booleanPreferencesKey("playback_gestures")
+        val RESUME_LAST_CHANNEL = booleanPreferencesKey("playback_resume_last_channel")
+        val AUTO_PLAY_NEXT = booleanPreferencesKey("playback_auto_play_next")
+        val LAST_PLAYLIST_ID = longPreferencesKey("last_played_playlist_id")
+        val LAST_CHANNEL_ID = longPreferencesKey("last_played_channel_id")
     }
 }

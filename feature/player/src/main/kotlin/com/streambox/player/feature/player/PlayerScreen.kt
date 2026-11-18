@@ -175,6 +175,7 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
             onAspectRatio = viewModel::setAspectRatio,
             onSubtitleStyle = viewModel::setSubtitleStyle,
             onPictureInPicture = viewModel::requestPictureInPicture,
+            onSleepTimer = viewModel::setSleepTimer,
         ),
         gestureActions = PlayerGestureActions(
             onSeek = viewModel::seekByGesture,

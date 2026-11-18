@@ -76,6 +76,14 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
         viewModelScope.launch { settingsRepository.setPlaybackGestures(enabled) }
     }
 
+    fun onResumeLastChannelChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setResumeLastChannel(enabled) }
+    }
+
+    fun onAutoPlayNextChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoPlayNext(enabled) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
     }

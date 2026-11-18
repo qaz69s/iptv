@@ -54,6 +54,10 @@ data class PlaybackSettings(
      * Off: only tap (overlay) and vertical swipe anywhere (zap) remain.
      */
     val playbackGestures: Boolean = true,
+    /** On a cold start, open the player on the channel that played last (when it still exists). */
+    val resumeLastChannel: Boolean = false,
+    /** When on-demand content (not live) finishes, play the next channel of the same group. */
+    val autoPlayNext: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_RECONNECT_ATTEMPTS = 5

@@ -90,6 +90,7 @@ internal class Media3PlaybackController @Inject constructor(
     private val externalSubtitles = mutableListOf<MediaItem.SubtitleConfiguration>()
     private var networkJob: Job? = null
     private var inBackground = false
+    private var volume = 1f
 
     override var channelNavigator: ChannelNavigator? = null
 
@@ -98,7 +99,10 @@ internal class Media3PlaybackController @Inject constructor(
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             _state.update {
-                it.copy(isBuffering = playbackState == Player.STATE_BUFFERING || reconnector.status.value != null)
+                it.copy(
+                    isBuffering = playbackState == Player.STATE_BUFFERING || reconnector.status.value != null,
+                    ended = false,
+                )
             }
             if (playbackState == Player.STATE_ENDED) onEnded()
         }
@@ -156,6 +160,15 @@ internal class Media3PlaybackController @Inject constructor(
         if (player.isPlaying) player.pause() else player.play()
     }
 
+    override fun pause() {
+        _player.value?.pause()
+    }
+
+    override fun setVolume(volume: Float) {
+        this.volume = volume.coerceIn(0f, 1f)
+        _player.value?.volume = this.volume
+    }
+
     override fun release() {
         networkJob?.cancel()
         networkJob = null
@@ -167,6 +180,7 @@ internal class Media3PlaybackController @Inject constructor(
         _player.value = null
         playerConfig = null
         inBackground = false
+        volume = 1f
         _state.value = PlaybackState()
     }
 
@@ -290,6 +304,7 @@ internal class Media3PlaybackController @Inject constructor(
             .build()
             .also {
                 it.addListener(listener)
+                it.volume = volume
                 if (inBackground) it.applyBackgroundMode()
                 playerConfig = wanted
                 _player.value = it
@@ -387,7 +402,11 @@ internal class Media3PlaybackController @Inject constructor(
     private fun onEnded() {
         val player = _player.value ?: return
         val live = player.isCurrentMediaItemLive || player.duration == C.TIME_UNSET
-        if (!live) return
+        if (!live) {
+            // On-demand content finished: the screen decides whether to play the next channel.
+            _state.update { it.copy(isBuffering = false, isPlaying = false, ended = true) }
+            return
+        }
         // A live stream must never "finish": the source closed the connection.
         if (reconnector.onFailure(FailureKind.SOURCE_ENDED)) {
             _state.update { it.copy(isBuffering = true, isPlaying = false, reconnect = reconnector.status.value) }

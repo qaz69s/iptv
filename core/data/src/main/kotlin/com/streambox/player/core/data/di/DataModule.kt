@@ -8,10 +8,12 @@ import com.streambox.player.core.data.importer.PlaylistSourceOpener
 import com.streambox.player.core.data.importer.RoomPlaylistImportStore
 import com.streambox.player.core.data.repository.AndroidUriPermissions
 import com.streambox.player.core.data.repository.DefaultChannelRepository
+import com.streambox.player.core.data.repository.DefaultLastChannelRepository
 import com.streambox.player.core.data.repository.DefaultPlaylistRepository
 import com.streambox.player.core.data.repository.DefaultSettingsRepository
 import com.streambox.player.core.data.repository.UriPermissions
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.LastChannelRepository
 import com.streambox.player.core.domain.repository.PlaylistRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
 import dagger.Binds
@@ -30,6 +32,9 @@ internal abstract class DataModule {
 
     @Binds
     abstract fun bindsChannelRepository(impl: DefaultChannelRepository): ChannelRepository
+
+    @Binds
+    abstract fun bindsLastChannelRepository(impl: DefaultLastChannelRepository): LastChannelRepository
 
     @Binds
     abstract fun bindsPlaylistImporter(impl: M3uImporter): PlaylistImporter

@@ -25,6 +25,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val formFactor = detectFormFactor()
+        // Only a cold start continues the last channel; a recreated activity keeps its own back stack.
+        val resumeChannel: suspend () -> Long? =
+            if (savedInstanceState == null) viewModel::channelToResume else NO_RESUME
 
         setContent {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -35,17 +38,21 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalFormFactor provides formFactor) {
                 if (formFactor == FormFactor.Tv) {
                     StreamBoxTvTheme(themeMode = ready.settings.themeMode) {
-                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists)
+                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists, resumeChannel)
                     }
                 } else {
                     StreamBoxTheme(
                         themeMode = ready.settings.themeMode,
                         useDynamicColor = ready.settings.useDynamicColor,
                     ) {
-                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists)
+                        StreamBoxApp(formFactor, onboardingCompleteAtLaunch, viewModel::hasPlaylists, resumeChannel)
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        val NO_RESUME: suspend () -> Long? = { null }
     }
 }

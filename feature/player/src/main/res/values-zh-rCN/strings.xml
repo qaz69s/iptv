@@ -48,4 +48,13 @@
     <string name="feature_player_gesture_volume">音量 %1$d%%</string>
     <string name="feature_player_gesture_rewind">−10 秒</string>
     <string name="feature_player_gesture_forward">+10 秒</string>
+    <string name="feature_player_sleep_timer">睡眠定时</string>
+    <string name="feature_player_sleep_timer_remaining">%1$s · %2$s 后暂停</string>
+    <string name="feature_player_sleep_off">关</string>
+    <string name="feature_player_sleep_minutes">%1$d 分钟</string>
+    <string name="feature_player_sleep_custom">自定义</string>
+    <string name="feature_player_sleep_custom_value">自定义（%1$d 分钟）</string>
+    <string name="feature_player_sleep_custom_title">自定义睡眠定时</string>
+    <string name="feature_player_sleep_custom_label">分钟</string>
+    <string name="feature_player_sleep_custom_hint">%1$d–%2$d 分钟</string>
 </resources>

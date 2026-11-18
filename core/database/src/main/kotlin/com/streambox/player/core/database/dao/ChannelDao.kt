@@ -20,6 +20,8 @@ data class PlaybackRow(
     val userAgent: String?,
     val referrer: String?,
     val allowCleartext: Boolean,
+    val playlistId: Long,
+    val groupName: String?,
 )
 
 data class ChannelPositionRow(val playlistSort: Int, val playlistId: Long, val channelSort: Int)
@@ -100,7 +102,8 @@ interface ChannelDao {
         SELECT c.id, c.name, c.logoUrl, c.streamUrl, c.number, c.sortOrder,
             COALESCE(c.userAgent, p.userAgent) AS userAgent,
             COALESCE(c.referrer, p.referrer) AS referrer,
-            p.allowCleartext AS allowCleartext
+            p.allowCleartext AS allowCleartext, c.playlistId AS playlistId,
+            (SELECT g.name FROM channel_groups g WHERE g.id = c.groupId) AS groupName
         FROM channels c INNER JOIN playlists p ON p.id = c.playlistId
         WHERE c.id = :channelId
         """,

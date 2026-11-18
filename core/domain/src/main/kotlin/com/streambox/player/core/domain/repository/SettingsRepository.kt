@@ -34,6 +34,10 @@ interface SettingsRepository {
 
     suspend fun setPlaybackGestures(enabled: Boolean)
 
+    suspend fun setResumeLastChannel(enabled: Boolean)
+
+    suspend fun setAutoPlayNext(enabled: Boolean)
+
     suspend fun markWelcomeSeen()
 
     suspend fun acceptDisclaimer()

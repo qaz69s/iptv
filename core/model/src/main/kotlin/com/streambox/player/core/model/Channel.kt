@@ -34,6 +34,13 @@ data class PlaybackItem(
     val referrer: String?,
     val allowCleartext: Boolean,
     val displayNumber: Int,
+    /** Playlist the channel belongs to (remembered as "last channel"). */
+    val playlistId: Long = 0,
+    /** Name of the channel's own group; null when it has none. */
+    val groupName: String? = null,
 )
+
+/** The channel that last started playing successfully, remembered for "continue on launch". */
+data class LastPlayedChannel(val playlistId: Long, val channelId: Long)
 
 enum class ZapDirection { NEXT, PREVIOUS }

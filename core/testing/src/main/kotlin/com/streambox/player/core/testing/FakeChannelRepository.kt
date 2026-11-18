@@ -29,7 +29,7 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
     }
 
     override suspend fun playbackItem(channelId: Long): PlaybackItem? =
-        channelsFlow.value.map { it.second }.firstOrNull { it.id == channelId }?.let {
+        channelsFlow.value.firstOrNull { it.second.id == channelId }?.let { (group, it) ->
             PlaybackItem(
                 channelId = it.id,
                 name = it.name,
@@ -39,6 +39,8 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
                 referrer = null,
                 allowCleartext = true,
                 displayNumber = it.displayNumber,
+                playlistId = it.playlistId,
+                groupName = group,
             )
         }
 
@@ -51,6 +53,12 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
             ZapDirection.PREVIOUS -> if (index < 0) list.lastIndex else (index - 1 + list.size) % list.size
         }
         return list[next].id
+    }
+
+    override suspend fun nextChannel(channelId: Long, groupName: String?): Long? {
+        val list = filtered(groupName)
+        val index = list.indexOfFirst { it.id == channelId }
+        return if (index < 0) null else list.getOrNull(index + 1)?.id
     }
 
     override suspend fun channelIdByNumber(number: Int, groupName: String?): Long? {

@@ -6,8 +6,10 @@ import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.ZapDirection
+import com.streambox.player.core.player.sleep.MonotonicClock
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeLastChannelRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +48,8 @@ class PlayerViewModelTest {
         repository,
         controller,
         settings,
+        FakeLastChannelRepository(),
+        MonotonicClock { mainDispatcher.testDispatcher.scheduler.currentTime },
     )
 
     private fun TestScope.collect(viewModel: PlayerViewModel) {

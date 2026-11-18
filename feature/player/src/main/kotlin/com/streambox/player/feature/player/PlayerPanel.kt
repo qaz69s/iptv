@@ -76,6 +76,8 @@ internal data class PlayerPanelActions(
     val onSubtitleStyle: (SubtitleStyle) -> Unit,
     /** Close the panel and shrink into picture-in-picture. */
     val onPictureInPicture: () -> Unit = {},
+    /** Minutes, or null to turn the sleep timer off. */
+    val onSleepTimer: (Int?) -> Unit = {},
 )
 
 /** Touch: modal bottom sheet. TV: focusable side panel in a dialog; Menu or Back closes it. */
@@ -128,6 +130,8 @@ private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firs
                     .semantics { heading() },
             )
         }
+        // First section, so TV focus lands on it; the remaining time updates every second.
+        item(key = "sleep") { SleepTimerSection(state.sleepTimer, actions.onSleepTimer, firstFocus) }
         if (pipSupported && state.pictureInPictureEnabled) {
             item(key = "pip") {
                 ActionRow(
@@ -137,17 +141,13 @@ private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firs
                 )
             }
         }
-        aspectSection(state.aspectRatio, actions.onAspectRatio, firstFocus)
+        aspectSection(state.aspectRatio, actions.onAspectRatio)
         tracksSections(state.tracks, actions)
         subtitleStyleSection(state.subtitleStyle, actions.onSubtitleStyle)
     }
 }
 
-private fun LazyListScope.aspectSection(
-    current: AspectRatioMode,
-    onSelect: (AspectRatioMode) -> Unit,
-    firstFocus: FocusRequester?,
-) {
+private fun LazyListScope.aspectSection(current: AspectRatioMode, onSelect: (AspectRatioMode) -> Unit) {
     item { SectionHeader(stringResource(com.streambox.player.core.ui.R.string.core_ui_aspect_ratio)) }
     item {
         ChipRow(
@@ -155,7 +155,6 @@ private fun LazyListScope.aspectSection(
             selected = current,
             label = { stringResource(it.labelRes()) },
             onSelect = onSelect,
-            firstFocus = firstFocus,
         )
     }
 }

@@ -48,6 +48,11 @@ class FakeSettingsRepository(
 
     override suspend fun setPlaybackGestures(enabled: Boolean) = updatePlayback { it.copy(playbackGestures = enabled) }
 
+    override suspend fun setResumeLastChannel(enabled: Boolean) =
+        updatePlayback { it.copy(resumeLastChannel = enabled) }
+
+    override suspend fun setAutoPlayNext(enabled: Boolean) = updatePlayback { it.copy(autoPlayNext = enabled) }
+
     private fun updatePlayback(transform: (PlaybackSettings) -> PlaybackSettings) =
         settingsFlow.update { it.copy(playback = transform(it.playback)) }
 

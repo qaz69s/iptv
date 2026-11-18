@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.LastChannelRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
 import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
@@ -14,9 +16,14 @@ import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.player.ChannelNavigator
 import com.streambox.player.core.player.PlaybackController
+import com.streambox.player.core.player.PlaybackState
 import com.streambox.player.core.player.PlaybackTracks
 import com.streambox.player.core.player.TrackId
 import com.streambox.player.core.player.reconnect.ReconnectStatus
+import com.streambox.player.core.player.sleep.MonotonicClock
+import com.streambox.player.core.player.sleep.SleepTimer
+import com.streambox.player.core.player.sleep.SleepTimerOutput
+import com.streambox.player.core.player.sleep.SleepTimerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -66,10 +73,20 @@ data class PlayerUiState(
     val pictureInPictureEnabled: Boolean = true,
     /** Setting: touch gestures (seek / brightness / volume swipes, double-tap). Ignored on TV. */
     val gesturesEnabled: Boolean = true,
+    /** Running sleep timer (remaining time shown in the panel); null while off. */
+    val sleepTimer: SleepTimerState? = null,
 )
 
 /** Buttons of the picture-in-picture window. */
 enum class PipAction { PREVIOUS, PLAY_PAUSE, NEXT }
+
+/** Channel lookup plus the sleep timer, combined first to stay within combine's typed arity. */
+private data class Lookup(
+    val item: PlaybackItem?,
+    val isLoading: Boolean,
+    val error: PlaybackError?,
+    val sleepTimer: SleepTimerState?,
+)
 
 /** Screen-local state that is not owned by the controller or the repositories. */
 private data class ScreenLocal(
@@ -88,6 +105,11 @@ private data class ScreenLocal(
  * on, the player keeps running audio-only (MediaSession service) and next / previous from the
  * notification or a headset zap through [zap]. In picture-in-picture the screen keeps playing even
  * while stopped (screen off); closing the window falls back to background playback or a release.
+ *
+ * P2c: the sleep timer lives here (it keeps running during background playback and PiP, because this
+ * ViewModel stays alive as long as the player screen is on the back stack, and dies with the player);
+ * every channel that starts playing is remembered as the last channel; finished on-demand content
+ * moves on to the next channel of the group when "auto play next" is on.
  */
 @Suppress("TooManyFunctions")
 @HiltViewModel
@@ -96,6 +118,8 @@ class PlayerViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
+    private val lastChannelRepository: LastChannelRepository,
+    clock: MonotonicClock,
 ) : ViewModel() {
     /** Route arguments of [com.streambox.player.feature.player.navigation.PlayerRoute]. */
     private val groupName: String? = savedStateHandle.get<String>(KEY_GROUP)
@@ -120,6 +144,19 @@ class PlayerViewModel @Inject constructor(
     private var notFoundJob: Job? = null
     private val zapMutex = Mutex()
 
+    /** Channel id last written to [LastChannelRepository], so a channel is saved once per start. */
+    private var savedChannelId: Long? = null
+
+    private val sleepTimer = SleepTimer(
+        scope = viewModelScope,
+        clock = clock,
+        output = object : SleepTimerOutput {
+            override fun setVolume(volume: Float) = playbackController.setVolume(volume)
+
+            override fun onExpired() = playbackController.pause()
+        },
+    )
+
     private val numberInput = ChannelNumberInput(viewModelScope) { number -> jumpToNumber(number) }
 
     val player: StateFlow<Player?> = playbackController.player
@@ -130,18 +167,19 @@ class PlayerViewModel @Inject constructor(
     val pictureInPictureRequests: Flow<Unit> = pipRequests.receiveAsFlow()
 
     val uiState: StateFlow<PlayerUiState> = combine(
-        combine(current, loading, loadError) { item, isLoading, lookupError -> Triple(item, isLoading, lookupError) },
+        combine(current, loading, loadError, sleepTimer.state, ::Lookup),
         playbackController.state,
         local,
         playbackSettings,
         numberInput.digits,
-    ) { (item, isLoading, lookupError), playback, screen, prefs, digits ->
+    ) { lookup, playback, screen, prefs, digits ->
+        val item = lookup.item
         // Ignore controller state that still belongs to the previous channel during a zap.
         val sameItem = item != null && playback.item?.channelId == item.channelId
-        val error = lookupError ?: playback.error.takeIf { sameItem }
+        val error = lookup.error ?: playback.error.takeIf { sameItem }
         PlayerUiState(
             channel = item,
-            isBuffering = error == null && (isLoading || (sameItem && playback.isBuffering)),
+            isBuffering = error == null && (lookup.isLoading || (sameItem && playback.isBuffering)),
             isPlaying = sameItem && playback.isPlaying,
             error = error,
             overlayVisible = !screen.pictureInPicture && (screen.overlay || error != null || digits != null),
@@ -158,6 +196,7 @@ class PlayerViewModel @Inject constructor(
             pictureInPicture = screen.pictureInPicture,
             pictureInPictureEnabled = prefs.pictureInPicture,
             gesturesEnabled = prefs.playbackGestures,
+            sleepTimer = lookup.sleepTimer,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 
@@ -170,6 +209,47 @@ class PlayerViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { zapMutex.withLock { load(channelId) } }
+        viewModelScope.launch { playbackController.state.collect(::rememberPlayingChannel) }
+        viewModelScope.launch {
+            playbackController.state
+                .map { state -> state.item?.channelId?.takeIf { state.ended } }
+                .distinctUntilChanged()
+                .collect { endedId -> if (endedId != null && endedId == current.value?.channelId) onContentEnded() }
+        }
+    }
+
+    /** Saves the channel the first time it reports playing (a successful start), once per channel. */
+    private suspend fun rememberPlayingChannel(state: PlaybackState) {
+        val item = state.item ?: return
+        if (!state.isPlaying || item.channelId != current.value?.channelId || item.channelId == savedChannelId) return
+        savedChannelId = item.channelId
+        lastChannelRepository.save(LastPlayedChannel(playlistId = item.playlistId, channelId = item.channelId))
+    }
+
+    /**
+     * On-demand content finished (live streams never get here; they reconnect). With "auto play next"
+     * on, plays the following channel of the group the user came from, else of the channel's own group;
+     * stops after the last one (no wrap-around).
+     */
+    private fun onContentEnded() {
+        if (!playbackSettings.value.autoPlayNext) return
+        viewModelScope.launch {
+            zapMutex.withLock {
+                val group = groupName ?: current.value?.groupName
+                val next = channelRepository.nextChannel(channelId, group)
+                if (next != null && next != channelId) load(next)
+            }
+        }
+    }
+
+    // --- Sleep timer ----------------------------------------------------------------------------
+
+    /**
+     * Starts (or restarts) the sleep timer for [minutes]; null or 0 turns it off. Custom values are
+     * clamped to [SleepTimer.MIN_MINUTES]..[SleepTimer.MAX_MINUTES].
+     */
+    fun setSleepTimer(minutes: Int?) {
+        if (minutes == null || minutes <= 0) sleepTimer.cancel() else sleepTimer.start(minutes)
     }
 
     /**
@@ -455,6 +535,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        sleepTimer.cancel()
         if (playbackController.channelNavigator === navigator) playbackController.channelNavigator = null
         playbackController.release()
     }

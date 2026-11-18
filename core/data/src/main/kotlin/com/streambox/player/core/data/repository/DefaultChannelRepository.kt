@@ -37,6 +37,8 @@ internal class DefaultChannelRepository @Inject constructor(private val channelD
             referrer = it.referrer,
             allowCleartext = it.allowCleartext,
             displayNumber = it.number ?: (it.sortOrder + 1),
+            playlistId = it.playlistId,
+            groupName = it.groupName,
         )
     }
 
@@ -51,6 +53,11 @@ internal class DefaultChannelRepository @Inject constructor(private val channelD
                 channelDao.previousBefore(groupName, position.playlistSort, position.playlistId, position.channelSort)
                     ?: channelDao.last(groupName)
         }
+    }
+
+    override suspend fun nextChannel(channelId: Long, groupName: String?): Long? {
+        val position = channelDao.position(channelId) ?: return null
+        return channelDao.nextAfter(groupName, position.playlistSort, position.playlistId, position.channelSort)
     }
 
     override suspend fun channelIdByNumber(number: Int, groupName: String?): Long? =

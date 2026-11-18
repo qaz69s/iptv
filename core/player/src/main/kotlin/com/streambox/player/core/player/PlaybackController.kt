@@ -20,6 +20,8 @@ data class PlaybackState(
     /** True after a decoder failure switched this stream to software decoders. */
     val softwareDecoderFallback: Boolean = false,
     val tracks: PlaybackTracks = PlaybackTracks(),
+    /** On-demand content (not live) played to its end. A live stream that ends reconnects instead. */
+    val ended: Boolean = false,
 )
 
 /**
@@ -42,6 +44,15 @@ interface PlaybackController {
 
     /** Play / pause toggle (e.g. the PiP action); with no player, idle or failed it [retry]s instead. */
     fun togglePlayPause()
+
+    /** Pauses (keeps the player and position); no-op without a player. */
+    fun pause()
+
+    /**
+     * Player output volume 0..1 (not the device volume), e.g. the sleep timer's fade-out. Kept across
+     * player rebuilds; [release] resets it to 1.
+     */
+    fun setVolume(volume: Float)
 
     /** Stops playback and frees decoders / network; the next [play] creates a fresh player. */
     fun release()

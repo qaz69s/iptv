@@ -37,6 +37,10 @@ internal class DefaultSettingsRepository @Inject constructor(private val dataSou
 
     override suspend fun setPlaybackGestures(enabled: Boolean) = dataSource.setPlaybackGestures(enabled)
 
+    override suspend fun setResumeLastChannel(enabled: Boolean) = dataSource.setResumeLastChannel(enabled)
+
+    override suspend fun setAutoPlayNext(enabled: Boolean) = dataSource.setAutoPlayNext(enabled)
+
     override suspend fun markWelcomeSeen() = dataSource.markWelcomeSeen()
 
     override suspend fun acceptDisclaimer() = dataSource.acceptDisclaimer()

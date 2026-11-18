@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.SubtitleBackground
@@ -22,6 +23,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -189,5 +191,45 @@ class SettingsDataSourceTest {
         assertEquals(0, source.settings.first().playback.maxReconnectAttempts)
         source.setMaxReconnectAttempts(PlaybackSettings.MAX_RECONNECT_ATTEMPTS + 1)
         assertEquals(PlaybackSettings.MAX_RECONNECT_ATTEMPTS, source.settings.first().playback.maxReconnectAttempts)
+    }
+
+    @Test
+    fun `resume last channel and auto play next default off and persist`() = runTest(UnconfinedTestDispatcher()) {
+        val source = createDataSource()
+        assertFalse(source.settings.first().playback.resumeLastChannel)
+        assertFalse(source.settings.first().playback.autoPlayNext)
+
+        source.setResumeLastChannel(true)
+        source.setAutoPlayNext(true)
+        assertTrue(source.settings.first().playback.resumeLastChannel)
+        assertTrue(source.settings.first().playback.autoPlayNext)
+
+        source.setAutoPlayNext(false)
+        assertTrue(source.settings.first().playback.resumeLastChannel)
+        assertFalse(source.settings.first().playback.autoPlayNext)
+    }
+
+    @Test
+    fun `last played channel is saved, overwritten and cleared`() = runTest(UnconfinedTestDispatcher()) {
+        val source = createDataSource()
+        assertNull(source.lastPlayedChannel.first())
+
+        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 3, channelId = 42))
+        assertEquals(LastPlayedChannel(3, 42), source.lastPlayedChannel.first())
+        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 4, channelId = 7))
+        assertEquals(LastPlayedChannel(4, 7), source.lastPlayedChannel.first())
+
+        source.clearLastPlayedChannel()
+        assertNull(source.lastPlayedChannel.first())
+        // Saving the last channel does not touch the settings.
+        assertEquals(PlaybackSettings(), source.settings.first().playback)
+    }
+
+    @Test
+    fun `last played channel survives a new data source on the same file`() = runTest(UnconfinedTestDispatcher()) {
+        val store = createDataStore()
+        SettingsDataSource(store).setLastPlayedChannel(LastPlayedChannel(1, 9))
+
+        assertEquals(LastPlayedChannel(1, 9), SettingsDataSource(store).lastPlayedChannel.first())
     }
 }

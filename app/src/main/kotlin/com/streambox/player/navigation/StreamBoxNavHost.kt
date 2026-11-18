@@ -1,6 +1,7 @@
 package com.streambox.player.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -32,9 +33,17 @@ fun StreamBoxNavHost(
     onboardingComplete: Boolean,
     hasPlaylists: suspend () -> Boolean,
     modifier: Modifier = Modifier,
+    resumeChannel: suspend () -> Long? = { null },
 ) {
     val scope = rememberCoroutineScope()
     val currentHasPlaylists by rememberUpdatedState(hasPlaylists)
+    // "Continue last channel on launch": opens the player on top of Channels, so Back lands there.
+    // Only after onboarding; resumeChannel answers once per cold start.
+    if (onboardingComplete) {
+        LaunchedEffect(Unit) {
+            resumeChannel()?.let { channelId -> navController.navigateToPlayer(channelId, groupName = null) }
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = if (onboardingComplete) ChannelsRoute else OnboardingGraphRoute,

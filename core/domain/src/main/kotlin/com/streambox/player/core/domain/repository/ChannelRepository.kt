@@ -22,6 +22,9 @@ interface ChannelRepository {
     /** Next / previous channel within the same filter, wrapping around at the ends. */
     suspend fun adjacentChannel(channelId: Long, groupName: String?, direction: ZapDirection): Long?
 
+    /** Next channel within [groupName] (null = all groups) without wrapping; null after the last one. */
+    suspend fun nextChannel(channelId: Long, groupName: String?): Long?
+
     /**
      * Channel whose display number (tvg-chno, else playlist position) is [number]. A match inside
      * [groupName] wins; otherwise the first match across all enabled playlists. Null when none.

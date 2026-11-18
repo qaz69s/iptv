@@ -145,6 +145,20 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `toggling resume last channel and auto play next persists them`() = runTest {
+        viewModel.uiState.test {
+            assertFalse(awaitSettings { true }.playback.resumeLastChannel)
+            viewModel.onResumeLastChannelChanged(true)
+            assertTrue(awaitSettings { it.playback.resumeLastChannel }.playback.resumeLastChannel)
+            viewModel.onAutoPlayNextChanged(true)
+            val playback = awaitSettings { it.playback.autoPlayNext }.playback
+            assertTrue(playback.resumeLastChannel)
+            viewModel.onAutoPlayNextChanged(false)
+            assertFalse(awaitSettings { !it.playback.autoPlayNext }.playback.autoPlayNext)
+        }
+    }
+
     /** Skips Loading (and any stale states) until a Success matching [predicate] arrives. */
     private suspend fun ReceiveTurbine<SettingsUiState>.awaitSettings(
         predicate: (AppSettings) -> Boolean,
