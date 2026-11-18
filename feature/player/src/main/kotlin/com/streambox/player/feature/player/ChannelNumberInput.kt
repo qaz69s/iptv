@@ -74,7 +74,8 @@ class ChannelNumberInput(
     }
 
     companion object {
-        const val DEFAULT_TIMEOUT_MS = 1_500L
+        /** Requirements §4.2: the typed number is confirmed after 2 seconds. */
+        const val DEFAULT_TIMEOUT_MS = 2_000L
         const val DEFAULT_MAX_DIGITS = 4
         private const val MAX_DIGIT = 9
     }

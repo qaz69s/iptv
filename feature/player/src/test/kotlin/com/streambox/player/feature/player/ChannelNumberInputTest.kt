@@ -120,6 +120,20 @@ class ChannelNumberInputTest {
         assertNull(input.digits.value)
     }
 
+    @Test
+    fun `the default timeout is 2 seconds (requirements 4_2)`() = runTest {
+        val input = ChannelNumberInput(backgroundScope) { committed += it }
+
+        input.onDigit(7)
+        advanceTimeBy(1_999)
+        runCurrent()
+        assertTrue(committed.isEmpty())
+
+        advanceTimeBy(2)
+        runCurrent()
+        assertEquals(listOf(7), committed)
+    }
+
     private companion object {
         const val TIMEOUT_MS = 1_000L
     }
