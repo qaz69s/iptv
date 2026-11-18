@@ -7,7 +7,7 @@
 **StreamBox Player**（`com.streambox.player`）：一款 Android IPTV **纯播放器**，功能对标 Televizo，覆盖手机 / 平板 / Android TV（同一个 APK）。
 - **不内置、不预置任何频道源或内容**。首次启动是空状态，用户自己添加 M3U / M3U8 / Xtream Codes 播放列表和 XMLTV 节目单。
 - 技术栈：Kotlin 2.4 · Jetpack Compose（Material 3）+ Compose for TV · Hilt · Room + Paging · DataStore · OkHttp · Media3 ExoPlayer · Coil 3 · 多模块 Clean Architecture。
-- 当前进度：**P0、P1、P2（P2a + P2b）、P3a（数据层）已完成，均未经真机验收**；下一步 **P3b（界面）**，需用户确认后开始。GitHub CI 已全绿（2026-11-18，`9c76878`，技术债 D5 已修）。 详见 `docs/DEVELOPMENT-STATUS.md`。
+- 当前进度：**P0、P1、P2（P2a + P2b）、P3a（数据层）、P3b（界面）已完成，均未经真机验收**；下一步 **P3c（列表编辑器）**，需用户确认后开始。GitHub CI 已全绿（2026-11-18，P3b `d73695e`，run 44261053492）。 详见 `docs/DEVELOPMENT-STATUS.md`。
 - GitHub：`https://github.com/qaz69s/iptv`，分支 `main`，push 触发 GitHub Actions CI。
 
 ## 2. 阅读顺序
@@ -17,7 +17,7 @@
 4. `docs/implementation-plan.md` —— 实施计划：模块、依赖版本、风险点 R1–R11、阶段表与阶段状态。
 5. `ARCHITECTURE.md` —— 模块分层、各模块职责、播放生命周期、导航。
 6. `docs/BUILD-AND-ENV.md` —— 构建、测试、签名、CI、环境坑。
-7. `docs/phase-reports/P0.md`、`P1.md`、`P2a.md`、`P2b.md`、`P3a.md` —— 各阶段的做了 / 没做 / 已知问题 / 真机验收步骤。
+7. `docs/phase-reports/P0.md`、`P1.md`、`P2a.md`、`P2b.md`、`P3a.md`、`P3b.md` —— 各阶段的做了 / 没做 / 已知问题 / 真机验收步骤。
 8. `docs/handoff/P2-handoff.md` —— P2 结束时写给 P3 开发者的代码级交接（数据库分代、频道导航接口、设置键表、PlaybackController / PlayerViewModel 结构）。
 9. `README.md` —— 面向用户的功能一览与构建命令。
 
@@ -77,7 +77,7 @@ core:player         PlaybackController 单例（Media3）、重连、缓冲、�
 core:designsystem   主题、TV 焦点环、空/加载/错误组件、自绘矢量图标（res/drawable/sb_ic_*.xml + StreamBoxIcons）
 core:ui             设备形态（手机/平板/TV）判断、AppError 文案、supportsPictureInPicture
 core:testing        Fake 仓库（含 Favorites / WatchHistory / ChannelOverrides）、MainDispatcherExtension（仅 testImplementation）
-feature:onboarding / channels / playlist / player / settings / epg(占位)
+feature:onboarding / channels（浏览 / 搜索 / 收藏页） / playlist / player / settings / epg(占位)
 build-logic         约定插件（streambox.android.application / library / compose / feature、streambox.hilt、streambox.jvm.library）
 ```
 - 依赖方向：`app → feature:* → core:*`；`core:data` 实现 `core:domain` 的接口。
@@ -107,7 +107,8 @@ build-logic         约定插件（streambox.android.application / library / com
 ### 4.5 测试风格
 - JVM 单测用 **JUnit 5（Jupiter，catalog 中 `junit-jupiter` 6.1.3）+ MockK + Turbine + kotlinx-coroutines-test**，由约定插件统一加入。测试名用反引号句子：`` fun `selecting a theme persists it`() = runTest { ... } ``。
 - ViewModel 测试：`@JvmField @RegisterExtension val mainDispatcher = MainDispatcherExtension()`；优先用 `core:testing` 的 **Fake**（`FakeSettingsRepository`、`FakeChannelRepository`、`FakePlaylistRepository`、`FakeLastChannelRepository`、`FakeFavoritesRepository`、`FakeWatchHistoryRepository`、`FakeChannelOverridesRepository`）和 `feature/player/src/test/.../FakePlaybackController.kt`，少用 mock。**改接口时同步更新对应 Fake。**
-- 计时逻辑用虚拟时间（`runTest` / `advanceTimeBy`），时钟可注入（如 `MonotonicClock`）。
+- 计时逻辑用虚拟时间（`runTest` / `advanceTimeBy`），时钟可注入（如 `MonotonicClock`）；搜索防抖（300 ms）同样用虚拟时间测。
+- `FakeChannelRepository`（P3b）：`favoriteIds` / `recentIds` 模拟虚拟分组，`requestedGroups` / `requestedSorts` / `searches` 记录调用；排序与切台规则与真实实现共用 `ChannelSorting` / `ChannelSequence`。
 - **Room DAO / 迁移测试**（P3a 起）：core:database 应用 `streambox.android.robolectric` 约定插件，单测在 Robolectric 上用 **JUnit 4**（`@RunWith(RobolectricTestRunner::class)`、`org.junit.Test`）运行，内存数据库辅助类 `core/database/src/test/.../TestDatabase.kt` 模拟分代导入。JUnit 6 已弃用 Vintage 引擎，所以不在同一模块混用 JUnit 5。新增迁移时在 `MigrationTest` 补用例（它还检查每个 schema 版本都有迁移）。
 - 仪器测试 / Compose UI 测试按 AndroidX 要求用 JUnit 4（`androidTest`，需模拟器或真机；目前仓库还没有 androidTest 源码）。
 - 说明书第 10 节的测试要求（M3U ≥30 样例、XMLTV、EPG 匹配、回看 ≥20 用例含时区 / 夏令时、重连、PIN、Room 迁移、Compose UI）是验收的一部分。

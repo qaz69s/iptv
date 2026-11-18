@@ -1,6 +1,6 @@
 # 开发状态总览
 
-> 更新于 2026-11-18（P3a 数据层完成，CI 全绿；P3b 待用户确认）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
+> 更新于 2026-11-18（P3b 界面完成，CI 全绿；P3c 待用户确认）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
 > 细节以各阶段报告 `docs/phase-reports/*.md` 为准；需求以 `docs/requirements.md` 为准。
 
 ## 0. 一眼看懂
@@ -11,8 +11,8 @@
 | P2a 播放稳定性 + 操控 | ✅ 完成 | `99572cc` | 255 | ❌ 未做 |
 | P2b 后台 / PiP / 手势 / 定时 | ✅ 完成 | `3e14a71`、`82bd0d1`、`7d25565`、`a669bf0`（文档） | 348 | ❌ 未做 |
 | P3a 数据层（收藏 / 历史 / 覆盖表 / 稳定键续播 / 台号 2 s） | ✅ 完成 | `460ac22`、`3a57202`（+ 文档提交） | 397 | ❌ 未做 |
-| P3b 界面（搜索 / 收藏页 / 最近观看 / 虚拟分组 / 视图 / TV 双栏） | ⏳ 下一步（待用户确认） | — | — | — |
-| P3c 列表编辑器 | 未开始 | — | — | — |
+| P3b 界面（搜索 / 收藏页 / 最近观看 / 虚拟分组 / 视图 / 排序 / TV 双栏 / 设置二级页 / K1 K14 K20） | ✅ 完成 | `749c740`、`c88a11f`、`4ac076d`、`d73695e`（+ 文档提交） | 468 | ❌ 未做 |
+| P3c 列表编辑器 | ⏳ 下一步（待用户确认） | — | — | — |
 | P4 EPG | 未开始 | — | — | — |
 | P5 回看 / 时移 | 未开始 | — | — | — |
 | P6 Xtream（直播 + 点播） | 未开始 | — | — | — |
@@ -20,7 +20,7 @@
 | P8 投屏 / 变现接口 / 性能 / 发布 | 未开始 | — | — | — |
 
 - **重要**：P0–P2 全部只在无模拟器的 aarch64 沙箱里经过「编译 + JVM 单测 + ktlint + detekt」验证，**从未在真机或模拟器上运行过**。
-- GitHub CI：**P3a `3a57202`（run 44248545012）全绿**，397 项单测。更早：首次运行（`a669bf0`）与 `71ca385` 在 `:app:lintDebug` 失败（D5）。**`9c76878`（run 44242732138）已全绿**：ktlint / detekt、单测、`:app:lintDebug`（0 error、4 warning）、`:app:assembleDebug`、`:app:assembleRelease`（R8 首次通过）。debug APK 可从该 run 的 `streambox-debug-apk` artifact 下载。
+- GitHub CI：**P3b `d73695e`（run 44261053492）全绿**，468 项单测；P3b 的失败测试先行提交 `749c740`（run 44257372126）按预期失败 7 项。P3a `3a57202`（run 44248545012）全绿，397 项。更早：首次运行（`a669bf0`）与 `71ca385` 在 `:app:lintDebug` 失败（D5）。**`9c76878`（run 44242732138）已全绿**：ktlint / detekt、单测、`:app:lintDebug`（0 error、4 warning）、`:app:assembleDebug`、`:app:assembleRelease`（R8 首次通过）。debug APK 可从该 run 的 `streambox-debug-apk` artifact 下载。
 - 用户的真机：**手机 realme GT6（Android 14 / 15）+ 一台 Android TV**。
 - **用户决定（2026-11-18，P3 计划确认时）**：
   - P3 拆为 P3a（数据层）/ P3b（界面）/ P3c（编辑器），每个子阶段完整汇报。
@@ -29,6 +29,10 @@
   - **收藏排序**：跨播放列表按加入时间排序；可选的自定义（拖动）顺序在设置后优先。
   - **台号直输超时 2 秒**（说明书 4.2；P2a 为 1.5 s，P3a 已改）。
   - **频道页不加数字直输**，只保留播放页的台号输入。
+- **用户决定（2026-11-18，P3b 开工时）**：
+  - **重命名后的名字也要能搜到**：不改 schema（仍 Room v2），搜索时对 `customName` 做 LIKE 补查。
+  - **虚拟分组内的切台**（上下键、通知 / 耳机上一 / 下一、PiP 上一个 / 下一个、自动播放下一个）**按列表显示顺序并循环**（自动播放下一个仍**不循环**）；**虚拟分组内输入台号 = 组内 1 起的序号**。
+  - **PlayerRoute 带 uniqueKey（与 playlistId）**，刷新后进入播放页仍能找到频道（完成 K20），保持 `@Serializable` 类型安全路由。
 
 ## 1. 已开发了什么
 
@@ -87,18 +91,22 @@
 - `3a57202`：TV 台号输入超时 1.5 s → **2 s**（先写失败测试）。
 - 无新界面、无新字符串、无新权限、无新模块。详见 `docs/phase-reports/P3a.md`。
 
+### P3b —— 界面（2026-11-18）
+- `749c740`：K1 / K14 失败测试（配空实现，CI 按预期失败）。`c88a11f`：修 K1（`CleartextImagePolicy` + `CleartextHeaderCallFactory`，台标与通知封面遵守按列表明文开关，含重定向）、K14（前台 `MEDIA_PLAY_PAUSE` / `PLAY` / `PAUSE` / `STOP` / `HEADSETHOOK`，新增 `PlaybackController.resume()`）；设置「播放」拆为二级页 `PlaybackSettingsDestination`（K8）。
+- `4ac076d`：全局搜索（`SearchRoute`，FTS4 词前缀 + customName LIKE + 中文 LIKE，分组 LIKE，300 ms 防抖）；收藏页（收藏：上移 / 下移 / 删除 / 恢复时间序；最近观看：移除 / 清空）；虚拟分组「全部 / 收藏 / 最近观看」；`ChannelSource` + 排序贯穿 `ChannelRepository` 的切台 / 下一个 / 台号（`ChannelSequence`、`ChannelSorting`；播放器 `ChannelZapper`，最近观看打开时冻结顺序）；`PlayerRoute` 带 source + playlistId / uniqueKey（K20）；列表 / 网格 / 紧凑与默认 / 名称 / 频道号 / 自定义排序（DataStore `browse_channel_view_mode` / `browse_channel_sort_order`）；TV 双栏；播放面板收藏开关。
+- `d73695e`：FTS4 前缀必须写成 `"词*"`（`"词"*` 是 FTS5 写法，FTS4 永不匹配；CI 上的 Robolectric DAO 测试发现）。
+- 新 artifact `coil-network-core` 3.6.3（同 Coil 版本）；无新模块、无新权限、Room 仍 v2。测试 **468 项**（+71）。交付物：`StreamBox-P3b-debug.apk`（21,658,386 字节，SHA-256 `f02c6edc704f988083be784d769536017a113569ad3945107c80cb62fff47092`，CI `d73695e`）、`streambox-player-P3b-src.zip`。详见 `docs/phase-reports/P3b.md`。
+
 ### 当前尚未存在的东西（供核对）
 - 模块：`core:catchup`、`feature:vod`、`feature:cast`、`feature:monetization`（或 `core:monetization`）尚未创建；`feature:epg` 只有占位页。
 - 依赖：WorkManager、Retrofit、Cast、Billing、Ads、UMP 已在 catalog 中，但**没有模块使用**。
-- 收藏页（底部导航「收藏」）目前是空状态占位（`feature:channels` 的 `FavoritesScreen`）；P3a 已有收藏 / 历史的仓库，界面在 P3b。
-- `ChannelFtsEntity`（FTS4）已建表，但没有搜索查询和 UI。
-- `ChannelEntity` / `ChannelGroupEntity` 的 `hidden`（P3a 起由覆盖表物化）、`customName`、`customSortOrder` 已接入查询，但还没有编辑界面（P3c）；`locked` 恒为默认值；`PlaylistEntity` 有 `epgUrl`（导入时已写入，未被使用）、`updateMode`、`updateIntervalHours`、`enabled`、`username` / `passwordEncrypted`、`headersJson`，均未被功能使用。
+- `ChannelEntity` / `ChannelGroupEntity` 的 `hidden`（P3a 起由覆盖表物化）、`customName`、`customSortOrder` 已接入查询（P3b：搜索含 customName、排序「自定义」用 customSortOrder），但还没有编辑界面（P3c）；`locked` 恒为默认值；`PlaylistEntity` 有 `epgUrl`（导入时已写入，未被使用）、`updateMode`、`updateIntervalHours`、`enabled`、`username` / `passwordEncrypted`、`headersJson`，均未被功能使用。
 - 仓库没有任何 `androidTest` 源码（无 Compose UI 测试）；DAO / 迁移测试自 P3a 起在 core:database 的 Robolectric 单测中。
 
 ## 2. 还要开发什么（P3–P8）
 阶段依赖：`P3 → P4 → P5`；`P6` 依赖 P3（收藏 / 历史键）、P4（EPG 存储与匹配）、P5（xc 回看）；`P7` 汇总设置 / 备份，需在 P3–P6 的数据结构稳定后做；`P8` 收尾。若用户要求调整顺序，以用户为准。
 
-### P3 —— 搜索、收藏、历史、分组管理、列表编辑器（P3a 数据层已完成，下面是 P3b / P3c 剩余部分）
+### P3 —— 搜索、收藏、历史、分组管理、列表编辑器（P3a 数据层、P3b 界面已完成；剩余 P3c 列表编辑器，原始范围记录如下）
 **范围（说明书 4.1 列表编辑器、4.2、4.7 收藏 / 历史）**
 - 全局搜索：频道名、分组名，**输入即搜、防抖 300 ms，基于 Room FTS**（`channels_fts` 已有，列 `name`、`tvgName`）。"按当前节目名搜索"依赖 EPG，留到 P4 补。
 - 收藏：任意频道加 / 取消收藏；收藏页（替换现有占位）；**以 `(playlistId, uniqueKey)` 为键，不得存频道 id**——每次刷新 / 重新导入频道 id 都会变（分代导入）。`uniqueKey` 规则：tvg-id 优先，否则 URL 哈希，列表内重复加后缀；已有索引 `(playlistId, uniqueKey)`。
@@ -189,26 +197,31 @@
 ### 3.1 功能性已知问题
 | # | 问题 | 来源 | 建议阶段 |
 |---|---|---|---|
-| K1 | Coil 台标请求不受"按列表明文开关"约束（http 台标总会加载；只影响图片） | P1 KI1 | **P3** |
+| K1 | ✅ **P3b 已修**（`c88a11f`）：台标与通知封面遵守按列表明文开关（请求头 → 守卫策略，含重定向） | P1 KI1 | 完成（待真机验证） |
 | K2 | TV 上 NavigationDrawer 常驻（非一级页面内容为空），引导 / 添加 / 播放页焦点待真机确认 | P1 KI4 | 真机验收后决定（P3） |
 | K3 | 手机频道 / 播放列表页底部可能多一段系统栏 inset（Scaffold 嵌套） | P1 KI5 | 真机验收后修（P3） |
 | K4 | 播放页手机 / 平板强制横屏，无竖屏观看 | P1 KI6 | 视用户反馈 |
 | K5 | 外挂字幕在部分 DASH / 直播流可能时间错位（`MergingMediaSource`） | P2a KI1 | 视真机结果 |
 | K6 | 外挂字幕"（外挂）"标记依赖 `Format.id` 前缀 `streambox-ext-` | P2a KI2 | 低优先 |
 | K7 | 播放页切画面比例会同时改"默认画面比例"，无"仅本频道"比例 | P2a KI3 / P2b | P3 或 P7 |
-| K8 | **TV 设置「播放」分组过长**（单选平铺 + P2b 又加 3 项） | P2a KI4、P2b KI10 | **P3 开头（拆二级页）** |
+| K8 | ✅ **P3b 已修**（`c88a11f`）：「播放」拆为二级页，单选项一行 + 对话框 | P2a KI4、P2b KI10 | 完成（待真机验证） |
 | K9 | 返回键删台号位只有单测，`BackHandler` 拦截无 UI 测试 | P2a KI5 | 补 Compose UI 测试时 |
 | K10 | 「仅软件解码」实为软件优先：无对应软解时仍用硬解 | P2a KI8 | 接受（FFmpeg 暂不接） |
 | K11 | 从最近任务划掉 App 即停止播放（`onTaskRemoved` release） | P2b KI1 | 接受 / 视反馈 |
 | K12 | 后台回到前台画面 1–2 s 后才出现（视频轨被禁用后需等关键帧） | P2b KI2 | 视反馈 |
 | K13 | 后台播放开启时，前台播放也显示媒体通知 | P2b KI3 | 视反馈 |
-| K14 | **前台播放页未处理 TV 遥控器 MEDIA_PLAY_PAUSE 等媒体键**（后台经 MediaSession 可用） | P2b KI4 | **P3 顺手修** |
+| K14 | ✅ **P3b 已修**（`c88a11f`）：前台处理 PLAY_PAUSE / PLAY / PAUSE / STOP / HEADSETHOOK | P2b KI4 | 完成（待真机验证） |
 | K15 | 画中画小窗内仍显示字幕 | P2b KI6 | 低优先 |
 | K16 | Fill / Stretch 下 PiP `sourceRectHint` 为近似，进入动画可能跳变 | P2b KI7 | 低优先 |
 | K17 | 带 DVR 的直播不能拖进度 / 双击快进退 | P2b KI8 | **P5** |
 | K18 | ✅ **P3a 已修**（`460ac22`）：上次频道改存 playlistId + uniqueKey，刷新后仍能续播 | P2b KI9 | 完成（待真机验证） |
 | K19 | 睡眠定时不持久化、无默认时长设置 | P2b 没做 | P7 |
-| K20 | 进入播放页时频道已被刷新删除会显示"频道不存在"。P3a 已修续播路径（按 key 解析）；从频道列表进入的路由仍按 id | P1 KI8 | P3b（路由带 uniqueKey） |
+| K20 | ✅ **P3b 已修**（`4ac076d`）：`PlayerRoute` 带 playlistId + uniqueKey，id 失效时按 key 解析；频道真的被删除时仍显示"频道不存在" | P1 KI8 | 完成（待真机验证） |
+| K21 | 切台每次读取当前来源（含排序）的全部 id；「全部」+ 10 万频道在低端盒子上可能有 100 ms 级延迟（未实测） | P3b KI1 | 视真机结果（键集查询 / 缓存） |
+| K22 | 名称排序为 Unicode 码位 + ASCII 忽略大小写，中文不是拼音序 | P3b KI2 | 视用户反馈 |
+| K23 | 英文搜索为词前缀（"overy" 搜不到 "Discovery"）；中文查询走 LIKE 全表扫描 | P3b KI3 | 视反馈（可升 FTS 分词器，需迁移） |
+| K24 | 最近观看在打开播放页时冻结顺序；收藏移动会把当时缺失的收藏移出自定义顺序 | P3b KI4/5 | 接受 |
+| K25 | TV 频道页不再显示悬浮"添加"按钮（在"管理播放列表"添加）；DropdownMenu / 长按 OK 菜单的 TV 焦点待真机确认 | P3b KI6 | 真机验收后决定 |
 
 ### 3.2 技术债与文档 / 实现不一致
 | # | 问题 | 建议 |
@@ -234,6 +247,7 @@
 | P1 | `docs/phase-reports/P1.md`「P1 验收清单」 | https / http（明文开关）/ 本地文件导入；全屏播放、覆盖层、切台循环、404 错误、亮屏；分组刷新回落；底部空白（K3）；TV 焦点（K2） |
 | P2a | `docs/phase-reports/P2a.md`「P2a 验收清单」 | 断网重连节奏与网络恢复；404 不重连；重连次数设置；缓冲档位；仅软件解码；清晰度 / 音轨 / 字幕 / 外挂 SRT·VTT / 字幕样式；六种比例；TV 菜单键 / 长按 OK / 左右键 / 数字台号 / 返回删位 |
 | P3a | `docs/phase-reports/P3a.md`「真机验收步骤」 | **覆盖安装**验证 v1→v2 迁移；刷新播放列表后启动续播；TV 台号 2 秒 |
+| P3b | `docs/phase-reports/P3b.md`「真机验收步骤」 | 设置二级页；虚拟分组与组内切台 / 台号；三视图与排序；收藏 / 最近观看页；搜索（含中文）；TV 双栏焦点与返回焦点；K1 http 台标；K14 媒体键；K20 |
 | P2b | `docs/phase-reports/P2b.md`「P2b 验收清单」 | 通知权限；后台播放与媒体通知、锁屏、耳机 / 蓝牙切台、拔耳机暂停；PiP 自动进入 / 按钮 / 三按钮 / 比例；手势（亮度 / 音量 / 切台 / 拖进度 / 双击）；睡眠定时淡出；启动续播；自动下一个；TV 上设置项隐藏与媒体键（K14） |
 
 用户反馈的问题应先写失败的测试再修，修复记入对应阶段报告或下一阶段报告。
@@ -246,12 +260,13 @@
    - 推送后在 `https://github.com/qaz69s/iptv/actions` 确认 `main` 的 CI 全绿（含 lintDebug、assembleRelease），向用户汇报。
 3. ~~**P3 计划**~~ ✅ 2026-11-18 用户已确认（决定见第 0 节）。
 4. ~~**P3a 数据层**~~ ✅ 2026-11-18 完成（`460ac22`、`3a57202`，CI 全绿，报告 `docs/phase-reports/P3a.md`）。
-5. **等用户确认 P3a 后再开始 P3b**（界面）。P3b 建议顺序与待定问题：
+5. ~~**P3b 界面**~~ ✅ 2026-11-18 完成（`749c740`–`d73695e`，CI run 44261053492 全绿，报告 `docs/phase-reports/P3b.md`）。原计划如下（已全部完成，用户决定见第 0 节）：
    - 先把设置「播放」拆二级页（K8），顺手修 K1（Coil 台标明文）、K14（前台媒体键）。
    - 搜索（FTS 防抖 300 ms）：重命名后的名字不在 FTS 里——需决定"LIKE 补查 customName"还是"升 schema v3 把 customName 加进 FTS"（建议前者，零迁移）。
    - 收藏页 / 最近观看页 + 收藏按钮（`ToggleFavoriteUseCase`），历史清空入口（`WatchHistoryRepository.clear`）。
    - 虚拟分组「全部 / 收藏 / 最近观看」接入切台、台号、自动下一个、通知 / 耳机 / PiP 上下一个：需要定义收藏 / 最近观看内的切台顺序（建议：与列表显示顺序一致、循环；台号在虚拟分组内按列表序号）——**需用户确认**。
    - 播放页路由带 uniqueKey（修 K20 剩余部分）。
    - 三种视图（列表 / 网格 / 紧凑）、TV 左分组右频道双栏与焦点。
-6. 真机验收与开发并行：用户反馈的问题先写失败测试再修，记入当期阶段报告。
-7. 每个子阶段按 `AGENTS.md` 第 3.2 节完成：测试 → 阶段报告 → 更新 README / ARCHITECTURE / implementation-plan / 本文件 → 推送并检查 CI → 中文汇报 + 交付 debug APK 与源码 zip → 等确认。
+6. **等用户确认 P3b 后再开始 P3c**（列表编辑器）。开工前需用户决定的问题见 P3b 汇报（编辑器入口、隐藏项在编辑器里如何显示、排序后是否自动切到「自定义」、自定义分组的数据模型与迁移 v3、播放列表启用 / 停用与排序入口、编辑是否需要 PIN（P7））。
+7. 真机验收与开发并行：用户反馈的问题先写失败测试再修，记入当期阶段报告。
+8. 每个子阶段按 `AGENTS.md` 第 3.2 节完成：测试 → 阶段报告 → 更新 README / ARCHITECTURE / implementation-plan / 本文件 → 推送并检查 CI → 中文汇报 + 交付 debug APK 与源码 zip → 等确认。

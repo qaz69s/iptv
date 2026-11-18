@@ -14,11 +14,11 @@ core:testing（仅测试）：Fake 仓库（含 P3a 的 Favorites / WatchHistory
 - **core:common**：AppResult / AppError、协程调度器注入、URL 脱敏（日志中隐藏账号密码与 token）。
 - **core:domain**：仓库接口（Settings / Playlist / Channel / LastChannel；P3a：Favorites / WatchHistory / ChannelOverrides）与用例（CompleteOnboardingUseCase、AddPlaylistUseCase；P3a：ToggleFavoriteUseCase、RecordPlaybackStartUseCase、ResolveLastChannelUseCase），不依赖 Android；`PagingData` 来自纯 Kotlin 的 paging-common。跨刷新稳定的频道标识是 `ChannelKey(playlistId, uniqueKey)`（core:model），收藏 / 历史 / 覆盖 / 上次频道一律用它，**不存频道 id**。
 - **core:parser**（JVM）：M3U/M3U8 流式解析器（逐行读取，不整体载入内存），无第三方运行时依赖，单测覆盖各类样例与 10 万行性能。
-- **core:network**（JVM）：OkHttp 客户端与 `PlaylistDownloader`；`CleartextGuardInterceptor` 作为网络拦截器在每一跳（含重定向）按播放列表开关拦截明文 http；证书校验始终开启。MockWebServer 测试。
+- **core:network**（JVM）：OkHttp 客户端与 `PlaylistDownloader`；`CleartextHeaderCallFactory`（P3b，K1）供 Coil 使用：把请求头 `X-StreamBox-Allow-Cleartext`（`core:common` 的 `CleartextImagePolicy`）转成守卫策略标签，缺省不允许明文；`CleartextGuardInterceptor` 作为网络拦截器在每一跳（含重定向）按播放列表开关拦截明文 http；证书校验始终开启。MockWebServer 测试。
 - **core:database**（Android）：Room（Playlist / ChannelGroup / Channel + FTS4），schema 导出到 `core/database/schemas`（当前 **v2**，`Migration1To2`）；频道按 `generation` 分代，导入写新一代、校验通过后原子切换，失败则丢弃，旧数据不受影响。
   - **P3a 用户数据表**（均以 `(playlistId, uniqueKey)` 或 `(playlistId, 分组名)` 为主键，随播放列表级联删除）：`favorites`（`addedAt` UTC 毫秒、可空 `customOrder`）、`watch_history`（`watchedAt`，最多 50 条）、`channel_overrides` / `group_overrides`（`hidden`、`customName`、`customSortOrder`）。
   - **覆盖的落地方式（物化）**：覆盖表是唯一真相；其值写入 `channels` / `channel_groups` 的 `hidden`、`customName`、`customSortOrder` 列——导入提交时在同一事务、切换代之前执行 `OverrideDao.applyToGeneration`，用户修改时 `OverrideDao.update*` 在同一事务里重写受影响的各代行并刷新分组计数。这样分页 / 切台 / 台号 / FTS 等读查询仍是对频道表的简单 join，不必每条查询再 join 两张覆盖表。`channels.hidden` 表示"实际隐藏"（自身隐藏或所在分组隐藏）。
-  - 读查询约定：显示名 `COALESCE(customName, name)`；顺序 `COALESCE(customSortOrder, sortOrder)`，导入顺序作次级排序；分组按显示名合并与筛选；`sortOrder + 1` 仍是无 tvg-chno 时的台号。收藏 / 历史查询用 uniqueKey 关联到各播放列表当前代的频道（缺失、隐藏或列表停用的条目保留但不列出）。
+  - 读查询约定：显示名 `COALESCE(customName, name)`；P3b 起频道顺序由排序参数决定（`SortCode`：默认 = 列表 + 导入顺序，名称 = 显示名 NOCASE，频道号 = `COALESCE(number, sortOrder + 1)`，自定义 = `COALESCE(customSortOrder, sortOrder)`），`pagingSource` 与切台用的 `orderedIds` 共用同一 ORDER BY；搜索 `search`（FTS4 `"词*"` 前缀 + `customName` LIKE + 非 ASCII 查询时 `name` LIKE）与 `searchGroups`（LIKE）；分组按显示名合并与筛选；`sortOrder + 1` 仍是无 tvg-chno 时的台号。收藏 / 历史查询用 uniqueKey 关联到各播放列表当前代的频道（缺失、隐藏或列表停用的条目保留但不列出）。
   - 单元测试：Robolectric（JUnit 4，`streambox.android.robolectric` 约定插件）跑内存 Room 的 DAO 测试与 v1→v2 迁移测试（按已提交的 `1.json` 建 v1 库，再由 Room 打开校验 v2 schema）。
 - **core:datastore**：DataStore Preferences 读写；读失败回退默认值。
 - **core:data**：仓库实现（含 `DefaultLastChannelRepository`：DataStore 键 `last_played_playlist_id` + `last_played_channel_key`（P3a 起存 uniqueKey；P2b 的 `last_played_channel_id` 只会被删除，不再读取）；P3a：`DefaultFavoritesRepository`、`DefaultWatchHistoryRepository`、`DefaultChannelOverridesRepository`（重排序在条目当前占据的位置内置换），时间来自注入的 `java.time.Clock`（`TimeModule`，UTC））与导入管线（下载/SAF 读取 → 流式解析 → 分批写入新一代 → 校验提交），导入在应用级作用域运行，离开页面不中断；Hilt 绑定。
@@ -37,13 +37,14 @@ core:testing（仅测试）：Fake 仓库（含 P3a 的 Favorites / WatchHistory
 - **core:designsystem**：Material 3 主题（浅色 / 深色 / AMOLED 纯黑 / 动态取色）、TV 主题、图标、焦点环、空/加载/错误状态组件。
 - **core:ui**：设备形态判断（手机 / 平板 / TV）、AppError 的本地化文案、`supportsPictureInPicture(formFactor)`（非 TV、Android 8.0+、系统支持 PiP）。
 - **feature:onboarding / channels / epg / settings**：各自的界面、ViewModel、导航入口。
+- **feature:channels**（P3b）：频道浏览 `ChannelsRoute`（`ChannelsViewModel`：来源 = 全部 / 分组 / 收藏 / 最近观看，选择存 SavedStateHandle `selectedGroup` / `selectedVirtual`；视图与排序存 DataStore；手机为分组条 + 列表，TV 为左分组栏 + 右频道区双栏，`focusRestorer`，返回时焦点回到刚播放的频道；列表 / 网格 / 紧凑三种 `ChannelItem`，长按 / 菜单键弹出收藏菜单）、搜索 `SearchRoute`（`SearchViewModel`，300 ms debounce + mapLatest）、收藏页 `FavoritesRoute`（`FavoritesViewModel`：收藏上移 / 下移 = `FavoritesRepository.reorder`，最近观看移除 / 清空）。台标 `ChannelLogo` 用带 `X-StreamBox-Allow-Cleartext` 头的 Coil 请求（K1）。
 - **feature:playlist**：添加播放列表（URL / SAF 本地文件，Xtream 占位）、导入进度页、播放列表管理（刷新、删除、单列表明文开关）。
-- **feature:player**：全屏播放页 `PlayerRoute(channelId, groupName?)`。覆盖层（频道号 + 名称、返回、切台按钮、画面比例 / 播放设置按钮、提示）4 秒自动隐藏、点击/OK 显示；缓冲指示；重连进度、软解回退提示；错误原因 + 重试；手机上下滑动 / TV 方向键上下与 CHANNEL_UP/DOWN 切台（在来源分组内循环）；播放面板（手机底部 ModalBottomSheet、TV 右侧 Dialog：清晰度、音轨、字幕、外挂字幕、字幕样式、画面比例）；`VideoSurface` 实现六种画面比例，`SubtitleLayer` 用 media3-ui `SubtitleView` 渲染字幕；TV 遥控器：菜单键 / 长按 OK 开面板、左右键快进退（点播）或调音量（直播）、数字键台号输入（`ChannelNumberInput`：2 s 超时（P3a 按说明书 4.2 由 1.5 s 改）/ 满 4 位 / OK 提交，返回键删位）；播放时保持亮屏；进入时隐藏系统栏并（非 TV）横屏，离开恢复；ON_STOP / 后台 / PiP 的处理见下文「播放生命周期」。P2b 新增：
+- **feature:player**：全屏播放页 `PlayerRoute(channelId, groupName?, source?, playlistId, uniqueKey?)`（P3b：来源列表 + 稳定键，见「导航」）。覆盖层（频道号 + 名称、返回、切台按钮、画面比例 / 播放设置按钮、提示）4 秒自动隐藏、点击/OK 显示；缓冲指示；重连进度、软解回退提示；错误原因 + 重试；手机上下滑动 / TV 方向键上下与 CHANNEL_UP/DOWN 切台（在来源列表内按浏览器排序循环，见下文「切台与来源」）；播放面板（手机底部 ModalBottomSheet、TV 右侧 Dialog：清晰度、音轨、字幕、外挂字幕、字幕样式、画面比例）；`VideoSurface` 实现六种画面比例，`SubtitleLayer` 用 media3-ui `SubtitleView` 渲染字幕；TV 遥控器：菜单键 / 长按 OK 开面板、左右键快进退（点播）或调音量（直播）、数字键台号输入（`ChannelNumberInput`：2 s 超时（P3a 按说明书 4.2 由 1.5 s 改）/ 满 4 位 / OK 提交，返回键删位）；播放时保持亮屏；进入时隐藏系统栏并（非 TV）横屏，离开恢复；ON_STOP / 后台 / PiP 的处理见下文「播放生命周期」。P2b 新增：
   - **PiP**（`PictureInPicture.kt` 的 `PictureInPictureEffect`）：仅 `supportsPictureInPicture` 为真时生效；维护 Activity 的 `PictureInPictureParams`（比例 `pipAspectRatioOf`、`sourceRectHint` = `pipSourceRect`、上一个 / 播放·暂停 / 下一个三个 `RemoteAction`，经 App 私有广播回到 `PlayerViewModel.onPipAction`）；Android 12+ `setAutoEnterEnabled`，8.0–11 由 user-leave hint 进入；面板「画中画」按钮经 `pictureInPictureRequests` 立即进入；离开播放页时关闭自动进入。允许进入的条件：设置开启、有频道、无错误、面板未开。
   - **手势**：规则在纯 Kotlin 的 `PlayerGestures`（分区 `TouchZone`、方向锁定 `DragKind`、进度 / 亮度 / 音量换算、双击 `DoubleTapAction`），接入在 `PlayerTouchGestures.kt`（窗口亮度，离开时恢复；`STREAM_MUSIC` 音量）。竖滑左 1/3 亮度、中 1/3 切台、右 1/3 音量；横滑拖进度（仅 `isSeekable`，整屏 = 120 s，松手跳转）；双击左 −10 s / 中暂停播放 / 右 +10 s。手势关闭、TV、PiP 中不启用（关闭时保留点按与竖滑切台）。
   - **睡眠定时**：`PlayerViewModel` 持有 `SleepTimer`（输出接 `PlaybackController.setVolume` / `pause`），面板首项 `SleepTimerSection`（关 / 15 / 30 / 60 / 90 / 自定义 1–600 分）；后台与 PiP 期间继续计时，不持久化。
   - **上次频道 / 观看历史 / 自动下一个**：频道首次开始播放时经 `RecordPlaybackStartUseCase` 记录为上次频道并写入观看历史（P3a，均按 playlistId + uniqueKey）；冷启动续播由 `MainActivityViewModel` 经 `ResolveLastChannelUseCase` 把 key 解析为当前频道 id（刷新后仍能续播）；`PlaybackState.ended` 且设置「自动播放下一个」开启时调用 `ChannelRepository.nextChannel(channelId, 来源分组 ?: 自身分组)`，最后一个之后不绕回。
-- **feature:settings**：外观分组；「播放」分组（缓冲档位、仅软件解码、自动重连次数 0/3/5/10、默认画面比例；P2b：后台播放、画中画（仅支持 PiP 的手机 / 平板）、播放手势（非 TV）、启动时继续播放上次频道、自动播放下一个）。播放设置模型 `PlaybackSettings` 位于 core:model，作为 `AppSettings.playback` 由 DataStore 持久化，PlayerViewModel 订阅后经 `PlaybackController.applySettings` 下发。
+- **feature:settings**：设置首页（外观、「播放」入口、关于）与「播放」二级页 `PlaybackSettingsDestination`（P3b，K8：单选项一行 + 对话框，焦点落在当前项）。「播放」页内容（缓冲档位、仅软件解码、自动重连次数 0/3/5/10、默认画面比例；P2b：后台播放、画中画（仅支持 PiP 的手机 / 平板）、播放手势（非 TV）、启动时继续播放上次频道、自动播放下一个）。播放设置模型 `PlaybackSettings` 位于 core:model，作为 `AppSettings.playback` 由 DataStore 持久化，PlayerViewModel 订阅后经 `PlaybackController.applySettings` 下发。
 ## 约束（由 build-logic 强制）
 - feature 模块之间**禁止互相依赖**，只能通过 core:domain 或导航路由协作；违反时 Gradle 配置阶段直接报错。
 - 所有模块的 Android / Kotlin / Compose / 测试配置集中在 `build-logic` 约定插件中。JVM 单测默认 JUnit 5（Jupiter）；应用 `streambox.android.robolectric` 的模块（目前仅 core:database）改用 JUnit 4 运行 Robolectric 测试（JUnit 6 已弃用 Vintage 引擎，故不混跑）。
@@ -57,7 +58,14 @@ ViewModel 对外暴露 `StateFlow<UiState>`，界面用 `collectAsStateWithLifec
 - TV：Compose for TV 侧边抽屉，D-pad 左键展开；所有可交互元素有清晰焦点环；进入页面自动聚焦主按钮。
 - 返回键：非频道页的一级页面先回到频道页，再退出。
 - 启动续播（P2b）：`MainActivity` 仅在冷启动（`savedInstanceState == null`）把 `MainActivityViewModel.channelToResume` 交给 `StreamBoxNavHost`；完成引导后若设置开启且记录的频道仍存在（同一播放列表），在频道页之上 `navigateToPlayer`，返回回到频道页；频道已不存在则清除记录。每个 ViewModel 只回答一次。
-- 播放：频道页只回调 `onChannelClick(channelId, groupName)`，由 app 模块导航到 feature:player 的 `PlayerRoute`；当前分组经路由参数传入（频道页自身的分组保存在 SavedStateHandle key `selectedGroup`），播放页据此在同一分组内切台。
+- 播放：频道页 / 搜索 / 收藏页只回调 `onChannelClick(channel, source)`，由 app 模块调用 `navigateToPlayer(channel.id, source, channel.key)` 导航到 feature:player 的 `PlayerRoute`（`@Serializable`：`channelId`、`groupName`、`source`（`PlayerSource` 编码 all / group / favorites / recent）、`playlistId`、`uniqueKey`）。播放器初始化时若路由 id 与 key 不一致（刷新换了 id）则按 key 重新解析（K20）；当前频道的 key 也存入 SavedStateHandle。启动续播不带来源（切台走全部、自动下一个在自身分组内，与 P2b 相同）。
+- 搜索选中分组：`backToChannelsWithGroup(name)` 把分组写进上一个回退栈条目（频道页）的 SavedStateHandle 再返回。
+- 设置：`SettingsDestination` → `PlaybackSettingsDestination`（二级页，非一级页面，导航栏 / 抽屉隐藏）。
+
+## 切台与来源（P3b）
+- `ChannelSource`（core:model）：All / Group(name) / Favorites / Recent；`ChannelSortOrder`：Default / Name / Number / Custom（与浏览器同一设置）。
+- `ChannelRepository.adjacentChannel / nextChannel / channelIdByNumber(…, source, sort)`：先取该来源按排序的有序 id 列表（全部 / 分组：`ChannelDao.orderedIds`；收藏：收藏顺序经 `ChannelSorting` 排序；最近观看：最新在前），再用纯 Kotlin 的 `ChannelSequence`（循环的上一个 / 下一个、不循环的下一个、1 起的序号）。全部 / 分组的台号仍是显示台号（分组优先、否则全局）；收藏 / 最近观看的台号 = 组内序号（用户决定）。
+- 播放器的 `ChannelZapper` 统一处理上下键、手势、通知 / 耳机 / 蓝牙、PiP、自动下一个、台号；来源为最近观看时在打开播放器时**冻结**列表（按 key），避免播放后频道移到最前造成来回跳。
 
 ## 播放生命周期
 `PlaybackController` 是单例（不绑 Activity，配置变更不重建）。MainActivity 声明了 orientation 等 configChanges，横竖屏切换不会重建 Activity。P2a 起：可重试的失败由 `Reconnector` 按退避自动重连（换台、手动重试、release 时重置）；缓冲档位与解码模式在下一次 `play()` 时生效（配置变化时重建 ExoPlayer），重连次数立即生效。

@@ -61,7 +61,7 @@
 | kotlinx.serialization | 1.13.0 |
 | OkHttp | 5.5.1（mockwebserver3 用于测试） |
 | Retrofit | 3.0.0（kotlinx-serialization converter） |
-| Coil | 3.6.3（coil-compose + coil-network-okhttp） |
+| Coil | 3.6.3（coil-compose + coil-network-okhttp；P3b 加 coil-network-core（同版本，逐请求 NetworkHeaders，K1）） |
 | Cast Framework | 23.0.0 |
 | Play Billing（可选） | billing-ktx 9.1.0（说明书写 v7，v7 已过期弃用，按最新版） |
 | Google Mobile Ads / UMP（可选） | 25.5.0 / 4.0.0 |
@@ -80,7 +80,7 @@
 | P1 ✅（沙箱完成，待真机验收） | M3U 流式解析器（≥30 样例）、URL/SAF 导入、Room + FTS、频道列表、基础播放 | 解析器单测、10 万行性能测试（JVM） | 实际导入并播放 |
 | P2a ✅（沙箱完成，待真机验收） | 重连策略（独立可测）、缓冲档位、硬解失败回退软解、轨道 / 外挂字幕 / 字幕样式、画面比例、TV 遥控器（面板、音量 / 快进退、数字台号）、设置「播放」分组 | 重连策略 / 台号输入 / ViewModel 单测 | 播放清单项 |
 | P2b ✅（沙箱完成，待真机验收） | 手势（亮度 / 音量 / 进度、双击）、PiP、MediaSession 后台播放（通知、耳机 / 蓝牙切台）、睡眠定时（淡出）、启动续播上次频道、自动播放下一个 | 定时 / 续播 / 手势 / PiP 比例 / ViewModel 单测 | 播放清单项 |
-| P3（拆 P3a / P3b / P3c） | 搜索、收藏、历史、分组管理、列表编辑器、更新后保留收藏/排序。P3a ✅ 数据层（Room v2、收藏 / 历史 / 覆盖表、上次频道改 uniqueKey、台号 2 s）；P3b 界面（搜索、收藏页、最近观看、虚拟分组接入切台等、三种视图、TV 双栏）；P3c 编辑器 | DAO/仓库测试（Robolectric） | 交互验收 |
+| P3（拆 P3a / P3b / P3c） | 搜索、收藏、历史、分组管理、列表编辑器、更新后保留收藏/排序。P3a ✅ 数据层（Room v2、收藏 / 历史 / 覆盖表、上次频道改 uniqueKey、台号 2 s）；P3b ✅ 界面（搜索、收藏页、最近观看、虚拟分组接入切台等、三种视图、四种排序、TV 双栏、设置二级页、K1/K14/K20）；P3c 编辑器 | DAO/仓库测试（Robolectric） | 交互验收 |
 | P4 | XMLTV 解析、EPG 匹配、网格 EPG、提醒 | 解析/匹配单测 | TV 焦点验收 |
 | P5 | 回看/时移（≥20 用例含夏令时/跨日/负偏移） | 全部单测 | 真实源验证 |
 | P6 | Xtream 直播 + 点播 | API/映射单测（MockWebServer） | 真实账号验证 |
@@ -88,6 +88,7 @@
 | P8 | Chromecast、（可选）广告/内购、性能、R8 release、商店文案与隐私政策模板 | release 构建 | 全清单 |
 
 ### 阶段状态（2026-11-18）
+- **P3b 完成**（界面，CI run 44261053492 全绿，单元测试 468 项（+71），待真机验收；报告 `docs/phase-reports/P3b.md`）：设置「播放」二级页（K8）；全局搜索（FTS4 词前缀 + customName LIKE + 中文 LIKE，300 ms 防抖）；收藏页（上移 / 下移、删除、恢复时间序）与最近观看（移除、清空）；虚拟分组「全部 / 收藏 / 最近观看」，切台 / 台号 / 自动下一个 / 通知与 PiP 上下一个按来源与排序进行（用户决定：显示顺序、循环，自动下一个不循环，虚拟分组台号 = 组内序号）；`PlayerRoute` 带 source + playlistId / uniqueKey（K20）；列表 / 网格 / 紧凑三种视图与四种排序（DataStore）；TV 双栏。修 K1（台标明文，`CleartextHeaderCallFactory`）、K14（前台媒体键）。新 artifact：`coil-network-core` 3.6.3（同 Coil 版本）。无新模块、无新权限、Room 仍 v2。P3c 待用户确认后开始。
 - **P3a 完成**（数据层，CI run 44248545012 全绿，单元测试 397 项（+49），待真机验收；报告 `docs/phase-reports/P3a.md`）：Room schema v2 + `Migration1To2`；收藏 / 观看历史 / 频道与分组覆盖表（以 `(playlistId, uniqueKey)` / `(playlistId, 分组名)` 为键，物化到频道表）；上次频道改为 uniqueKey（修 K18、K20 的续播部分）；台号输入超时 2 s。新依赖：Robolectric 4.18.1（testImplementation，core:database）；新约定插件 `streambox.android.robolectric`。无新模块、无新权限、无新用户可见字符串。P3b / P3c 待用户确认后开始。
 - P0：完成（报告 `docs/phase-reports/P0.md`）。
 - P1：完成，沙箱内 `assembleDebug test ktlintCheck detekt` 全绿；真机/TV 验收待用户（报告 `docs/phase-reports/P1.md`）。
