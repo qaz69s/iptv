@@ -1,6 +1,6 @@
 # 开发状态总览
 
-> 更新于 2026-11-18（P2 完成后、P3 开工前）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
+> 更新于 2026-11-18（P2 收尾：CI 修复完成，P3 计划待用户确认）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
 > 细节以各阶段报告 `docs/phase-reports/*.md` 为准；需求以 `docs/requirements.md` 为准。
 
 ## 0. 一眼看懂
@@ -18,7 +18,7 @@
 | P8 投屏 / 变现接口 / 性能 / 发布 | 未开始 | — | — | — |
 
 - **重要**：P0–P2 全部只在无模拟器的 aarch64 沙箱里经过「编译 + JVM 单测 + ktlint + detekt」验证，**从未在真机或模拟器上运行过**。
-- GitHub CI：仓库在 P2 结束后才首次推送。**第一次 CI（2026-11-18，`a669bf0`，run 44241199582）失败**：ktlint / detekt、单元测试通过，**`:app:lintDebug` 报 1 个 error**，之后的 `assembleDebug` / `assembleRelease` 被跳过（见技术债 D5，**接手后第一件事**）。`:app:lintDebug` 与 `:app:assembleRelease`（R8）此前在沙箱中从未跑过。
+- GitHub CI：首次运行（`a669bf0`）与 `71ca385` 在 `:app:lintDebug` 失败（D5）。**`9c76878`（run 44242732138）已全绿**：ktlint / detekt、单测、`:app:lintDebug`（0 error、4 warning）、`:app:assembleDebug`、`:app:assembleRelease`（R8 首次通过）。debug APK 可从该 run 的 `streambox-debug-apk` artifact 下载。
 - 用户的真机：**手机 realme GT6（Android 14 / 15）+ 一台 Android TV**。
 
 ## 1. 已开发了什么
@@ -203,7 +203,8 @@
 | D2 | P1 报告称 DAO / 迁移测试在 androidTest，**实际仓库没有任何 androidTest 源码**；core:database、core:model、core:designsystem、core:ui、feature:epg 无单测 | P3 起补 Room DAO / Migration 测试（androidTest 需模拟器，可在 CI 加模拟器 job，或引入 Robolectric——新依赖需先问用户） |
 | D3 | Compose UI 测试（说明书第 10 节：添加列表、搜索、切台、设置修改）一个都没有 | 分阶段补；CI 需要模拟器 job |
 | D4 | `app/build.gradle.kts` 注释引用 `docs/RELEASE.md`，文件不存在 | P8 补写（签名步骤目前见 `docs/BUILD-AND-ENV.md`） |
-| D5 | **CI 失败（首次运行）**：`:app:lintDebug` 报 `MissingClass`——`app/src/main/AndroidManifest.xml:52` 声明的 `com.streambox.player.core.player.session.PlaybackService` 在 app 的 lint 类路径上找不到（app 不直接依赖 `core:player`，只经 `feature:player` 的 `implementation` 间接引入；运行时 APK 里是有这个类的）。另有 4 个 lint warning 未看。`:app:assembleRelease`（R8）因此还没跑过。 | **P3 之前先修**（属 P2 收尾）。可选修法：把 `<service>` 声明（连同 `FOREGROUND_SERVICE*` 权限）移到 `core/player/src/main/AndroidManifest.xml` 由清单合并带入，或让 app 直接 `implementation(projects.core.player)`。修完本地跑 `:app:lintDebug :app:assembleRelease`，再推送确认 CI 全绿，并向用户汇报 |
+| D5 | ✅ **已修（`9c76878`）**：`:app:lintDebug` 报 `Instantiatable`（`PlaybackService must extend android.app.Service`）——app 的 lint 类路径上没有 `media3-session`。`fc5f0ad` 让 app 直接依赖 `core:player` 无效（media3-session 是 core:player 的 implementation）。最终修法：把 `<service>` 与 `FOREGROUND_SERVICE*` / `POST_NOTIFICATIONS` 权限移到 `core/player/src/main/AndroidManifest.xml`，由清单合并带入 APK，并撤回 app → core:player 依赖。CI 新增「Print lint report」步骤，把 lint 文本报告打印到日志 | 完成；剩余 4 个 warning 见 D10 |
+| D10 | lint 4 个 warning：`localeConfig` 仅 API 33+ 生效（预期）；`network_security_config` base-config 允许明文（设计如此，由 `CleartextGuardInterceptor` 按列表拦截）；`allowBackup` 建议补 `dataExtractionRules`；缺 `drawable-hdpi/mdpi/xxhdpi`（仅 tv_banner） | P7（备份）补 `dataExtractionRules`；其余接受 |
 | D6 | detekt 1.23.8 与 Kotlin 2.4 只跑非类型解析规则（R4） | 观察；detekt 2.x 稳定后升级 |
 | D7 | `NavigationCommandsListener` 手写转发全部 `Player.Listener` 回调，Media3 升级新增回调时需补 | 升级 Media3 时检查 |
 | D8 | `PlaybackController` 接口每次变更都要同步 `FakePlaybackController` | 约定（见 AGENTS.md） |
@@ -224,7 +225,7 @@
 
 ## 5. 下一步的具体操作步骤
 1. **读文档**：按 `AGENTS.md` 第 2 节的顺序读完。
-2. **修 CI（P2 收尾，先于 P3）**：
+2. ~~**修 CI（P2 收尾，先于 P3）**~~ ✅ 2026-11-18 已完成（`9c76878`，CI 全绿）：
    - 本地：`./gradlew ktlintCheck detekt test :app:assembleDebug --continue` 全绿（应为 348 项测试）。
    - 修技术债 D5（`:app:lintDebug` 的 `MissingClass`），顺带看那 4 个 lint warning；本地跑 `./gradlew :app:lintDebug :app:assembleRelease` 通过。修复属于代码改动，按 AGENTS.md 的流程先向用户说明再做。
    - 推送后在 `https://github.com/qaz69s/iptv/actions` 确认 `main` 的 CI 全绿（含 lintDebug、assembleRelease），向用户汇报。
