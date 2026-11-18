@@ -13,16 +13,21 @@ import com.streambox.player.core.player.DecoderMode
  * - Software first ("software decoding only", or after a decoder failure):
  *   `EXTENSION_RENDERER_MODE_PREFER`. FFmpeg is offered first for every audio format it knows.
  */
-@Suppress("UnusedParameter", "FunctionOnlyReturningConstant") // K26 failing-test stubs
 object AudioRendererPolicy {
-    // K26 failing-test stub.
-    fun extensionMode(mode: DecoderMode): Int = DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
+    fun extensionMode(mode: DecoderMode): Int = when (mode) {
+        DecoderMode.HARDWARE_FIRST -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+        DecoderMode.SOFTWARE_FIRST -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+    }
 
     /**
      * Index at which to insert the FFmpeg audio renderer, given the index of the MediaCodec audio
      * renderer the default factory added; null = do not add it.
      */
-    fun ffmpegIndex(extensionMode: Int, mediaCodecIndex: Int): Int? = null
+    fun ffmpegIndex(extensionMode: Int, mediaCodecIndex: Int): Int? = when (extensionMode) {
+        DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON -> mediaCodecIndex + 1
+        DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER -> mediaCodecIndex
+        else -> null
+    }
 }
 
 /**
@@ -40,7 +45,7 @@ data class AudioSelectionPolicy(
      * Tunneled playback binds audio to the video decoder's hardware path; many IPTV boxes fail
      * silently with it, and it cannot be used with the FFmpeg decoder.
      */
-    val tunneling: Boolean = true,
+    val tunneling: Boolean = false,
     /** Audio offload hands the stream to the DSP; some devices go silent with TS / HLS audio. */
     val audioOffload: Boolean = false,
 ) {

@@ -49,14 +49,18 @@ sealed interface AudioStatus {
 }
 
 /** Pure decisions about audio tracks (K26: "video but no audio"). */
-@Suppress("UnusedParameter", "FunctionOnlyReturningConstant") // K26 failing-test stubs
 object AudioSupport {
-    // K26 failing-test stub: replaced by the real detection in the next commit.
-    fun status(tracks: List<AudioTrackFormat>): AudioStatus = AudioStatus.NoAudio
+    /** [AudioStatus.Unsupported] lists each distinct format once, in track order. */
+    fun status(tracks: List<AudioTrackFormat>): AudioStatus = when {
+        tracks.isEmpty() -> AudioStatus.NoAudio
+        tracks.any { it.playable } -> AudioStatus.Playable
+        else -> AudioStatus.Unsupported(tracks.map { it.format }.distinct())
+    }
 
     /**
      * A manual choice (an override) points at a track that cannot be played while another one can:
      * the override must be dropped so the track selector falls back to a playable track.
      */
-    fun needsFallback(tracks: List<AudioTrackFormat>): Boolean = false
+    fun needsFallback(tracks: List<AudioTrackFormat>): Boolean =
+        tracks.any { it.selected && !it.playable } && tracks.any { it.playable }
 }

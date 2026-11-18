@@ -2,6 +2,7 @@ package com.streambox.player.core.player
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -18,8 +19,8 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
@@ -42,6 +43,12 @@ import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.network.CleartextGuardInterceptor
 import com.streambox.player.core.network.PlaylistDownloader
+import com.streambox.player.core.player.audio.AudioSupport
+import com.streambox.player.core.player.audio.AudioTrackFormat
+import com.streambox.player.core.player.audio.StreamBoxRenderersFactory
+import com.streambox.player.core.player.audio.audioFriendlyTrackSelector
+import com.streambox.player.core.player.audio.audioTrackFormats
+import com.streambox.player.core.player.audio.toInfo
 import com.streambox.player.core.player.reconnect.FailureKind
 import com.streambox.player.core.player.reconnect.ReconnectConfig
 import com.streambox.player.core.player.reconnect.ReconnectPolicy
@@ -64,6 +71,8 @@ import okhttp3.OkHttpClient
  * Media3 implementation. Recoverable failures go through [Reconnector] (exponential backoff, immediate
  * retry when the network returns); decoder failures rebuild the player once with software decoders
  * first; buffer profile and decoder mode are fixed per ExoPlayer instance, so a change rebuilds it.
+ * Audio MediaCodec cannot decode goes to the FFmpeg extension (K26); the codecs and decoders in use are
+ * published as [StreamInfo] and logged (tag `StreamBoxPlayer`).
  */
 @Singleton
 @Suppress("TooManyFunctions")
@@ -92,6 +101,10 @@ internal class Media3PlaybackController @Inject constructor(
     private var networkJob: Job? = null
     private var inBackground = false
     private var volume = 1f
+
+    /** Decoders the current player initialized (K26 stream info); reset per item and per rebuild. */
+    private var videoDecoderName: String? = null
+    private var audioDecoderName: String? = null
 
     override var channelNavigator: ChannelNavigator? = null
 
@@ -131,8 +144,32 @@ internal class Media3PlaybackController @Inject constructor(
         }
     }
 
+    private val analyticsListener = object : AnalyticsListener {
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            videoDecoderName = decoderName
+            publishStreamInfo()
+        }
+
+        override fun onAudioDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            audioDecoderName = decoderName
+            publishStreamInfo()
+        }
+    }
+
     override fun play(item: PlaybackItem) {
         reconnector.reset()
+        videoDecoderName = null
+        audioDecoderName = null
         triedHlsFallback = false
         fellBackToSoftware = false
         decoderMode = DecoderFallback.initialMode(settings.softwareDecodingOnly)
@@ -185,8 +222,11 @@ internal class Media3PlaybackController @Inject constructor(
         reconnector.reset()
         _player.value?.let {
             it.removeListener(listener)
+            it.removeAnalyticsListener(analyticsListener)
             it.release()
         }
+        videoDecoderName = null
+        audioDecoderName = null
         _player.value = null
         playerConfig = null
         inBackground = false
@@ -289,8 +329,11 @@ internal class Media3PlaybackController @Inject constructor(
         if (existing != null && playerConfig == wanted) return existing
         existing?.let {
             it.removeListener(listener)
+            it.removeAnalyticsListener(analyticsListener)
             it.release()
         }
+        videoDecoderName = null
+        audioDecoderName = null
         val buffer = BufferConfig.of(wanted.bufferProfile)
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -300,10 +343,12 @@ internal class Media3PlaybackController @Inject constructor(
                 buffer.bufferForPlaybackAfterRebufferMs,
             )
             .build()
-        val renderersFactory = DefaultRenderersFactory(context)
+        // K26: FFmpeg decodes the audio MediaCodec cannot (behind it, or in front for software-first).
+        val renderersFactory = StreamBoxRenderersFactory(context, wanted.decoderMode)
             .setEnableDecoderFallback(true)
             .setMediaCodecSelector(codecSelector(wanted.decoderMode))
         return ExoPlayer.Builder(context, renderersFactory)
+            .setTrackSelector(audioFriendlyTrackSelector(context))
             .setLoadControl(loadControl)
             .setDeviceVolumeControlEnabled(true)
             .setAudioAttributes(
@@ -314,6 +359,7 @@ internal class Media3PlaybackController @Inject constructor(
             .build()
             .also {
                 it.addListener(listener)
+                it.addAnalyticsListener(analyticsListener)
                 it.volume = volume
                 if (inBackground) it.applyBackgroundMode()
                 playerConfig = wanted
@@ -519,6 +565,37 @@ internal class Media3PlaybackController @Inject constructor(
                 ),
             )
         }
+        val audioFormats = publishStreamInfo()
+        if (AudioSupport.needsFallback(audioFormats)) {
+            // K26: a manual choice points at audio this device cannot decode; let the selector pick.
+            Log.i(LOG_TAG, "Selected audio track is not decodable; falling back to automatic selection")
+            player.trackSelectionParameters = parameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_AUDIO).build()
+        }
+    }
+
+    /**
+     * Publishes the formats / decoders in use and whether any audio track is decodable (K26), and logs
+     * each change. Returns the audio tracks it judged.
+     */
+    private fun publishStreamInfo(): List<AudioTrackFormat> {
+        val player = _player.value ?: return emptyList()
+        val audioFormats = audioTrackFormats(player.currentTracks)
+        val info = StreamInfo(
+            video = player.videoFormat?.toInfo(),
+            videoDecoder = videoDecoderName,
+            audio = player.audioFormat?.toInfo(),
+            audioDecoder = audioDecoderName,
+            audioStatus = AudioSupport.status(audioFormats),
+        )
+        if (info != _state.value.streamInfo) {
+            Log.i(
+                LOG_TAG,
+                "video=${info.video?.describe()} [${info.videoDecoder}] " +
+                    "audio=${info.audio?.describe()} [${info.audioDecoder}] status=${info.audioStatus}",
+            )
+            _state.update { it.copy(streamInfo = info) }
+        }
+        return audioFormats
     }
 
     private fun overrideFor(id: TrackId): TrackSelectionOverride? {
@@ -552,6 +629,7 @@ internal class Media3PlaybackController @Inject constructor(
 
     private companion object {
         const val EXTERNAL_SUBTITLE_PREFIX = "streambox-ext-"
+        const val LOG_TAG = "StreamBoxPlayer"
 
         fun policyFor(settings: PlaybackSettings) =
             ReconnectPolicy(ReconnectConfig(maxAttempts = settings.maxReconnectAttempts))

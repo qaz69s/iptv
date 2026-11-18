@@ -160,6 +160,7 @@ private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firs
         }
         aspectSection(state.aspectRatio, actions.onAspectRatio)
         tracksSections(state.tracks, actions)
+        streamInfoSection(state.streamInfo)
         subtitleStyleSection(state.subtitleStyle, actions.onSubtitleStyle)
     }
 }

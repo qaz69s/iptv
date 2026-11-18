@@ -59,4 +59,12 @@
     <string name="feature_player_sleep_custom_hint">%1$d–%2$d minutes</string>
     <string name="feature_player_favorite_add">Add to favorites</string>
     <string name="feature_player_favorite_remove">Remove from favorites</string>
+    <string name="feature_player_audio_unsupported">No sound: this device can\'t decode the channel\'s audio (%1$s)</string>
+    <string name="feature_player_stream_info">Stream info</string>
+    <string name="feature_player_stream_video">Video: %1$s</string>
+    <string name="feature_player_stream_audio">Audio: %1$s</string>
+    <string name="feature_player_stream_audio_unsupported">Audio: %1$s (cannot be decoded on this device)</string>
+    <string name="feature_player_stream_audio_none">Audio: none</string>
+    <string name="feature_player_stream_format_decoder">%1$s · decoder %2$s</string>
+    <string name="feature_player_stream_decoder_unknown">not started</string>
 </resources>

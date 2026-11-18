@@ -59,4 +59,12 @@
     <string name="feature_player_sleep_custom_hint">%1$d–%2$d 分钟</string>
     <string name="feature_player_favorite_add">加入收藏</string>
     <string name="feature_player_favorite_remove">取消收藏</string>
+    <string name="feature_player_audio_unsupported">无声音：本设备无法解码该频道的音频（%1$s）</string>
+    <string name="feature_player_stream_info">流信息</string>
+    <string name="feature_player_stream_video">视频：%1$s</string>
+    <string name="feature_player_stream_audio">音频：%1$s</string>
+    <string name="feature_player_stream_audio_unsupported">音频：%1$s（本设备无法解码）</string>
+    <string name="feature_player_stream_audio_none">音频：无</string>
+    <string name="feature_player_stream_format_decoder">%1$s · 解码器 %2$s</string>
+    <string name="feature_player_stream_decoder_unknown">未启动</string>
 </resources>

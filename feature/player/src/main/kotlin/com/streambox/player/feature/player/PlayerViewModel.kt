@@ -236,7 +236,7 @@ class PlayerViewModel @Inject constructor(
             gesturesEnabled = prefs.playbackGestures,
             sleepTimer = lookup.sleepTimer,
             isFavorite = lookup.isFavorite,
-            streamInfo = StreamInfo(), // K26 failing-test stub
+            streamInfo = if (sameItem) playback.streamInfo else StreamInfo(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 

@@ -538,7 +538,7 @@ private fun TopBar(
     }
 }
 
-/** Reconnect progress, decoder fallback and "no such channel number" notices. */
+/** Reconnect progress, decoder fallback, undecodable audio (K26) and "no such channel number" notices. */
 @Composable
 private fun StatusMessages(state: PlayerUiState, modifier: Modifier = Modifier) {
     val messages = buildList {
@@ -548,6 +548,15 @@ private fun StatusMessages(state: PlayerUiState, modifier: Modifier = Modifier) 
         state.numberNotFound?.let { add(stringResource(R.string.feature_player_number_not_found, it)) }
         if (state.softwareDecoderFallback && state.overlayVisible) {
             add(stringResource(R.string.feature_player_software_decoder))
+        }
+        // K26: non-fatal, the video keeps playing; shown with the overlay like the decoder notice.
+        state.unsupportedAudio?.takeIf { state.overlayVisible }?.let { audio ->
+            add(
+                stringResource(
+                    R.string.feature_player_audio_unsupported,
+                    audio.formats.joinToString { it.sampleMimeType ?: "?" },
+                ),
+            )
         }
     }
     if (messages.isEmpty()) return

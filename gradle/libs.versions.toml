@@ -21,6 +21,8 @@ androidx-room = "2.8.5"
 androidx-paging = "3.5.3"
 androidx-work = "2.12.0"
 androidx-media3 = "1.11.1"
+# FFmpeg audio decoders for Media3 (K26); the prefix must match androidx-media3. GPL-3.0.
+nextlib-media3ext = "1.11.1-0.18.0"
 androidx-hilt = "1.4.0"
 
 # DI
@@ -94,6 +96,7 @@ androidx-media3-datasource-okhttp = { module = "androidx.media3:media3-datasourc
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "androidx-media3" }
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
 androidx-media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref = "androidx-media3" }
+nextlib-media3ext = { module = "io.github.anilbeesetti:nextlib-media3ext", version.ref = "nextlib-media3ext" }
 
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
