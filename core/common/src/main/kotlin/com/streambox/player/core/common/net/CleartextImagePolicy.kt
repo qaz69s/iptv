@@ -15,7 +15,7 @@ object CleartextImagePolicy {
 
     /** Whether an image at [url] may be requested at all for a playlist with [allowCleartext]. */
     fun isAllowed(url: String?, allowCleartext: Boolean): Boolean =
-        !url.isNullOrBlank() && (allowCleartext || url.isNotEmpty())
+        !url.isNullOrBlank() && (allowCleartext || !isCleartext(url))
 
     fun headerValue(allowCleartext: Boolean): String = if (allowCleartext) ALLOWED else NOT_ALLOWED
 }

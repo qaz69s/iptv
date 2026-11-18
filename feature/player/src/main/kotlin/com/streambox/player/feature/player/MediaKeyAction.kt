@@ -10,6 +10,8 @@ enum class MediaKeyAction { TOGGLE, PLAY, PAUSE }
  * MediaSession handles them (P2b); in the foreground the key reaches the focused screen first.
  */
 internal fun mediaKeyActionOf(keyCode: Int): MediaKeyAction? = when (keyCode) {
-    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> null
+    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_HEADSETHOOK -> MediaKeyAction.TOGGLE
+    KeyEvent.KEYCODE_MEDIA_PLAY -> MediaKeyAction.PLAY
+    KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_MEDIA_STOP -> MediaKeyAction.PAUSE
     else -> null
 }

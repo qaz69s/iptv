@@ -32,4 +32,8 @@
     <string name="feature_settings_resume_last_channel_summary">打开应用时直接进入上次观看的频道</string>
     <string name="feature_settings_auto_play_next">自动播放下一个</string>
     <string name="feature_settings_auto_play_next_summary">点播内容播完后自动播放同分组的下一个；直播不受影响</string>
+    <string name="feature_settings_playback_entry_summary">缓冲、重连、画面比例、后台播放、字幕</string>
+    <string name="feature_settings_section_subtitles">字幕</string>
+    <string name="feature_settings_back">返回</string>
+    <string name="feature_settings_cancel">取消</string>
 </resources>

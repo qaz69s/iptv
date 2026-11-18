@@ -33,4 +33,8 @@
     <string name="feature_settings_resume_last_channel_summary">Open the channel you watched last when the app starts</string>
     <string name="feature_settings_auto_play_next">Auto-play next</string>
     <string name="feature_settings_auto_play_next_summary">When on-demand content ends, play the next item in the same group. Live channels are not affected</string>
+    <string name="feature_settings_playback_entry_summary">Buffering, reconnects, aspect ratio, background playback, subtitles</string>
+    <string name="feature_settings_section_subtitles">Subtitles</string>
+    <string name="feature_settings_back">Back</string>
+    <string name="feature_settings_cancel">Cancel</string>
 </resources>

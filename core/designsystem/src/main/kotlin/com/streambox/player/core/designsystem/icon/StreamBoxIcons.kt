@@ -27,4 +27,13 @@ object StreamBoxIcons {
     val Play = R.drawable.sb_ic_play
     val Pause = R.drawable.sb_ic_pause
     val PictureInPicture = R.drawable.sb_ic_picture_in_picture
+    val ChevronRight = R.drawable.sb_ic_chevron_right
+    val Search = R.drawable.sb_ic_search
+    val StarOutline = R.drawable.sb_ic_star_outline
+    val GridView = R.drawable.sb_ic_grid_view
+    val CompactView = R.drawable.sb_ic_view_headline
+    val Sort = R.drawable.sb_ic_sort
+    val History = R.drawable.sb_ic_history
+    val Close = R.drawable.sb_ic_close
+    val MoreVert = R.drawable.sb_ic_more_vert
 }

@@ -157,6 +157,7 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
             onHorizontal = viewModel::onHorizontalKey,
             onTogglePanel = viewModel::togglePanel,
             onOpenPanel = viewModel::openPanel,
+            onMediaKey = viewModel::onMediaKey,
         ),
         onCycleAspect = viewModel::cycleAspectRatio,
         onVideoBounds = { videoBounds = it },
@@ -194,6 +195,7 @@ internal data class PlayerKeyActions(
     val onHorizontal: (forward: Boolean) -> Unit = {},
     val onTogglePanel: () -> Unit = {},
     val onOpenPanel: () -> Unit = {},
+    val onMediaKey: (MediaKeyAction) -> Unit = {},
 )
 
 @Suppress("LongMethod", "LongParameterList", "CyclomaticComplexMethod")
@@ -391,6 +393,11 @@ private fun handleKey(
     val code = event.key.nativeKeyCode
     // The panel (sheet / dialog) handles its own keys; Menu closes it there.
     if (state.panelOpen) return false
+    // K14: play / pause keys in the foreground. Key up is consumed too, so no half press reaches the session.
+    mediaKeyActionOf(code)?.let { action ->
+        if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0) keys.onMediaKey(action)
+        return true
+    }
     if (event.type != KeyEventType.KeyDown) return false
     digitOf(code)?.let { digit ->
         keys.onDigit(digit)

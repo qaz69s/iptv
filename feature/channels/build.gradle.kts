@@ -9,4 +9,6 @@ android {
 dependencies {
     implementation(libs.androidx.paging.compose)
     implementation(libs.coil.compose)
+    // NetworkHeaders: logo requests carry their playlist's cleartext choice (K1).
+    implementation(libs.coil.network.core)
 }

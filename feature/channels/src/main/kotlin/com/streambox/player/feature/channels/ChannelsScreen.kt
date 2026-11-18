@@ -1,6 +1,5 @@
 package com.streambox.player.feature.channels
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,10 +38,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -56,7 +53,6 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import coil3.compose.AsyncImage
 import com.streambox.player.core.designsystem.component.EmptyState
 import com.streambox.player.core.designsystem.component.LoadingState
 import com.streambox.player.core.designsystem.component.focusRing
@@ -152,7 +148,7 @@ internal fun ChannelsScreen(
 
             is ChannelsUiState.Content -> Column(contentModifier) {
                 GroupChips(state.groups, state.totalChannels, state.selectedGroup, onGroupSelected)
-                if (channels != null) ChannelList(channels, onChannelClick)
+                if (channels != null) ChannelList(channels, state.cleartextPlaylists, onChannelClick)
             }
         }
     }
@@ -248,7 +244,11 @@ private fun GroupChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChannelList(channels: LazyPagingItems<Channel>, onChannelClick: (Long) -> Unit) {
+private fun ChannelList(
+    channels: LazyPagingItems<Channel>,
+    cleartextPlaylists: Set<Long>,
+    onChannelClick: (Long) -> Unit,
+) {
     val refresh = channels.loadState.refresh
     when {
         refresh is LoadState.Error && channels.itemCount == 0 -> Column(
@@ -278,7 +278,11 @@ private fun ChannelList(channels: LazyPagingItems<Channel>, onChannelClick: (Lon
             items(count = channels.itemCount, key = channels.itemKey { it.id }) { index ->
                 val channel = channels[index]
                 if (channel != null) {
-                    ChannelRow(channel, onClick = { onChannelClick(channel.id) })
+                    ChannelRow(
+                        channel,
+                        allowCleartext = channel.playlistId in cleartextPlaylists,
+                        onClick = { onChannelClick(channel.id) },
+                    )
                     HorizontalDivider(Modifier.padding(start = 128.dp))
                 }
             }
@@ -295,7 +299,7 @@ private fun ChannelList(channels: LazyPagingItems<Channel>, onChannelClick: (Lon
 }
 
 @Composable
-private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
+private fun ChannelRow(channel: Channel, allowCleartext: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -312,7 +316,7 @@ private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
             modifier = Modifier.width(40.dp),
         )
         Spacer(Modifier.width(16.dp))
-        ChannelLogo(channel)
+        ChannelLogo(channel, allowCleartext)
         Spacer(Modifier.width(16.dp))
         Text(
             text = channel.name,
@@ -321,31 +325,6 @@ private fun ChannelRow(channel: Channel, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-    }
-}
-
-@Composable
-private fun ChannelLogo(channel: Channel) {
-    val shape = RoundedCornerShape(8.dp)
-    val boxModifier = Modifier
-        .size(width = 56.dp, height = 40.dp)
-        .clip(shape)
-        .background(MaterialTheme.colorScheme.surfaceVariant)
-    Box(boxModifier, contentAlignment = Alignment.Center) {
-        // Initial shows while the logo loads, and stays when there is none or it fails.
-        Text(
-            channel.name.trim().take(1).uppercase(),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (!channel.logoUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = channel.logoUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(4.dp),
-            )
-        }
     }
 }
 

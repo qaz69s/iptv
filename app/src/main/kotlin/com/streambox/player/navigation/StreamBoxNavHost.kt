@@ -24,6 +24,7 @@ import com.streambox.player.feature.playlist.navigation.navigateToAddPlaylist
 import com.streambox.player.feature.playlist.navigation.navigateToImportProgress
 import com.streambox.player.feature.playlist.navigation.navigateToPlaylists
 import com.streambox.player.feature.playlist.navigation.playlistsScreen
+import com.streambox.player.feature.settings.navigation.navigateToPlaybackSettings
 import com.streambox.player.feature.settings.navigation.settingsScreen
 import kotlinx.coroutines.launch
 
@@ -69,7 +70,10 @@ fun StreamBoxNavHost(
         )
         epgScreen()
         favoritesScreen()
-        settingsScreen()
+        settingsScreen(
+            onOpenPlaybackSettings = { navController.navigateToPlaybackSettings() },
+            onBack = { navController.popBackStack() },
+        )
 
         addPlaylistScreen(
             onBack = { navController.popBackStack() },

@@ -6,6 +6,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.streambox.player.core.network.CleartextHeaderCallFactory
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -20,7 +21,10 @@ class StreamBoxApplication :
     lateinit var okHttpClient: Lazy<OkHttpClient>
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
-        .components { add(OkHttpNetworkFetcherFactory(callFactory = { okHttpClient.get() })) }
+        // K1: logo requests carry their playlist's cleartext choice (header -> guard policy, every hop).
+        .components {
+            add(OkHttpNetworkFetcherFactory(callFactory = { CleartextHeaderCallFactory(okHttpClient.get()) }))
+        }
         .crossfade(true)
         .build()
 }

@@ -33,6 +33,8 @@ sealed interface ChannelsUiState {
         val totalChannels: Int,
         /** null = all groups. */
         val selectedGroup: String?,
+        /** Playlists that allow plain HTTP; their channels' logos may load over http (K1). */
+        val cleartextPlaylists: Set<Long> = emptySet(),
     ) : ChannelsUiState
 }
 
@@ -60,6 +62,7 @@ class ChannelsViewModel @Inject constructor(
                 totalChannels = count,
                 // A group can disappear after a refresh; fall back to "all" instead of an empty list.
                 selectedGroup = selected?.takeIf { name -> groups.any { it.name == name } },
+                cleartextPlaylists = playlists.filter { it.allowCleartext }.mapTo(mutableSetOf()) { it.id },
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChannelsUiState.Loading)

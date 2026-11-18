@@ -33,6 +33,7 @@ import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.text.DefaultSubtitleParserFactory
 import androidx.media3.extractor.text.SubtitleExtractor
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
+import com.streambox.player.core.common.net.CleartextImagePolicy
 import com.streambox.player.core.common.result.AppError
 import com.streambox.player.core.common.result.AppException
 import com.streambox.player.core.model.BufferProfile
@@ -354,7 +355,12 @@ internal class Media3PlaybackController @Inject constructor(
                 MediaMetadata.Builder()
                     .setTitle(item.name)
                     .setDisplayTitle(item.name)
-                    .setArtworkUri(item.logoUrl?.let(Uri::parse))
+                    // K1: the notification's artwork obeys the playlist's cleartext switch too.
+                    .setArtworkUri(
+                        item.logoUrl
+                            ?.takeIf { CleartextImagePolicy.isAllowed(it, item.allowCleartext) }
+                            ?.let(Uri::parse),
+                    )
                     .build(),
             )
             .setMimeType(

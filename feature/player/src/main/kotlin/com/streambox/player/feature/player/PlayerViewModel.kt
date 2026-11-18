@@ -410,7 +410,12 @@ class PlayerViewModel @Inject constructor(
 
     /** Remote / keyboard media keys while the player is in the foreground (K14). */
     fun onMediaKey(action: MediaKeyAction) {
-        if (action == MediaKeyAction.TOGGLE && local.value.panelOpen) return
+        when (action) {
+            MediaKeyAction.TOGGLE -> playbackController.togglePlayPause()
+            MediaKeyAction.PLAY -> playbackController.resume()
+            MediaKeyAction.PAUSE -> playbackController.pause()
+        }
+        showOverlay()
     }
 
     /** Left / right: seek ±10 s on seekable content, otherwise change the volume (live TV). */
