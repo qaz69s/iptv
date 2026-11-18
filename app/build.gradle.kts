@@ -63,7 +63,6 @@ dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.ui)
     implementation(projects.core.network)
-    implementation(projects.core.player)
 
     implementation(projects.feature.onboarding)
     implementation(projects.feature.channels)

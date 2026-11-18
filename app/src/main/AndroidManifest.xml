@@ -3,10 +3,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Background playback: media foreground service + its notification (runtime permission on 13+). -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- FOREGROUND_SERVICE*, POST_NOTIFICATIONS and PlaybackService come from :core:player's manifest. -->
 
     <!-- One APK for phone, tablet and Android TV: neither touch nor leanback is required. -->
     <uses-feature
@@ -45,16 +42,5 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Background playback (MediaSession). Not exported: notification, lock screen, headset and
-             Bluetooth controls go through the platform session token, which needs no binding. -->
-        <service
-            android:name="com.streambox.player.core.player.session.PlaybackService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback">
-            <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
-            </intent-filter>
-        </service>
     </application>
 </manifest>
