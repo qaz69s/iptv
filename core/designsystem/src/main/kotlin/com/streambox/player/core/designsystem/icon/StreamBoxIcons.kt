@@ -36,4 +36,8 @@ object StreamBoxIcons {
     val History = R.drawable.sb_ic_history
     val Close = R.drawable.sb_ic_close
     val MoreVert = R.drawable.sb_ic_more_vert
+    val Edit = R.drawable.sb_ic_edit
+    val Visible = R.drawable.sb_ic_visibility
+    val Hidden = R.drawable.sb_ic_visibility_off
+    val NewGroup = R.drawable.sb_ic_create_new_folder
 }

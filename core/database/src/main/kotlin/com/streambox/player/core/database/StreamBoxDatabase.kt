@@ -23,9 +23,10 @@ import com.streambox.player.core.database.migration.Migration1To2
 import com.streambox.player.core.database.migration.Migration2To3
 
 /**
- * Schema v3 (P3c): v1 (P1: playlists, groups, channels + FTS); v2 (P3a, [Migration1To2]) adds favorites,
- * watch history and the user's channel / group overrides; v3 ([Migration2To3]) adds custom groups. Later phases add Program, EpgMapping, Reminder
- * and VOD tables through further migrations; exported schemas live in `core/database/schemas`.
+ * Schema v3 (P3c): v1 (P1: playlists, groups, channels + FTS); v2 (P3a, [Migration1To2]) adds
+ * favorites, watch history and the user's channel / group overrides; v3 ([Migration2To3]) adds custom
+ * groups. Later phases add Program, EpgMapping, Reminder and VOD tables through further migrations;
+ * exported schemas live in `core/database/schemas`.
  */
 @Database(
     entities = [

@@ -11,9 +11,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-internal class DefaultCustomGroupsRepository @Inject constructor(
-    private val dao: CustomGroupDao,
-) : CustomGroupsRepository {
+internal class DefaultCustomGroupsRepository @Inject constructor(private val dao: CustomGroupDao) :
+    CustomGroupsRepository {
     override val groups: Flow<List<CustomGroup>> = dao.observeGroups().map { rows ->
         rows.map { CustomGroup(it.id, it.name, it.channelCount) }
     }

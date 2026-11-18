@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
  * groups. Stored apart from the imported data and re-applied after every refresh. Groups are
  * identified by the name the playlist gives them (empty = channels without a group).
  */
+@Suppress("TooManyFunctions") // One method per editor action, plus the editor's lists.
 interface ChannelOverridesRepository {
     fun channelOverrides(playlistId: Long): Flow<List<ChannelOverride>>
 

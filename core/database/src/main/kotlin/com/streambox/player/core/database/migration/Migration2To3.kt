@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v2 -> v3 (P3c): custom groups and their channels. Nothing existing changes. The CREATE statements
  * match the exported schema `3.json`.
  */
+@Suppress("MagicNumber") // Schema version numbers.
 object Migration2To3 : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         CREATE_STATEMENTS.forEach(db::execSQL)

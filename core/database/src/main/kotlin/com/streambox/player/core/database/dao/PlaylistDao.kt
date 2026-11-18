@@ -7,6 +7,7 @@ import com.streambox.player.core.database.entity.PlaylistEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+@Suppress("TooManyFunctions") // One small query per playlist field the app changes.
 interface PlaylistDao {
     @Query("SELECT * FROM playlists ORDER BY sortOrder, id")
     fun observeAll(): Flow<List<PlaylistEntity>>

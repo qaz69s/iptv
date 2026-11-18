@@ -26,12 +26,7 @@ data class PlaybackRow(
 )
 
 /** A group of one playlist as the list editor shows it: hidden groups included, with all their channels. */
-data class EditorGroupRow(
-    val name: String,
-    val customName: String?,
-    val hidden: Boolean,
-    val channelCount: Int,
-)
+data class EditorGroupRow(val name: String, val customName: String?, val hidden: Boolean, val channelCount: Int)
 
 /**
  * A channel as the list editor shows it. [hidden] is the effective flag (itself or its group),

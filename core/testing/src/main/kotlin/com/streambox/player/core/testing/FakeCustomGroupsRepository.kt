@@ -38,9 +38,12 @@ class FakeCustomGroupsRepository(channels: List<Channel> = emptyList()) : Custom
 
     override suspend fun create(name: String): Long? {
         val trimmed = name.trim().takeIf { it.isNotEmpty() } ?: return null
-        state.value.firstOrNull { it.first.name == trimmed }?.let { return it.first.id }
+        return state.value.firstOrNull { it.first.name == trimmed }?.first?.id ?: newGroup(trimmed)
+    }
+
+    private fun newGroup(name: String): Long {
         val id = nextId++
-        state.update { it + (CustomGroup(id, trimmed) to emptyList()) }
+        state.update { it + (CustomGroup(id, name) to emptyList()) }
         return id
     }
 

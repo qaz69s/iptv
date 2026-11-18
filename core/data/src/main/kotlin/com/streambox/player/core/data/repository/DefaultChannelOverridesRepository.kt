@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+@Suppress("TooManyFunctions") // Implements ChannelOverridesRepository.
 internal class DefaultChannelOverridesRepository @Inject constructor(
     private val overrideDao: OverrideDao,
     private val channelDao: ChannelDao,
