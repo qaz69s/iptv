@@ -25,7 +25,7 @@
 | `feature:onboarding` | Android lib | 欢迎页 → 合规声明 → 添加列表 → 导入进度 |
 | `feature:playlist` | Android lib | 列表管理（URL / SAF 文件 / Xtream）、列表编辑器 |
 | `feature:channels` | Android lib | 分组/频道（列表/网格/紧凑）、搜索、数字直输 |
-| `feature:player` | Android lib | 播放界面、覆盖层、切台（P1）；轨道、字幕、比例、遥控器（P2a 已实现）；手势、PiP、睡眠定时（P2b）。原计划名 `feature:player-ui`，P1 实际命名为 `feature:player` |
+| `feature:player` | Android lib | 播放界面、覆盖层、切台（P1）；轨道、字幕、比例、遥控器（P2a 已实现）；手势、PiP、睡眠定时、自动下一个（P2b 已实现）。原计划名 `feature:player-ui`，P1 实际命名为 `feature:player` |
 | `feature:epg` | Android lib | 频道节目单、网格 EPG、提醒 |
 | `feature:vod` | Android lib | 电影/剧集、续播 |
 | `feature:settings` | Android lib | 设置、家长控制、备份恢复 |
@@ -51,7 +51,7 @@
 | Navigation Compose | 2.10.2 |
 | Core KTX | 1.19.1 |
 | Hilt | 2.60.1；hilt-navigation-compose 1.4.0 |
-| Media3（exoplayer/hls/dash/rtsp/datasource-okhttp/session/ui-compose） | 1.11.1（P1 实际使用：exoplayer、exoplayer-hls/dash/rtsp、datasource-okhttp、ui-compose 的 `ContentFrame`；ui（P2a，SubtitleView）；session 留到 P2b） |
+| Media3（exoplayer/hls/dash/rtsp/datasource-okhttp/session/ui-compose） | 1.11.1（P1 实际使用：exoplayer、exoplayer-hls/dash/rtsp、datasource-okhttp、ui-compose 的 `ContentFrame`；ui（P2a，SubtitleView）；session（P2b，core:player 的 MediaSessionService）） |
 | Media3 RTMP 扩展 | 无 1.11 稳定版（最新 1.12.0-beta01），见风险 R5 |
 | Room | 2.8.5 |
 | Paging | 3.5.3（core:domain 用 paging-common，feature:channels 用 paging-compose） |
@@ -78,7 +78,7 @@
 | P0 | 多模块脚手架、约定插件、Version Catalog、Hilt、导航、主题、TV Leanback 入口、首启空状态、CI（GitHub Actions：ktlint + detekt + 单测 + assembleDebug）、README/ARCHITECTURE | 编译 + 单测 + lint | 手机/TV 模拟器启动空壳 |
 | P1 ✅（沙箱完成，待真机验收） | M3U 流式解析器（≥30 样例）、URL/SAF 导入、Room + FTS、频道列表、基础播放 | 解析器单测、10 万行性能测试（JVM） | 实际导入并播放 |
 | P2a ✅（沙箱完成，待真机验收） | 重连策略（独立可测）、缓冲档位、硬解失败回退软解、轨道 / 外挂字幕 / 字幕样式、画面比例、TV 遥控器（面板、音量 / 快进退、数字台号）、设置「播放」分组 | 重连策略 / 台号输入 / ViewModel 单测 | 播放清单项 |
-| P2b | 手势（亮度 / 音量 / 进度）、PiP、MediaSession 后台播放、睡眠定时、自动继续播放、自动下一集 | 定时 / 续播逻辑单测 | 播放清单项 |
+| P2b ✅（沙箱完成，待真机验收） | 手势（亮度 / 音量 / 进度、双击）、PiP、MediaSession 后台播放（通知、耳机 / 蓝牙切台）、睡眠定时（淡出）、启动续播上次频道、自动播放下一个 | 定时 / 续播 / 手势 / PiP 比例 / ViewModel 单测 | 播放清单项 |
 | P3 | 搜索、收藏、历史、分组管理、列表编辑器、更新后保留收藏/排序 | DAO/仓库测试 | 交互验收 |
 | P4 | XMLTV 解析、EPG 匹配、网格 EPG、提醒 | 解析/匹配单测 | TV 焦点验收 |
 | P5 | 回看/时移（≥20 用例含夏令时/跨日/负偏移） | 全部单测 | 真实源验证 |
@@ -86,10 +86,13 @@
 | P7 | 设置、家长控制、备份恢复、定时更新、多语言（简中/英文） | PIN/备份单测 | 交互验收 |
 | P8 | Chromecast、（可选）广告/内购、性能、R8 release、商店文案与隐私政策模板 | release 构建 | 全清单 |
 
-### 阶段状态（2026-11-17）
+### 阶段状态（2026-11-18）
 - P0：完成（报告 `docs/phase-reports/P0.md`）。
 - P1：完成，沙箱内 `assembleDebug test ktlintCheck detekt` 全绿；真机/TV 验收待用户（报告 `docs/phase-reports/P1.md`）。
-- P2：拆为 P2a / P2b。**P2a 完成**，沙箱内 `assembleDebug test ktlintCheck detekt` 全绿，单元测试 255 项；真机（手机 realme GT6 + TV）验收待用户（报告 `docs/phase-reports/P2a.md`）。P2b 未开始。
+- P2：拆为 P2a / P2b。**P2a 完成**，沙箱内 `assembleDebug test ktlintCheck detekt` 全绿，单元测试 255 项；真机（手机 realme GT6 + TV）验收待用户（报告 `docs/phase-reports/P2a.md`）。
+- **P2b 完成**（沙箱完成，待真机验收）：沙箱内 `ktlintCheck detekt test :app:assembleDebug` 全绿，单元测试 348 项（+93）；真机（手机 realme GT6 + TV）验收待用户（报告 `docs/phase-reports/P2b.md`）。P2 整体交付包 `StreamBox-P2-debug.apk`。
+- P2b 新增依赖：`androidx.media3:media3-session` 1.11.1（core:player）。新权限：`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`POST_NOTIFICATIONS`。无新模块。
+- P2b 范围调整："自动继续播放"本阶段实现为启动时续播上次频道（默认关）；点播断点续播位置随 VOD 在 P6 做。系统播放恢复 / Android Auto 不做。
 - P2a 新增依赖：`androidx.media3:media3-ui` 1.11.1（字幕渲染 `SubtitleView`）。无新模块。
 - P1 新增依赖（版本见上表）：Room（runtime/ktx/paging/compiler/testing）、Paging（common/compose）、OkHttp + mockwebserver3、Media3（exoplayer、hls、dash、rtsp、datasource-okhttp、ui-compose）、Coil 3（compose + network-okhttp）。新增模块：core:parser、core:network、core:database、core:player、feature:playlist、feature:player。
 
