@@ -61,3 +61,8 @@ GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时执行以�
 
 ## 免责声明
 本应用仅为播放器，不提供任何内容。用户需自行承担所添加播放列表及内容的合法性。
+
+
+## 第三方许可证说明
+
+音频软解使用 NextLib `io.github.anilbeesetti:nextlib-media3ext`（GPL-3.0，内含 LGPL v3 构建的 FFmpeg）。引入该依赖后，分发的 APK 须遵守 GPL-3.0（公开对应源代码）。
