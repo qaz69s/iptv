@@ -23,7 +23,9 @@ import com.streambox.player.core.player.ChannelNavigator
 import com.streambox.player.core.player.PlaybackController
 import com.streambox.player.core.player.PlaybackState
 import com.streambox.player.core.player.PlaybackTracks
+import com.streambox.player.core.player.StreamInfo
 import com.streambox.player.core.player.TrackId
+import com.streambox.player.core.player.audio.AudioStatus
 import com.streambox.player.core.player.reconnect.ReconnectStatus
 import com.streambox.player.core.player.sleep.MonotonicClock
 import com.streambox.player.core.player.sleep.SleepTimer
@@ -88,7 +90,12 @@ data class PlayerUiState(
     val sleepTimer: SleepTimerState? = null,
     /** The channel is one of the favorites (panel toggle, P3b). */
     val isFavorite: Boolean = false,
-)
+    /** Codecs / decoders in use, shown in the panel's stream info (K26). */
+    val streamInfo: StreamInfo = StreamInfo(),
+) {
+    /** K26: the stream has audio but this device can decode none of it (non-fatal notice). */
+    val unsupportedAudio: AudioStatus.Unsupported? get() = streamInfo.audioStatus as? AudioStatus.Unsupported
+}
 
 /** Buttons of the picture-in-picture window. */
 enum class PipAction { PREVIOUS, PLAY_PAUSE, NEXT }
@@ -229,6 +236,7 @@ class PlayerViewModel @Inject constructor(
             gesturesEnabled = prefs.playbackGestures,
             sleepTimer = lookup.sleepTimer,
             isFavorite = lookup.isFavorite,
+            streamInfo = StreamInfo(), // K26 failing-test stub
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 

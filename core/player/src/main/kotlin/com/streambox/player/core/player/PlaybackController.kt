@@ -22,6 +22,8 @@ data class PlaybackState(
     val tracks: PlaybackTracks = PlaybackTracks(),
     /** On-demand content (not live) played to its end. A live stream that ends reconnects instead. */
     val ended: Boolean = false,
+    /** Codecs and decoders in use, and whether the audio can be played at all (K26). */
+    val streamInfo: StreamInfo = StreamInfo(),
 )
 
 /**
