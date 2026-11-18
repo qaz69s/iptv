@@ -1,5 +1,7 @@
 # StreamBox Player
 
+> **给 AI / 开发者：接手本项目前先读 [`AGENTS.md`](AGENTS.md)**（用户的开发要求与工作流、代码约定、文档阅读顺序），再看 [`docs/DEVELOPMENT-STATUS.md`](docs/DEVELOPMENT-STATUS.md)（已完成 / 待开发 / 已知问题 / 下一步）。
+
 一款纯 IPTV 播放器（Android 手机 / 平板 / Android TV）。**应用不内置、不提供任何内容**，用户自行添加 M3U/M3U8、Xtream Codes 播放列表和 XMLTV 节目单。
 
 > 当前进度：**P2 完成**（P2a + P2b，待真机验收）：在 P1（M3U 导入、频道浏览、全屏播放）之上，P2a 加入自动重连、三档缓冲、硬解失败回退软解、清晰度 / 音轨 / 字幕（含外挂 SRT/VTT）、字幕样式、六种画面比例、TV 遥控器；P2b 加入后台播放（媒体通知、耳机 / 蓝牙切台）、画中画、播放手势、睡眠定时、启动续播上次频道、自动播放下一个。各阶段见 `docs/implementation-plan.md` 与 `docs/phase-reports/`。
@@ -25,7 +27,7 @@ Kotlin 2.4 · Jetpack Compose (Material 3) · Compose for TV · Hilt · DataStor
 
 ## 环境要求
 - JDK 17
-- Android SDK（compileSdk 37 / targetSdk 36 / minSdk 24）
+- Android SDK（compileSdk 37 / targetSdk 37 / minSdk 24）
 - Android Studio 最新稳定版
 
 ## 构建
@@ -35,16 +37,22 @@ Kotlin 2.4 · Jetpack Compose (Material 3) · Compose for TV · Hilt · DataStor
 ./gradlew ktlintCheck detekt     # 代码风格与静态检查
 ./gradlew :app:lintDebug         # Android Lint
 ```
-GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时执行以上全部步骤，并上传调试 APK。
+GitHub Actions（`.github/workflows/ci.yml`）在每次 push / PR 时执行以上全部步骤（另加 `:app:assembleRelease`），并上传调试 APK。详见 `docs/BUILD-AND-ENV.md`。
 
 ## 发布签名
 复制 `keystore.properties.template` 为 `keystore.properties`（已被 git 忽略）并填写，或在 CI 中设置环境变量 `STREAMBOX_KEYSTORE_FILE`、`STREAMBOX_KEYSTORE_PASSWORD`、`STREAMBOX_KEY_ALIAS`、`STREAMBOX_KEY_PASSWORD`。没有签名配置时，release 构建产出未签名 APK。
 
-## 文档
-- `docs/requirements.md` 需求说明书
-- `docs/implementation-plan.md` 实施计划（模块、版本、风险、阶段）
-- `ARCHITECTURE.md` 架构说明
-- `docs/phase-reports/` 各阶段汇报
+## 文档目录
+| 文件 | 内容 |
+|---|---|
+| `AGENTS.md` | **AI / 开发者接手入口**：项目简介、阅读顺序、用户的开发要求与阶段工作流（必须遵守）、代码约定 |
+| `docs/DEVELOPMENT-STATUS.md` | 开发状态：P0–P2 已完成内容、P3–P8 待开发范围与验收要点、已知问题与技术债汇总、待真机验收清单、下一步 |
+| `docs/BUILD-AND-ENV.md` | 构建与环境：JDK / SDK、常用命令、CI、签名配置、已知环境坑 |
+| `docs/requirements.md` | 需求说明书（唯一需求来源，不修改） |
+| `docs/implementation-plan.md` | 实施计划：模块、依赖版本、风险点、阶段表与阶段状态 |
+| `ARCHITECTURE.md` | 架构说明：模块分层、播放生命周期、导航 |
+| `docs/phase-reports/` | 各阶段报告（P0、P1、P2a、P2b）：做了什么 / 没做什么 / 已知问题 / 真机验收步骤 |
+| `docs/handoff/P2-handoff.md` | P2 结束时给 P3 开发者的代码级交接 |
 
 ## 免责声明
 本应用仅为播放器，不提供任何内容。用户需自行承担所添加播放列表及内容的合法性。

@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-/** P2c: sleep timer, remembering the last channel, auto play next. */
+/** P2b: sleep timer, remembering the last channel, auto play next. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerViewModelSleepAndNextTest {
     @JvmField

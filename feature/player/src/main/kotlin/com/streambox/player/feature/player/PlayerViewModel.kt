@@ -106,7 +106,7 @@ private data class ScreenLocal(
  * notification or a headset zap through [zap]. In picture-in-picture the screen keeps playing even
  * while stopped (screen off); closing the window falls back to background playback or a release.
  *
- * P2c: the sleep timer lives here (it keeps running during background playback and PiP, because this
+ * P2b: the sleep timer lives here (it keeps running during background playback and PiP, because this
  * ViewModel stays alive as long as the player screen is on the back stack, and dies with the player);
  * every channel that starts playing is remembered as the last channel; finished on-demand content
  * moves on to the next channel of the group when "auto play next" is on.
