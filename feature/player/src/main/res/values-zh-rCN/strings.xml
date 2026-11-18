@@ -38,4 +38,8 @@
     <string name="feature_player_track_external">%1$s（外挂）</string>
     <string name="feature_player_hint_tv_live">上/下：切台 · 左/右：音量 · 数字键：输入频道号 · 菜单键或长按 OK：设置</string>
     <string name="feature_player_hint_tv_vod">上/下：切台 · 左/右：快退/快进 10 秒 · 菜单键或长按 OK：设置</string>
+    <string name="feature_player_pip_play">播放</string>
+    <string name="feature_player_pip_pause">暂停</string>
+    <string name="feature_player_pip_error">播放出错</string>
+    <string name="feature_player_pip">画中画</string>
 </resources>

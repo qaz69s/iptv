@@ -28,6 +28,10 @@ interface SettingsRepository {
 
     suspend fun setSubtitleStyle(style: SubtitleStyle)
 
+    suspend fun setBackgroundPlayback(enabled: Boolean)
+
+    suspend fun setPictureInPicture(enabled: Boolean)
+
     suspend fun markWelcomeSeen()
 
     suspend fun acceptDisclaimer()

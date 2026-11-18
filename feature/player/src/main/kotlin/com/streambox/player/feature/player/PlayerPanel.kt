@@ -3,6 +3,7 @@
 package com.streambox.player.feature.player
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -58,7 +60,9 @@ import com.streambox.player.core.player.MediaTrackOption
 import com.streambox.player.core.player.PlaybackTracks
 import com.streambox.player.core.player.TrackId
 import com.streambox.player.core.player.VideoTrackOption
+import com.streambox.player.core.ui.LocalFormFactor
 import com.streambox.player.core.ui.labelRes
+import com.streambox.player.core.ui.supportsPictureInPicture
 import java.util.Locale
 
 /** Everything the panel can change; grouped so the composables stay readable. */
@@ -70,6 +74,8 @@ internal data class PlayerPanelActions(
     val onLoadSubtitleFile: () -> Unit,
     val onAspectRatio: (AspectRatioMode) -> Unit,
     val onSubtitleStyle: (SubtitleStyle) -> Unit,
+    /** Close the panel and shrink into picture-in-picture. */
+    val onPictureInPicture: () -> Unit = {},
 )
 
 /** Touch: modal bottom sheet. TV: focusable side panel in a dialog; Menu or Back closes it. */
@@ -108,6 +114,10 @@ internal fun PlayerPanel(state: PlayerUiState, isTv: Boolean, actions: PlayerPan
 
 @Composable
 private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firstFocus: FocusRequester?) {
+    val context = LocalContext.current
+    val formFactor = LocalFormFactor.current
+    // Same gate as the PiP effect: phones / tablets on Android 8.0+ with system support (never TV).
+    val pipSupported = remember(context, formFactor) { context.supportsPictureInPicture(formFactor) }
     LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
         item {
             Text(
@@ -117,6 +127,15 @@ private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firs
                     .padding(horizontal = 24.dp, vertical = 8.dp)
                     .semantics { heading() },
             )
+        }
+        if (pipSupported && state.pictureInPictureEnabled) {
+            item(key = "pip") {
+                ActionRow(
+                    label = stringResource(R.string.feature_player_pip),
+                    icon = StreamBoxIcons.PictureInPicture,
+                    onClick = actions.onPictureInPicture,
+                )
+            }
         }
         aspectSection(state.aspectRatio, actions.onAspectRatio, firstFocus)
         tracksSections(state.tracks, actions)
@@ -193,6 +212,7 @@ private fun LazyListScope.tracksSections(tracks: PlaybackTracks, actions: Player
     item {
         ActionRow(
             label = stringResource(R.string.feature_player_subtitles_load),
+            icon = StreamBoxIcons.Subtitles,
             onClick = actions.onLoadSubtitleFile,
         )
     }
@@ -281,7 +301,7 @@ private fun OptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ActionRow(label: String, onClick: () -> Unit) {
+private fun ActionRow(label: String, @DrawableRes icon: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -291,7 +311,7 @@ private fun ActionRow(label: String, onClick: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(StreamBoxIcons.Subtitles), contentDescription = null)
+        Icon(painterResource(icon), contentDescription = null)
         Spacer(Modifier.width(16.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }

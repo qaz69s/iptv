@@ -11,6 +11,10 @@
     <string name="feature_settings_buffer_low_latency">低延迟</string>
     <string name="feature_settings_buffer_balanced">均衡</string>
     <string name="feature_settings_buffer_stable">稳定</string>
+    <string name="feature_settings_background_playback">后台播放</string>
+    <string name="feature_settings_background_playback_summary">离开应用后继续播放声音并显示媒体通知，可用耳机或蓝牙按键控制。</string>
+    <string name="feature_settings_picture_in_picture">画中画</string>
+    <string name="feature_settings_picture_in_picture_summary">按 Home 键时以小窗继续播放</string>
     <string name="feature_settings_software_decoding">仅软件解码（软件优先）</string>
     <string name="feature_settings_software_decoding_summary">优先使用软件解码器而非硬件解码器。画面黑屏或花屏时可尝试开启。</string>
     <string name="feature_settings_reconnect_attempts">自动重连次数</string>

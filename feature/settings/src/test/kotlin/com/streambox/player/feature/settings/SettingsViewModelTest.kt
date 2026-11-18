@@ -71,6 +71,28 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `background playback is on by default and toggling persists it`() = runTest {
+        viewModel.uiState.test {
+            assertTrue(awaitSettings { true }.playback.backgroundPlayback)
+            viewModel.onBackgroundPlaybackChanged(false)
+            assertFalse(awaitSettings { !it.playback.backgroundPlayback }.playback.backgroundPlayback)
+            viewModel.onBackgroundPlaybackChanged(true)
+            assertTrue(awaitSettings { it.playback.backgroundPlayback }.playback.backgroundPlayback)
+        }
+    }
+
+    @Test
+    fun `picture-in-picture is on by default and toggling persists it`() = runTest {
+        viewModel.uiState.test {
+            assertTrue(awaitSettings { true }.playback.pictureInPicture)
+            viewModel.onPictureInPictureChanged(false)
+            assertFalse(awaitSettings { !it.playback.pictureInPicture }.playback.pictureInPicture)
+            viewModel.onPictureInPictureChanged(true)
+            assertTrue(awaitSettings { it.playback.pictureInPicture }.playback.pictureInPicture)
+        }
+    }
+
+    @Test
     fun `toggling software decoding persists it`() = runTest {
         viewModel.uiState.test {
             awaitSettings { true }

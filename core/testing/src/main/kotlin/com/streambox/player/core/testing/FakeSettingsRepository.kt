@@ -41,6 +41,11 @@ class FakeSettingsRepository(
 
     override suspend fun setSubtitleStyle(style: SubtitleStyle) = updatePlayback { it.copy(subtitleStyle = style) }
 
+    override suspend fun setBackgroundPlayback(enabled: Boolean) =
+        updatePlayback { it.copy(backgroundPlayback = enabled) }
+
+    override suspend fun setPictureInPicture(enabled: Boolean) = updatePlayback { it.copy(pictureInPicture = enabled) }
+
     private fun updatePlayback(transform: (PlaybackSettings) -> PlaybackSettings) =
         settingsFlow.update { it.copy(playback = transform(it.playback)) }
 

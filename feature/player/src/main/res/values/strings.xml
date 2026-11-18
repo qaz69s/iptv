@@ -38,4 +38,8 @@
     <string name="feature_player_track_external">%1$s (file)</string>
     <string name="feature_player_hint_tv_live">Up / Down: channel · Left / Right: volume · Digits: channel number · Menu or hold OK: settings</string>
     <string name="feature_player_hint_tv_vod">Up / Down: channel · Left / Right: −10 s / +10 s · Menu or hold OK: settings</string>
+    <string name="feature_player_pip_play">Play</string>
+    <string name="feature_player_pip_pause">Pause</string>
+    <string name="feature_player_pip_error">Playback error</string>
+    <string name="feature_player_pip">Picture-in-picture</string>
 </resources>

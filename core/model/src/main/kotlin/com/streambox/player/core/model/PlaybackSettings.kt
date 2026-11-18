@@ -41,6 +41,13 @@ data class PlaybackSettings(
     val maxReconnectAttempts: Int = DEFAULT_RECONNECT_ATTEMPTS,
     val defaultAspectRatio: AspectRatioMode = AspectRatioMode.Fit,
     val subtitleStyle: SubtitleStyle = SubtitleStyle(),
+    /** Keep the audio playing (media notification, headset controls) when the app goes to the background. */
+    val backgroundPlayback: Boolean = true,
+    /**
+     * Picture-in-picture on phones / tablets (Android 8.0+ with PiP support; never on TV): leaving the
+     * player with Home shrinks it into a floating window instead of going audio-only.
+     */
+    val pictureInPicture: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_RECONNECT_ATTEMPTS = 5

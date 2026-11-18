@@ -31,6 +31,10 @@ internal class DefaultSettingsRepository @Inject constructor(private val dataSou
 
     override suspend fun setSubtitleStyle(style: SubtitleStyle) = dataSource.setSubtitleStyle(style)
 
+    override suspend fun setBackgroundPlayback(enabled: Boolean) = dataSource.setBackgroundPlayback(enabled)
+
+    override suspend fun setPictureInPicture(enabled: Boolean) = dataSource.setPictureInPicture(enabled)
+
     override suspend fun markWelcomeSeen() = dataSource.markWelcomeSeen()
 
     override suspend fun acceptDisclaimer() = dataSource.acceptDisclaimer()

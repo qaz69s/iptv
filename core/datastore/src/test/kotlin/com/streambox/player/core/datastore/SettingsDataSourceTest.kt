@@ -79,6 +79,8 @@ class SettingsDataSourceTest {
         assertEquals(PlaybackSettings.DEFAULT_RECONNECT_ATTEMPTS, playback.maxReconnectAttempts)
         assertEquals(AspectRatioMode.Fit, playback.defaultAspectRatio)
         assertEquals(SubtitleStyle(), playback.subtitleStyle)
+        assertTrue(playback.backgroundPlayback)
+        assertTrue(playback.pictureInPicture)
     }
 
     @Test
@@ -95,6 +97,8 @@ class SettingsDataSourceTest {
         source.setMaxReconnectAttempts(0)
         source.setDefaultAspectRatio(AspectRatioMode.Stretch)
         source.setSubtitleStyle(style)
+        source.setBackgroundPlayback(false)
+        source.setPictureInPicture(false)
 
         assertEquals(
             PlaybackSettings(
@@ -103,6 +107,8 @@ class SettingsDataSourceTest {
                 maxReconnectAttempts = 0,
                 defaultAspectRatio = AspectRatioMode.Stretch,
                 subtitleStyle = style,
+                backgroundPlayback = false,
+                pictureInPicture = false,
             ),
             source.settings.first().playback,
         )
@@ -127,9 +133,21 @@ class SettingsDataSourceTest {
         source.setDefaultAspectRatio(AspectRatioMode.Original)
         assertEquals(AspectRatioMode.Original, source.settings.first().playback.defaultAspectRatio)
 
+        source.setPictureInPicture(false)
+        assertFalse(source.settings.first().playback.pictureInPicture)
+        assertTrue(source.settings.first().playback.backgroundPlayback)
+        source.setPictureInPicture(true)
+        assertTrue(source.settings.first().playback.pictureInPicture)
+
         source.setSubtitleStyle(SubtitleStyle(size = SubtitleSize.Small))
         assertEquals(SubtitleStyle(size = SubtitleSize.Small), source.settings.first().playback.subtitleStyle)
         assertEquals(BufferProfile.Stable, source.settings.first().playback.bufferProfile)
+
+        source.setBackgroundPlayback(false)
+        assertFalse(source.settings.first().playback.backgroundPlayback)
+        source.setBackgroundPlayback(true)
+        assertTrue(source.settings.first().playback.backgroundPlayback)
+        assertEquals(AspectRatioMode.Original, source.settings.first().playback.defaultAspectRatio)
     }
 
     @Test

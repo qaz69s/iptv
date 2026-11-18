@@ -64,6 +64,14 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
         viewModelScope.launch { settingsRepository.setSubtitleStyle(style) }
     }
 
+    fun onBackgroundPlaybackChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setBackgroundPlayback(enabled) }
+    }
+
+    fun onPictureInPictureChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setPictureInPicture(enabled) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
     }

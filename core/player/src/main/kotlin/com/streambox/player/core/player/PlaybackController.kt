@@ -4,6 +4,7 @@ import androidx.media3.common.Player
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
+import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.player.reconnect.ReconnectStatus
 import kotlinx.coroutines.flow.StateFlow
 
@@ -24,7 +25,8 @@ data class PlaybackState(
 /**
  * App-wide player (requirements §8.8: not tied to an Activity, survives configuration changes).
  * Must be called on the main thread. P2a adds reconnects, buffering profiles, decoder fallback and
- * tracks; PiP and background playback follow in P2b.
+ * tracks; P2b adds background playback (the MediaSession in [com.streambox.player.core.player.session.PlaybackService]
+ * follows [player], including rebuilds).
  */
 @Suppress("TooManyFunctions")
 interface PlaybackController {
@@ -37,6 +39,9 @@ interface PlaybackController {
 
     /** Manual retry: resets the reconnect counter and starts the current item again. */
     fun retry()
+
+    /** Play / pause toggle (e.g. the PiP action); with no player, idle or failed it [retry]s instead. */
+    fun togglePlayPause()
 
     /** Stops playback and frees decoders / network; the next [play] creates a fresh player. */
     fun release()
@@ -60,4 +65,19 @@ interface PlaybackController {
 
     /** Raises / lowers the device media volume, showing the system volume UI. */
     fun adjustVolume(raise: Boolean)
+
+    /**
+     * Background mode: the video track is disabled (nothing is decoded for a hidden surface) while the
+     * audio keeps playing; it also applies to players rebuilt meanwhile. Leaving it re-enables video
+     * and resumes playback if it was paused (e.g. from the notification or a headset). Reset by [release].
+     */
+    fun setInBackground(background: Boolean)
+
+    /** Handles "next / previous" from the media notification, headset and Bluetooth; null = no-op. */
+    var channelNavigator: ChannelNavigator?
+}
+
+/** Moves to the adjacent channel; registered by the screen that owns the channel list. */
+fun interface ChannelNavigator {
+    fun zap(direction: ZapDirection)
 }

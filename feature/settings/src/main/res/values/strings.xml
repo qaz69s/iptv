@@ -11,6 +11,10 @@
     <string name="feature_settings_buffer_low_latency">Low latency</string>
     <string name="feature_settings_buffer_balanced">Balanced</string>
     <string name="feature_settings_buffer_stable">Stable</string>
+    <string name="feature_settings_background_playback">Background playback</string>
+    <string name="feature_settings_background_playback_summary">Keep the audio playing with a media notification when you leave the app. Headset and Bluetooth buttons control playback.</string>
+    <string name="feature_settings_picture_in_picture">Picture-in-picture</string>
+    <string name="feature_settings_picture_in_picture_summary">Keep playing in a small window when you press Home</string>
     <string name="feature_settings_software_decoding">Software decoding only (software first)</string>
     <string name="feature_settings_software_decoding_summary">Prefer software decoders over hardware ones. Try this if video shows a black screen or artifacts.</string>
     <string name="feature_settings_reconnect_attempts">Automatic reconnect attempts</string>

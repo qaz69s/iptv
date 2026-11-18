@@ -81,6 +81,14 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         }
     }
 
+    suspend fun setBackgroundPlayback(enabled: Boolean) {
+        dataStore.edit { it[Keys.BACKGROUND_PLAYBACK] = enabled }
+    }
+
+    suspend fun setPictureInPicture(enabled: Boolean) {
+        dataStore.edit { it[Keys.PICTURE_IN_PICTURE] = enabled }
+    }
+
     suspend fun markWelcomeSeen() {
         dataStore.edit { it[Keys.WELCOME_SEEN] = true }
     }
@@ -105,6 +113,8 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
                 color = this[Keys.SUBTITLE_COLOR].toEnum(style.color),
                 background = this[Keys.SUBTITLE_BACKGROUND].toEnum(style.background),
             ),
+            backgroundPlayback = this[Keys.BACKGROUND_PLAYBACK] ?: defaults.backgroundPlayback,
+            pictureInPicture = this[Keys.PICTURE_IN_PICTURE] ?: defaults.pictureInPicture,
         )
     }
 
@@ -124,5 +134,7 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         val SUBTITLE_SIZE = stringPreferencesKey("playback_subtitle_size")
         val SUBTITLE_COLOR = stringPreferencesKey("playback_subtitle_color")
         val SUBTITLE_BACKGROUND = stringPreferencesKey("playback_subtitle_background")
+        val BACKGROUND_PLAYBACK = booleanPreferencesKey("playback_background_playback")
+        val PICTURE_IN_PICTURE = booleanPreferencesKey("playback_picture_in_picture")
     }
 }

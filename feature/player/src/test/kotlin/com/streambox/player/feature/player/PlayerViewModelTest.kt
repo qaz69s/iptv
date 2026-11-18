@@ -1,8 +1,10 @@
 package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
+import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.PlaybackError
+import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
@@ -36,7 +38,7 @@ class PlayerViewModelTest {
         ),
     )
     private val controller = FakePlaybackController()
-    private val settings = FakeSettingsRepository()
+    private var settings = FakeSettingsRepository()
 
     private fun viewModel(channelId: Long = 1, group: String? = null) = PlayerViewModel(
         SavedStateHandle(mapOf("channelId" to channelId, "groupName" to group)),
@@ -261,5 +263,283 @@ class PlayerViewModelTest {
         assertTrue(viewModel.uiState.value.panelOpen)
         viewModel.togglePanel()
         assertFalse(viewModel.uiState.value.panelOpen)
+    }
+
+    // --- Background playback ---------------------------------------------------------------------
+
+    @Test
+    fun `app going to the background keeps playing audio-only when background playback is on`() = runTest {
+        val viewModel = viewModel(channelId = 2)
+        collect(viewModel)
+        viewModel.onStart()
+        controller.startPlaying()
+
+        viewModel.onStop(appInBackground = true)
+
+        assertEquals(0, controller.releases)
+        assertEquals(listOf(true), controller.backgroundModes)
+        assertTrue(viewModel.uiState.value.backgroundPlayback)
+
+        // Back to the foreground: picture again, no restart of the stream.
+        viewModel.onStart()
+        assertEquals(listOf(true, false), controller.backgroundModes)
+        assertEquals(listOf(2L), controller.played.map { it.channelId })
+    }
+
+    @Test
+    fun `app going to the background releases when background playback is off`() = runTest {
+        settings = FakeSettingsRepository(AppSettings(playback = PlaybackSettings(backgroundPlayback = false)))
+        val viewModel = viewModel(channelId = 2)
+        collect(viewModel)
+        viewModel.onStart()
+        controller.startPlaying()
+        assertFalse(viewModel.uiState.value.backgroundPlayback)
+
+        viewModel.onStop(appInBackground = true)
+
+        assertEquals(1, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+        viewModel.onStart()
+        assertEquals(listOf(2L, 2L), controller.played.map { it.channelId })
+    }
+
+    @Test
+    fun `turning background playback off in settings applies to the next stop`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+
+        settings.setBackgroundPlayback(false)
+        runCurrent()
+        viewModel.onStop(appInBackground = true)
+
+        assertEquals(1, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+    }
+
+    @Test
+    fun `leaving the screen inside the app releases even with background playback on`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.startPlaying()
+
+        viewModel.onStop(appInBackground = false)
+
+        assertEquals(1, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+    }
+
+    @Test
+    fun `a failed stream is released instead of kept in the background`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.fail(PlaybackError.Http(404))
+
+        viewModel.onStop(appInBackground = true)
+
+        assertEquals(1, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+    }
+
+    @Test
+    fun `notification next and previous zap while in the background`() = runTest {
+        val viewModel = viewModel(channelId = 1, group = "News")
+        collect(viewModel)
+        viewModel.onStart()
+        controller.startPlaying()
+        viewModel.onStop(appInBackground = true)
+
+        val navigator = requireNotNull(controller.channelNavigator)
+        navigator.zap(ZapDirection.NEXT)
+        assertEquals(2L, viewModel.uiState.value.channel?.channelId)
+        navigator.zap(ZapDirection.PREVIOUS)
+        navigator.zap(ZapDirection.PREVIOUS)
+
+        assertEquals(listOf(1L, 2L, 1L, 4L), controller.played.map { it.channelId })
+        assertEquals(0, controller.releases)
+
+        // Returning shows the channel picked in the background without restarting it.
+        viewModel.onStart()
+        assertEquals(4L, viewModel.uiState.value.channel?.channelId)
+        assertEquals(4, controller.played.size)
+    }
+
+    // --- Picture-in-picture ----------------------------------------------------------------------
+
+    private fun TestScope.playingInPip(channelId: Long = 1, group: String? = "News"): PlayerViewModel {
+        val viewModel = viewModel(channelId = channelId, group = group)
+        collect(viewModel)
+        viewModel.onStart()
+        controller.startPlaying()
+        viewModel.onPictureInPictureModeChanged(inPip = true, stopped = false)
+        return viewModel
+    }
+
+    @Test
+    fun `entering picture-in-picture closes the panel, number entry and overlay`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        viewModel.openPanel()
+        viewModel.onDigit(3)
+        assertEquals("3", viewModel.uiState.value.numberInput)
+
+        viewModel.onPictureInPictureModeChanged(inPip = true, stopped = false)
+
+        val state = viewModel.uiState.value
+        assertTrue(state.pictureInPicture)
+        assertFalse(state.panelOpen)
+        assertFalse(state.overlayVisible)
+        assertNull(state.numberInput)
+        // The cancelled number never jumps.
+        advanceTimeBy(PlayerViewModel.OVERLAY_TIMEOUT_MS + 1)
+        runCurrent()
+        assertEquals(1L, viewModel.uiState.value.channel?.channelId)
+        assertFalse(viewModel.uiState.value.overlayVisible)
+    }
+
+    @Test
+    fun `stopping while in picture-in-picture neither releases nor goes to the background`() = runTest {
+        val viewModel = playingInPip()
+
+        viewModel.onStop(appInBackground = true, inPictureInPicture = true)
+
+        assertEquals(0, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+        viewModel.onStart()
+        assertEquals(listOf(1L), controller.played.map { it.channelId })
+        assertEquals(0, controller.releases)
+    }
+
+    @Test
+    fun `closing the window keeps playing in the background when background playback is on`() = runTest {
+        val viewModel = playingInPip()
+        viewModel.onStop(appInBackground = true, inPictureInPicture = true)
+
+        viewModel.onPictureInPictureModeChanged(inPip = false, stopped = true)
+
+        assertEquals(listOf(true), controller.backgroundModes)
+        assertEquals(0, controller.releases)
+        assertFalse(viewModel.uiState.value.pictureInPicture)
+        viewModel.onStart()
+        assertEquals(listOf(true, false), controller.backgroundModes)
+        assertEquals(listOf(1L), controller.played.map { it.channelId })
+    }
+
+    @Test
+    fun `closing the window releases once when background playback is off`() = runTest {
+        settings = FakeSettingsRepository(AppSettings(playback = PlaybackSettings(backgroundPlayback = false)))
+        val viewModel = playingInPip()
+        viewModel.onStop(appInBackground = true, inPictureInPicture = true)
+
+        viewModel.onPictureInPictureModeChanged(inPip = false, stopped = true)
+
+        assertEquals(1, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+        // Zapping afterwards does not start playback until the screen is shown again.
+        viewModel.zap(ZapDirection.NEXT)
+        assertEquals(listOf(1L), controller.played.map { it.channelId })
+    }
+
+    @Test
+    fun `expanding back to full screen only shows the overlay`() = runTest {
+        val viewModel = playingInPip()
+
+        viewModel.onPictureInPictureModeChanged(inPip = false, stopped = false)
+
+        val state = viewModel.uiState.value
+        assertFalse(state.pictureInPicture)
+        assertTrue(state.overlayVisible)
+        assertEquals(0, controller.releases)
+        assertTrue(controller.backgroundModes.isEmpty())
+        assertEquals(0, controller.playPauseToggles)
+        assertEquals(listOf(1L), controller.played.map { it.channelId })
+    }
+
+    @Test
+    fun `window buttons zap and toggle play pause`() = runTest {
+        val viewModel = playingInPip(channelId = 1, group = "News")
+
+        viewModel.onPipAction(PipAction.NEXT)
+        assertEquals(2L, viewModel.uiState.value.channel?.channelId)
+        viewModel.onPipAction(PipAction.PREVIOUS)
+        viewModel.onPipAction(PipAction.PREVIOUS)
+        assertEquals(4L, viewModel.uiState.value.channel?.channelId)
+        viewModel.onPipAction(PipAction.PLAY_PAUSE)
+
+        assertEquals(1, controller.playPauseToggles)
+        assertEquals(listOf(1L, 2L, 1L, 4L), controller.played.map { it.channelId })
+        assertFalse(viewModel.uiState.value.overlayVisible)
+    }
+
+    @Test
+    fun `zapping after the screen went off in picture-in-picture still plays`() = runTest {
+        val viewModel = playingInPip(channelId = 1, group = "News")
+        viewModel.onStop(appInBackground = true, inPictureInPicture = true)
+
+        viewModel.onPipAction(PipAction.NEXT)
+
+        assertEquals(listOf(1L, 2L), controller.played.map { it.channelId })
+        assertEquals(0, controller.releases)
+    }
+
+    @Test
+    fun `picture-in-picture setting follows the settings`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        assertTrue(viewModel.uiState.value.pictureInPictureEnabled)
+
+        settings.setPictureInPicture(false)
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.pictureInPictureEnabled)
+    }
+
+    private fun TestScope.collectPipRequests(viewModel: PlayerViewModel): List<Unit> {
+        val requests = mutableListOf<Unit>()
+        backgroundScope.launch(mainDispatcher.testDispatcher) {
+            viewModel.pictureInPictureRequests.collect { requests += it }
+        }
+        return requests
+    }
+
+    @Test
+    fun `panel picture-in-picture action closes the panel and requests PiP once`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        val requests = collectPipRequests(viewModel)
+        viewModel.onStart()
+        viewModel.openPanel()
+
+        viewModel.requestPictureInPicture()
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.panelOpen)
+        assertEquals(1, requests.size)
+    }
+
+    @Test
+    fun `picture-in-picture request is ignored when disabled or already in PiP`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        val requests = collectPipRequests(viewModel)
+        viewModel.onStart()
+
+        settings.setPictureInPicture(false)
+        runCurrent()
+        viewModel.openPanel()
+        viewModel.requestPictureInPicture()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.panelOpen)
+        assertTrue(requests.isEmpty())
+
+        settings.setPictureInPicture(true)
+        runCurrent()
+        viewModel.onPictureInPictureModeChanged(inPip = true, stopped = false)
+        viewModel.requestPictureInPicture()
+        runCurrent()
+        assertTrue(requests.isEmpty())
     }
 }

@@ -52,6 +52,7 @@ import com.streambox.player.core.model.ThemeMode
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
 import com.streambox.player.core.ui.labelRes
+import com.streambox.player.core.ui.supportsPictureInPicture
 
 @Composable
 internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
@@ -66,6 +67,8 @@ internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
             onReconnectAttemptsSelected = viewModel::onReconnectAttemptsSelected,
             onDefaultAspectRatioSelected = viewModel::onDefaultAspectRatioSelected,
             onSubtitleStyleChanged = viewModel::onSubtitleStyleChanged,
+            onBackgroundPlaybackChanged = viewModel::onBackgroundPlaybackChanged,
+            onPictureInPictureChanged = viewModel::onPictureInPictureChanged,
         ),
     )
 }
@@ -77,6 +80,8 @@ internal data class PlaybackSettingsActions(
     val onReconnectAttemptsSelected: (Int) -> Unit = {},
     val onDefaultAspectRatioSelected: (AspectRatioMode) -> Unit = {},
     val onSubtitleStyleChanged: (SubtitleStyle) -> Unit = {},
+    val onBackgroundPlaybackChanged: (Boolean) -> Unit = {},
+    val onPictureInPictureChanged: (Boolean) -> Unit = {},
 )
 
 @Composable
@@ -116,6 +121,9 @@ private fun SettingsContent(
     // Wallpaper-based color only exists on Android 12+ and is meaningless on TV.
     val showDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
         LocalFormFactor.current != FormFactor.Tv
+    // Hidden on TV and on devices without picture-in-picture support.
+    val formFactor = LocalFormFactor.current
+    val showPictureInPicture = remember(context, formFactor) { context.supportsPictureInPicture(formFactor) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -143,7 +151,7 @@ private fun SettingsContent(
             }
         }
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
-        playbackSection(settings.playback, playbackActions)
+        playbackSection(settings.playback, playbackActions, showPictureInPicture)
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
         item { SectionHeader(stringResource(R.string.feature_settings_section_about)) }
         item {
@@ -164,7 +172,11 @@ private fun SettingsContent(
     }
 }
 
-private fun LazyListScope.playbackSection(playback: PlaybackSettings, actions: PlaybackSettingsActions) {
+private fun LazyListScope.playbackSection(
+    playback: PlaybackSettings,
+    actions: PlaybackSettingsActions,
+    showPictureInPicture: Boolean,
+) {
     item { SectionHeader(stringResource(R.string.feature_settings_section_playback)) }
     item {
         ChoiceGroup(
@@ -174,6 +186,24 @@ private fun LazyListScope.playbackSection(playback: PlaybackSettings, actions: P
             label = { stringResource(it.labelRes()) },
             onSelect = actions.onBufferProfileSelected,
         )
+    }
+    item {
+        SwitchRow(
+            label = stringResource(R.string.feature_settings_background_playback),
+            summary = stringResource(R.string.feature_settings_background_playback_summary),
+            checked = playback.backgroundPlayback,
+            onCheckedChange = actions.onBackgroundPlaybackChanged,
+        )
+    }
+    if (showPictureInPicture) {
+        item {
+            SwitchRow(
+                label = stringResource(R.string.feature_settings_picture_in_picture),
+                summary = stringResource(R.string.feature_settings_picture_in_picture_summary),
+                checked = playback.pictureInPicture,
+                onCheckedChange = actions.onPictureInPictureChanged,
+            )
+        }
     }
     item {
         SwitchRow(

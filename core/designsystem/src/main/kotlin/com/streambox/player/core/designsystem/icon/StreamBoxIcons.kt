@@ -22,4 +22,9 @@ object StreamBoxIcons {
     val Success = R.drawable.sb_ic_check_circle
     val AspectRatio = R.drawable.sb_ic_aspect_ratio
     val Subtitles = R.drawable.sb_ic_subtitles
+    val SkipPrevious = R.drawable.sb_ic_skip_previous
+    val SkipNext = R.drawable.sb_ic_skip_next
+    val Play = R.drawable.sb_ic_play
+    val Pause = R.drawable.sb_ic_pause
+    val PictureInPicture = R.drawable.sb_ic_picture_in_picture
 }

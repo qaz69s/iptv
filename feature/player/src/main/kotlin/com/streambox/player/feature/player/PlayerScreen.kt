@@ -42,12 +42,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
@@ -57,6 +60,8 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -85,7 +90,8 @@ private val SWIPE_THRESHOLD = 72.dp
 /**
  * Full-screen live player. Touch: tap toggles the overlay, swipe up / down zaps. TV: D-pad up / down
  * and CHANNEL_UP / CHANNEL_DOWN zap, OK shows the overlay. Playback runs only while the screen is
- * started; leaving it releases the player and restores the system bars and orientation.
+ * started; leaving it releases the player and restores the system bars and orientation. With background
+ * playback on, sending the app to the background keeps the audio playing (see [BackgroundPlaybackEffect]).
  */
 @Composable
 internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
@@ -94,10 +100,28 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
     val isTv = LocalFormFactor.current == FormFactor.Tv
     val context = LocalContext.current
 
+    val activity = LocalActivity.current
     LifecycleStartEffect(viewModel) {
         viewModel.onStart()
-        onStopOrDispose { viewModel.onStop() }
+        onStopOrDispose {
+            viewModel.onStop(
+                appInBackground = activity.isMovingToBackground(),
+                inPictureInPicture = activity?.isInPictureInPictureMode == true,
+            )
+        }
     }
+    var videoBounds by remember { mutableStateOf<Rect?>(null) }
+    PictureInPictureEffect(
+        player = player,
+        aspectMode = state.aspectRatio,
+        canEnter = state.pictureInPictureEnabled && state.channel != null && state.error == null && !state.panelOpen,
+        isPlaying = state.isPlaying,
+        videoBounds = videoBounds,
+        onAction = viewModel::onPipAction,
+        onModeChanged = viewModel::onPictureInPictureModeChanged,
+        enterRequests = viewModel.pictureInPictureRequests,
+    )
+    BackgroundPlaybackEffect(enabled = state.backgroundPlayback, hasPlayer = player != null)
     KeepScreenOn(enabled = state.error == null && (state.isPlaying || state.isBuffering))
     ImmersiveLandscape(forceLandscape = !isTv)
 
@@ -131,6 +155,7 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
             onOpenPanel = viewModel::openPanel,
         ),
         onCycleAspect = viewModel::cycleAspectRatio,
+        onVideoBounds = { videoBounds = it },
         panelActions = PlayerPanelActions(
             onDismiss = viewModel::closePanel,
             onVideoTrack = viewModel::selectVideoTrack,
@@ -145,6 +170,7 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
             },
             onAspectRatio = viewModel::setAspectRatio,
             onSubtitleStyle = viewModel::setSubtitleStyle,
+            onPictureInPicture = viewModel::requestPictureInPicture,
         ),
     )
 }
@@ -176,7 +202,9 @@ internal fun PlayerScreen(
     keys: PlayerKeyActions = PlayerKeyActions(),
     onCycleAspect: () -> Unit = {},
     panelActions: PlayerPanelActions? = null,
+    onVideoBounds: (Rect) -> Unit = {},
 ) {
+    val inPip = state.pictureInPicture
     val rootFocus = remember { FocusRequester() }
     val retryFocus = remember { FocusRequester() }
     val currentState by rememberUpdatedState(state)
@@ -213,7 +241,11 @@ internal fun PlayerScreen(
             },
     ) {
         if (player != null) {
-            VideoSurface(player = player, aspectRatio = state.aspectRatio)
+            VideoSurface(
+                player = player,
+                aspectRatio = state.aspectRatio,
+                modifier = Modifier.onGloballyPositioned { onVideoBounds(it.boundsInWindow()) },
+            )
             SubtitleLayer(player = player, style = state.subtitleStyle)
         }
 
@@ -221,13 +253,13 @@ internal fun PlayerScreen(
             CircularProgressIndicator(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .size(56.dp),
+                    .size(if (inPip) 32.dp else 56.dp),
                 color = Color.White,
             )
         }
 
         AnimatedVisibility(
-            visible = state.overlayVisible,
+            visible = state.overlayVisible && !inPip,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize(),
@@ -262,6 +294,12 @@ internal fun PlayerScreen(
             }
         }
 
+        // Picture-in-picture: only the picture, the buffering spinner and a short error notice.
+        if (inPip) {
+            if (state.error != null) PipErrorBadge(modifier = Modifier.align(Alignment.Center))
+            return@Box
+        }
+
         StatusMessages(state = state, modifier = Modifier.align(Alignment.TopCenter))
         state.numberInput?.let { digits ->
             NumberInputBadge(digits = digits, modifier = Modifier.align(Alignment.TopEnd))
@@ -278,9 +316,9 @@ internal fun PlayerScreen(
     }
 
     // Remote Back while typing a channel number deletes a digit; otherwise Back keeps leaving the player.
-    BackHandler(enabled = state.numberInput != null && !state.panelOpen) { keyActions.onBackspace() }
+    BackHandler(enabled = state.numberInput != null && !state.panelOpen && !inPip) { keyActions.onBackspace() }
 
-    if (state.panelOpen && panelActions != null) {
+    if (state.panelOpen && panelActions != null && !inPip) {
         PlayerPanel(state = state, isTv = isTv, actions = panelActions)
     }
 
@@ -515,6 +553,30 @@ private fun ZapButtons(onZap: (ZapDirection) -> Unit, modifier: Modifier = Modif
                 tint = Color.White,
             )
         }
+    }
+}
+
+/** Compact error notice for the small picture-in-picture window. */
+@Composable
+private fun PipErrorBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(StreamBoxIcons.Error),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = stringResource(R.string.feature_player_pip_error),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            modifier = Modifier.padding(start = 4.dp),
+        )
     }
 }
 

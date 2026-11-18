@@ -12,6 +12,7 @@ import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ZapDirection
+import com.streambox.player.core.player.ChannelNavigator
 import com.streambox.player.core.player.PlaybackController
 import com.streambox.player.core.player.PlaybackTracks
 import com.streambox.player.core.player.TrackId
@@ -19,13 +20,16 @@ import com.streambox.player.core.player.reconnect.ReconnectStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,7 +58,16 @@ data class PlayerUiState(
     val numberInput: String? = null,
     /** A typed number that matched no channel; shown briefly. */
     val numberNotFound: Int? = null,
+    /** Setting: keep the audio playing (media notification) when the app goes to the background. */
+    val backgroundPlayback: Boolean = true,
+    /** The activity is in picture-in-picture: only the video is shown, without overlay or panel. */
+    val pictureInPicture: Boolean = false,
+    /** Setting: shrink into a picture-in-picture window when leaving the player with Home. */
+    val pictureInPictureEnabled: Boolean = true,
 )
+
+/** Buttons of the picture-in-picture window. */
+enum class PipAction { PREVIOUS, PLAY_PAUSE, NEXT }
 
 /** Screen-local state that is not owned by the controller or the repositories. */
 private data class ScreenLocal(
@@ -62,13 +75,17 @@ private data class ScreenLocal(
     val panelOpen: Boolean = false,
     val numberInput: String? = null,
     val numberNotFound: Int? = null,
+    val pictureInPicture: Boolean = false,
 )
 
 /**
  * Drives the app-wide [PlaybackController] for one screen: resolves the channel, zaps inside the
  * group the user came from, jumps by typed channel number, forwards track / aspect / subtitle
- * choices and owns the overlay's auto-hide timer. Playback only runs between [onStart] and
- * [onStop]; leaving the screen releases the player.
+ * choices and owns the overlay's auto-hide timer. Playback runs between [onStart] and [onStop];
+ * leaving the screen releases the player. When the app goes to the background with background playback
+ * on, the player keeps running audio-only (MediaSession service) and next / previous from the
+ * notification or a headset zap through [zap]. In picture-in-picture the screen keeps playing even
+ * while stopped (screen off); closing the window falls back to background playback or a release.
  */
 @Suppress("TooManyFunctions")
 @HiltViewModel
@@ -90,6 +107,13 @@ class PlayerViewModel @Inject constructor(
     private val playbackSettings = MutableStateFlow(PlaybackSettings())
 
     private var started = false
+
+    /** Playing audio-only while the app is in the background (between [onStop] and the next [onStart]). */
+    private var inBackground = false
+
+    /** Stopped (e.g. screen off) while in picture-in-picture: playback keeps running, zaps still play. */
+    private var stoppedInPip = false
+    private val navigator = ChannelNavigator { direction -> zap(direction) }
     private var hideJob: Job? = null
     private var notFoundJob: Job? = null
     private val zapMutex = Mutex()
@@ -97,6 +121,11 @@ class PlayerViewModel @Inject constructor(
     private val numberInput = ChannelNumberInput(viewModelScope) { number -> jumpToNumber(number) }
 
     val player: StateFlow<Player?> = playbackController.player
+
+    private val pipRequests = Channel<Unit>(Channel.CONFLATED)
+
+    /** One-shot requests to enter picture-in-picture now (panel action); consumed by the PiP effect. */
+    val pictureInPictureRequests: Flow<Unit> = pipRequests.receiveAsFlow()
 
     val uiState: StateFlow<PlayerUiState> = combine(
         combine(current, loading, loadError) { item, isLoading, lookupError -> Triple(item, isLoading, lookupError) },
@@ -113,7 +142,7 @@ class PlayerViewModel @Inject constructor(
             isBuffering = error == null && (isLoading || (sameItem && playback.isBuffering)),
             isPlaying = sameItem && playback.isPlaying,
             error = error,
-            overlayVisible = screen.overlay || error != null || digits != null,
+            overlayVisible = !screen.pictureInPicture && (screen.overlay || error != null || digits != null),
             reconnect = playback.reconnect.takeIf { sameItem && error == null },
             isSeekable = sameItem && playback.isSeekable,
             softwareDecoderFallback = sameItem && playback.softwareDecoderFallback,
@@ -123,10 +152,14 @@ class PlayerViewModel @Inject constructor(
             panelOpen = screen.panelOpen,
             numberInput = digits,
             numberNotFound = screen.numberNotFound,
+            backgroundPlayback = prefs.backgroundPlayback,
+            pictureInPicture = screen.pictureInPicture,
+            pictureInPictureEnabled = prefs.pictureInPicture,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 
     init {
+        playbackController.channelNavigator = navigator
         viewModelScope.launch {
             settingsRepository.settings.map { it.playback }.distinctUntilChanged().collect { settings ->
                 playbackSettings.value = settings
@@ -136,19 +169,98 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch { zapMutex.withLock { load(channelId) } }
     }
 
-    /** Screen became visible (lifecycle ON_START): (re)start playback of the current channel. */
+    /**
+     * Screen became visible (lifecycle ON_START): (re)start playback of the current channel, or bring the
+     * picture back after background playback.
+     */
     fun onStart() {
         started = true
+        stoppedInPip = false
+        if (inBackground) {
+            inBackground = false
+            playbackController.setInBackground(false)
+        }
         val item = current.value ?: return
         if (playbackController.state.value.item?.channelId != item.channelId) playbackController.play(item)
         showOverlay()
     }
 
-    /** Screen hidden (ON_STOP) or left: free decoders and network; live TV restarts on return. */
-    fun onStop() {
+    /**
+     * Screen hidden (ON_STOP) or left. [appInBackground] = the whole app went to the background (home,
+     * screen off, another app), as opposed to navigating away inside the app. With background playback
+     * on, a channel that is playing (or reconnecting) keeps its audio running; otherwise decoders and
+     * network are freed and live TV restarts on return. [inPictureInPicture] = stopped while the
+     * picture-in-picture window is still showing (screen off): nothing changes, playback continues.
+     */
+    fun onStop(appInBackground: Boolean = false, inPictureInPicture: Boolean = false) {
         started = false
         numberInput.cancel()
-        playbackController.release()
+        if (inPictureInPicture) {
+            stoppedInPip = true
+            return
+        }
+        stoppedInPip = false
+        goToBackgroundOrRelease(appInBackground)
+    }
+
+    /**
+     * Picture-in-picture entered or left. [stopped] = the window was left while the activity is stopped,
+     * i.e. the user closed it rather than expanding it back to full screen.
+     */
+    fun onPictureInPictureModeChanged(inPip: Boolean, stopped: Boolean) {
+        if (inPip) {
+            hideJob?.cancel()
+            notFoundJob?.cancel()
+            numberInput.cancel()
+            local.update {
+                it.copy(pictureInPicture = true, panelOpen = false, overlay = false, numberNotFound = null)
+            }
+            return
+        }
+        local.update { it.copy(pictureInPicture = false) }
+        if (stopped) {
+            started = false
+            stoppedInPip = false
+            goToBackgroundOrRelease(appInBackground = true)
+        } else {
+            showOverlay()
+        }
+    }
+
+    /**
+     * The panel's picture-in-picture action: closes the panel first, then asks the screen to enter PiP.
+     * Ignored while PiP is turned off in settings or already active.
+     */
+    fun requestPictureInPicture() {
+        if (!playbackSettings.value.pictureInPicture || local.value.pictureInPicture) return
+        local.update { it.copy(panelOpen = false) }
+        pipRequests.trySend(Unit)
+    }
+
+    /** Buttons of the picture-in-picture window. */
+    fun onPipAction(action: PipAction) {
+        when (action) {
+            PipAction.PREVIOUS -> zap(ZapDirection.PREVIOUS)
+            PipAction.PLAY_PAUSE -> playbackController.togglePlayPause()
+            PipAction.NEXT -> zap(ZapDirection.NEXT)
+        }
+    }
+
+    private fun goToBackgroundOrRelease(appInBackground: Boolean) {
+        val item = current.value
+        val playback = playbackController.state.value
+        val keepPlaying = appInBackground &&
+            playbackSettings.value.backgroundPlayback &&
+            item != null &&
+            playback.item?.channelId == item.channelId &&
+            playback.error == null
+        if (keepPlaying) {
+            inBackground = true
+            playbackController.setInBackground(true)
+        } else {
+            inBackground = false
+            playbackController.release()
+        }
     }
 
     fun zap(direction: ZapDirection) {
@@ -172,6 +284,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun showOverlay() {
+        // Nothing to show in the picture-in-picture window; the overlay comes back on expanding.
+        if (local.value.pictureInPicture) return
         local.update { it.copy(overlay = true) }
         hideJob?.cancel()
         hideJob = viewModelScope.launch {
@@ -301,13 +415,14 @@ class PlayerViewModel @Inject constructor(
             loadError.value = PlaybackError.ChannelNotFound
         } else {
             current.value = item
-            if (started) playbackController.play(item)
+            if (started || inBackground || stoppedInPip) playbackController.play(item)
         }
         loading.value = false
         showOverlay()
     }
 
     override fun onCleared() {
+        if (playbackController.channelNavigator === navigator) playbackController.channelNavigator = null
         playbackController.release()
     }
 

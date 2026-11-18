@@ -46,7 +46,7 @@ ViewModel 对外暴露 `StateFlow<UiState>`，界面用 `collectAsStateWithLifec
 - 播放：频道页只回调 `onChannelClick(channelId, groupName)`，由 app 模块导航到 feature:player 的 `PlayerRoute`；当前分组经路由参数传入（频道页自身的分组保存在 SavedStateHandle key `selectedGroup`），播放页据此在同一分组内切台。
 
 ## 播放生命周期
-`PlaybackController` 是单例（不绑 Activity，配置变更不重建）。播放页 ViewModel 在 `onStart` 时 `play()`，`onStop` / 离开页面时 `release()`（释放解码器与网络；直播回到前台从直播点重新开始），`onCleared` 再次 `release()` 兜底。MainActivity 声明了 orientation 等 configChanges，横竖屏切换不会重建 Activity。P2a 起：可重试的失败由 `Reconnector` 按退避自动重连（换台、手动重试、release 时重置）；缓冲档位与解码模式在下一次 `play()` 时生效（配置变化时重建 ExoPlayer），重连次数立即生效。P2b 将加入 PiP 与后台播放（MediaSession + 前台服务），届时 ON_STOP 不再无条件释放。
+`PlaybackController` 是单例（不绑 Activity，配置变更不重建）。播放页 ViewModel 在 `onStart` 时 `play()`，`onStop` / 离开页面时 `release()`（释放解码器与网络；直播回到前台从直播点重新开始），`onCleared` 再次 `release()` 兜底。MainActivity 声明了 orientation 等 configChanges，横竖屏切换不会重建 Activity。P2a 起：可重试的失败由 `Reconnector` 按退避自动重连（换台、手动重试、release 时重置）；缓冲档位与解码模式在下一次 `play()` 时生效（配置变化时重建 ExoPlayer），重连次数立即生效。P2b 后台播放：设置「后台播放」（默认开）开启时，整个 App 进入后台（Home / 锁屏 / 切应用，区别于 App 内导航离开）的 ON_STOP 不再释放，而是 `setInBackground(true)`（禁用视频轨，只放音频），回前台 `setInBackground(false)` 恢复画面；关闭时保持原行为。`core:player` 的 `session/PlaybackService`（Media3 `MediaSessionService`，前台服务 + 媒体通知）跟随 `player` Flow：重建 ExoPlayer 时 `MediaSession.setPlayer` 换新实例，`player` 变为 null 时释放会话并停止服务。`ChannelNavigationPlayer`（ForwardingPlayer）把通知 / 耳机 / 蓝牙的上一曲 / 下一曲映射为 `PlaybackController.channelNavigator` 的切台（由 PlayerViewModel 注册）。PiP 尚未加入。
 
 ## 单 APK 多形态
 同一 APK 同时声明 `LAUNCHER` 和 `LEANBACK_LAUNCHER`，触摸屏与 leanback 均为非必需特性，并提供 TV banner。TV 判断依据系统 UI 模式 / leanback 特性，而非屏幕尺寸。

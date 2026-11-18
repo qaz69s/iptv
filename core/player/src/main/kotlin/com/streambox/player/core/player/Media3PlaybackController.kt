@@ -6,6 +6,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -88,6 +89,9 @@ internal class Media3PlaybackController @Inject constructor(
     private var fellBackToSoftware = false
     private val externalSubtitles = mutableListOf<MediaItem.SubtitleConfiguration>()
     private var networkJob: Job? = null
+    private var inBackground = false
+
+    override var channelNavigator: ChannelNavigator? = null
 
     private val reconnector = Reconnector(scope, policyFor(settings)) { reconnectNow() }
 
@@ -143,6 +147,15 @@ internal class Media3PlaybackController @Inject constructor(
         play(item)
     }
 
+    override fun togglePlayPause() {
+        val player = _player.value
+        if (player == null || player.playbackState == Player.STATE_IDLE || _state.value.error != null) {
+            retry()
+            return
+        }
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
     override fun release() {
         networkJob?.cancel()
         networkJob = null
@@ -153,7 +166,22 @@ internal class Media3PlaybackController @Inject constructor(
         }
         _player.value = null
         playerConfig = null
+        inBackground = false
         _state.value = PlaybackState()
+    }
+
+    override fun setInBackground(background: Boolean) {
+        if (inBackground == background) return
+        inBackground = background
+        val player = _player.value ?: return
+        player.applyBackgroundMode()
+        if (!background && !player.playWhenReady && player.playbackState != Player.STATE_IDLE) player.play()
+    }
+
+    private fun ExoPlayer.applyBackgroundMode() {
+        trackSelectionParameters = trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, inBackground)
+            .build()
     }
 
     override fun applySettings(settings: PlaybackSettings) {
@@ -262,6 +290,7 @@ internal class Media3PlaybackController @Inject constructor(
             .build()
             .also {
                 it.addListener(listener)
+                if (inBackground) it.applyBackgroundMode()
                 playerConfig = wanted
                 _player.value = it
                 watchNetwork()
@@ -296,6 +325,14 @@ internal class Media3PlaybackController @Inject constructor(
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
         val builder = MediaItem.Builder()
             .setUri(item.streamUrl)
+            // Shown by the media notification / Bluetooth displays during background playback.
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(item.name)
+                    .setDisplayTitle(item.name)
+                    .setArtworkUri(item.logoUrl?.let(Uri::parse))
+                    .build(),
+            )
             .setMimeType(
                 when (type) {
                     StreamType.HLS -> MimeTypes.APPLICATION_M3U8
