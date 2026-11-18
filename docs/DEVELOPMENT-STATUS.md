@@ -1,6 +1,6 @@
 # 开发状态总览
 
-> 更新于 2026-11-18（P2 收尾：CI 修复完成，P3 计划待用户确认）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
+> 更新于 2026-11-18（P3a 数据层完成，CI 全绿；P3b 待用户确认）。本文件汇总：已开发什么、还要开发什么、所有已知问题与技术债、待用户真机验收的清单、下一步操作。
 > 细节以各阶段报告 `docs/phase-reports/*.md` 为准；需求以 `docs/requirements.md` 为准。
 
 ## 0. 一眼看懂
@@ -10,7 +10,9 @@
 | P1 导入 + 频道 + 基础播放 | ✅ 完成 | `5173eda`（P1a）、`b1348f3`（P1b） | 168 | ❌ 未做 |
 | P2a 播放稳定性 + 操控 | ✅ 完成 | `99572cc` | 255 | ❌ 未做 |
 | P2b 后台 / PiP / 手势 / 定时 | ✅ 完成 | `3e14a71`、`82bd0d1`、`7d25565`、`a669bf0`（文档） | 348 | ❌ 未做 |
-| P3 搜索 / 收藏 / 历史 / 编辑器 | ⏳ 下一阶段 | — | — | — |
+| P3a 数据层（收藏 / 历史 / 覆盖表 / 稳定键续播 / 台号 2 s） | ✅ 完成 | `460ac22`、`3a57202`（+ 文档提交） | 397 | ❌ 未做 |
+| P3b 界面（搜索 / 收藏页 / 最近观看 / 虚拟分组 / 视图 / TV 双栏） | ⏳ 下一步（待用户确认） | — | — | — |
+| P3c 列表编辑器 | 未开始 | — | — | — |
 | P4 EPG | 未开始 | — | — | — |
 | P5 回看 / 时移 | 未开始 | — | — | — |
 | P6 Xtream（直播 + 点播） | 未开始 | — | — | — |
@@ -18,8 +20,15 @@
 | P8 投屏 / 变现接口 / 性能 / 发布 | 未开始 | — | — | — |
 
 - **重要**：P0–P2 全部只在无模拟器的 aarch64 沙箱里经过「编译 + JVM 单测 + ktlint + detekt」验证，**从未在真机或模拟器上运行过**。
-- GitHub CI：首次运行（`a669bf0`）与 `71ca385` 在 `:app:lintDebug` 失败（D5）。**`9c76878`（run 44242732138）已全绿**：ktlint / detekt、单测、`:app:lintDebug`（0 error、4 warning）、`:app:assembleDebug`、`:app:assembleRelease`（R8 首次通过）。debug APK 可从该 run 的 `streambox-debug-apk` artifact 下载。
+- GitHub CI：**P3a `3a57202`（run 44248545012）全绿**，397 项单测。更早：首次运行（`a669bf0`）与 `71ca385` 在 `:app:lintDebug` 失败（D5）。**`9c76878`（run 44242732138）已全绿**：ktlint / detekt、单测、`:app:lintDebug`（0 error、4 warning）、`:app:assembleDebug`、`:app:assembleRelease`（R8 首次通过）。debug APK 可从该 run 的 `streambox-debug-apk` artifact 下载。
 - 用户的真机：**手机 realme GT6（Android 14 / 15）+ 一台 Android TV**。
+- **用户决定（2026-11-18，P3 计划确认时）**：
+  - P3 拆为 P3a（数据层）/ P3b（界面）/ P3c（编辑器），每个子阶段完整汇报。
+  - **真机验收与 P3 并行进行**（不阻塞开发）；用户反馈的问题先写失败测试再修。
+  - 引入 **Robolectric**（4.18.1）跑 Room DAO / 迁移的 JVM 单测（core:database 用 JUnit 4，见 AGENTS.md 4.5）。
+  - **收藏排序**：跨播放列表按加入时间排序；可选的自定义（拖动）顺序在设置后优先。
+  - **台号直输超时 2 秒**（说明书 4.2；P2a 为 1.5 s，P3a 已改）。
+  - **频道页不加数字直输**，只保留播放页的台号输入。
 
 ## 1. 已开发了什么
 
@@ -73,18 +82,23 @@
 
 > 交付物（APK / 源码 zip）在原开发环境中交付给用户，**不在 Git 仓库里**。需要 debug APK 时可从 GitHub Actions 的 `streambox-debug-apk` artifact 下载，或本地 `./gradlew :app:assembleDebug`。
 
+### P3a —— 数据层（2026-11-18）
+- `460ac22`：Room schema **v2** + `Migration1To2`（`2.json` 已提交）。新表 `favorites`、`watch_history`、`channel_overrides`、`group_overrides`，均以 `(playlistId, uniqueKey)` / `(playlistId, 分组名)` 为键；覆盖值物化到 `channels` / `channel_groups` 的 `hidden`、`customName`、`customSortOrder`（导入提交前 `OverrideDao.applyToGeneration`，用户修改时同一事务重写），读查询用显示名 `COALESCE(customName, name)` 与有效顺序 `COALESCE(customSortOrder, sortOrder)`。core:domain `FavoritesRepository` / `WatchHistoryRepository`（50 条）/ `ChannelOverridesRepository` 与用例 `ToggleFavorite` / `RecordPlaybackStart` / `ResolveLastChannel`，core:data 实现 + core:testing Fake。**上次频道改为 playlistId + uniqueKey**（DataStore `last_played_channel_key`），修 K18；`PlayerViewModel.rememberPlayingChannel` 同时写观看历史。Robolectric 4.18.1 + 约定插件 `streambox.android.robolectric`，core:database 首批 27 项 DAO / 迁移测试。
+- `3a57202`：TV 台号输入超时 1.5 s → **2 s**（先写失败测试）。
+- 无新界面、无新字符串、无新权限、无新模块。详见 `docs/phase-reports/P3a.md`。
+
 ### 当前尚未存在的东西（供核对）
 - 模块：`core:catchup`、`feature:vod`、`feature:cast`、`feature:monetization`（或 `core:monetization`）尚未创建；`feature:epg` 只有占位页。
 - 依赖：WorkManager、Retrofit、Cast、Billing、Ads、UMP 已在 catalog 中，但**没有模块使用**。
-- 收藏页（底部导航「收藏」）目前是空状态占位（`feature:channels` 的 `FavoritesScreen`）。
+- 收藏页（底部导航「收藏」）目前是空状态占位（`feature:channels` 的 `FavoritesScreen`）；P3a 已有收藏 / 历史的仓库，界面在 P3b。
 - `ChannelFtsEntity`（FTS4）已建表，但没有搜索查询和 UI。
-- `ChannelEntity` / `ChannelGroupEntity` 的 `hidden`、`locked` 列存在但恒为默认值，`sortOrder` 只是导入顺序（无用户排序）；`PlaylistEntity` 有 `epgUrl`（导入时已写入，未被使用）、`updateMode`、`updateIntervalHours`、`enabled`、`username` / `passwordEncrypted`、`headersJson`，均未被功能使用。
-- 仓库没有任何 `androidTest` 源码（无 DAO / 迁移 / Compose UI 测试）。
+- `ChannelEntity` / `ChannelGroupEntity` 的 `hidden`（P3a 起由覆盖表物化）、`customName`、`customSortOrder` 已接入查询，但还没有编辑界面（P3c）；`locked` 恒为默认值；`PlaylistEntity` 有 `epgUrl`（导入时已写入，未被使用）、`updateMode`、`updateIntervalHours`、`enabled`、`username` / `passwordEncrypted`、`headersJson`，均未被功能使用。
+- 仓库没有任何 `androidTest` 源码（无 Compose UI 测试）；DAO / 迁移测试自 P3a 起在 core:database 的 Robolectric 单测中。
 
 ## 2. 还要开发什么（P3–P8）
 阶段依赖：`P3 → P4 → P5`；`P6` 依赖 P3（收藏 / 历史键）、P4（EPG 存储与匹配）、P5（xc 回看）；`P7` 汇总设置 / 备份，需在 P3–P6 的数据结构稳定后做；`P8` 收尾。若用户要求调整顺序，以用户为准。
 
-### P3 —— 搜索、收藏、历史、分组管理、列表编辑器
+### P3 —— 搜索、收藏、历史、分组管理、列表编辑器（P3a 数据层已完成，下面是 P3b / P3c 剩余部分）
 **范围（说明书 4.1 列表编辑器、4.2、4.7 收藏 / 历史）**
 - 全局搜索：频道名、分组名，**输入即搜、防抖 300 ms，基于 Room FTS**（`channels_fts` 已有，列 `name`、`tvgName`）。"按当前节目名搜索"依赖 EPG，留到 P4 补。
 - 收藏：任意频道加 / 取消收藏；收藏页（替换现有占位）；**以 `(playlistId, uniqueKey)` 为键，不得存频道 id**——每次刷新 / 重新导入频道 id 都会变（分代导入）。`uniqueKey` 规则：tvg-id 优先，否则 URL 哈希，列表内重复加后缀；已有索引 `(playlistId, uniqueKey)`。
@@ -192,15 +206,15 @@
 | K15 | 画中画小窗内仍显示字幕 | P2b KI6 | 低优先 |
 | K16 | Fill / Stretch 下 PiP `sourceRectHint` 为近似，进入动画可能跳变 | P2b KI7 | 低优先 |
 | K17 | 带 DVR 的直播不能拖进度 / 双击快进退 | P2b KI8 | **P5** |
-| K18 | **重新导入播放列表后"上次频道"记录失效**（存的是频道 id） | P2b KI9 | **P3**（改用 uniqueKey） |
+| K18 | ✅ **P3a 已修**（`460ac22`）：上次频道改存 playlistId + uniqueKey，刷新后仍能续播 | P2b KI9 | 完成（待真机验证） |
 | K19 | 睡眠定时不持久化、无默认时长设置 | P2b 没做 | P7 |
-| K20 | 进入播放页时频道已被刷新删除会显示"频道不存在" | P1 KI8 | 随 P3 uniqueKey 改造 |
+| K20 | 进入播放页时频道已被刷新删除会显示"频道不存在"。P3a 已修续播路径（按 key 解析）；从频道列表进入的路由仍按 id | P1 KI8 | P3b（路由带 uniqueKey） |
 
 ### 3.2 技术债与文档 / 实现不一致
 | # | 问题 | 建议 |
 |---|---|---|
 | D1 | P0 报告称"广告/内购仅接口与空实现"已做，**实际仓库没有 monetization 代码或模块** | P8 按用户要求建接口 + NoOp；或更早补上并修正 P0 报告 |
-| D2 | P1 报告称 DAO / 迁移测试在 androidTest，**实际仓库没有任何 androidTest 源码**；core:database、core:model、core:designsystem、core:ui、feature:epg 无单测 | P3 起补 Room DAO / Migration 测试（androidTest 需模拟器，可在 CI 加模拟器 job，或引入 Robolectric——新依赖需先问用户） |
+| D2 | 部分解决（P3a）：core:database 已有 27 项 Robolectric DAO / 迁移测试；仍无 androidTest；core:model、core:designsystem、core:ui、feature:epg 无单测 | 后续阶段按需补 |
 | D3 | Compose UI 测试（说明书第 10 节：添加列表、搜索、切台、设置修改）一个都没有 | 分阶段补；CI 需要模拟器 job |
 | D4 | `app/build.gradle.kts` 注释引用 `docs/RELEASE.md`，文件不存在 | P8 补写（签名步骤目前见 `docs/BUILD-AND-ENV.md`） |
 | D5 | ✅ **已修（`9c76878`）**：`:app:lintDebug` 报 `Instantiatable`（`PlaybackService must extend android.app.Service`）——app 的 lint 类路径上没有 `media3-session`。`fc5f0ad` 让 app 直接依赖 `core:player` 无效（media3-session 是 core:player 的 implementation）。最终修法：把 `<service>` 与 `FOREGROUND_SERVICE*` / `POST_NOTIFICATIONS` 权限移到 `core/player/src/main/AndroidManifest.xml`，由清单合并带入 APK，并撤回 app → core:player 依赖。CI 新增「Print lint report」步骤，把 lint 文本报告打印到日志 | 完成；剩余 4 个 warning 见 D10 |
@@ -219,6 +233,7 @@
 | P0 | `docs/phase-reports/P0.md` 末尾 | 手机 / TV 冷启动、免责声明、自适应导航、TV banner |
 | P1 | `docs/phase-reports/P1.md`「P1 验收清单」 | https / http（明文开关）/ 本地文件导入；全屏播放、覆盖层、切台循环、404 错误、亮屏；分组刷新回落；底部空白（K3）；TV 焦点（K2） |
 | P2a | `docs/phase-reports/P2a.md`「P2a 验收清单」 | 断网重连节奏与网络恢复；404 不重连；重连次数设置；缓冲档位；仅软件解码；清晰度 / 音轨 / 字幕 / 外挂 SRT·VTT / 字幕样式；六种比例；TV 菜单键 / 长按 OK / 左右键 / 数字台号 / 返回删位 |
+| P3a | `docs/phase-reports/P3a.md`「真机验收步骤」 | **覆盖安装**验证 v1→v2 迁移；刷新播放列表后启动续播；TV 台号 2 秒 |
 | P2b | `docs/phase-reports/P2b.md`「P2b 验收清单」 | 通知权限；后台播放与媒体通知、锁屏、耳机 / 蓝牙切台、拔耳机暂停；PiP 自动进入 / 按钮 / 三按钮 / 比例；手势（亮度 / 音量 / 切台 / 拖进度 / 双击）；睡眠定时淡出；启动续播；自动下一个；TV 上设置项隐藏与媒体键（K14） |
 
 用户反馈的问题应先写失败的测试再修，修复记入对应阶段报告或下一阶段报告。
@@ -229,11 +244,14 @@
    - 本地：`./gradlew ktlintCheck detekt test :app:assembleDebug --continue` 全绿（应为 348 项测试）。
    - 修技术债 D5（`:app:lintDebug` 的 `MissingClass`），顺带看那 4 个 lint warning；本地跑 `./gradlew :app:lintDebug :app:assembleRelease` 通过。修复属于代码改动，按 AGENTS.md 的流程先向用户说明再做。
    - 推送后在 `https://github.com/qaz69s/iptv/actions` 确认 `main` 的 CI 全绿（含 lintDebug、assembleRelease），向用户汇报。
-3. **跟进真机验收**：问用户 P1 / P2a / P2b 真机验收是否已做、有什么问题；有问题先修（先写失败测试）。用户也可以选择边做 P3 边验收——由用户决定。
-4. **P3 开工前**：用中文向用户提交 P3 计划，至少包含：
-   - 是否把 P3 拆为子阶段（建议：P3a 数据层——Room v2 迁移、收藏 / 历史 / 覆盖表、以 uniqueKey 为键、上次频道改造、DAO 测试；P3b 界面——搜索、收藏页、最近观看、虚拟分组接入切台 / 台号 / 自动下一个 / 通知上下曲、三种视图、TV 双栏；P3c 编辑器——分组 / 频道隐藏、重命名、排序、自定义分组、播放列表编辑 / 排序 / 启停）。
-   - 先做"设置「播放」拆二级页"（K8）。
-   - 顺手修 K1、K14、K18。
-   - DAO 测试的运行方式（androidTest + CI 模拟器，或 Robolectric 新依赖），需要用户确认。
-   - 需要用户回答的问题（如频道页是否也支持数字直输、收藏跨播放列表的排序规则）。
-5. **等用户确认计划后再动手**，按 `AGENTS.md` 第 3.2 节的流程完成每个子阶段：测试 → 阶段报告 → 更新 README / ARCHITECTURE / implementation-plan / 本文件 → 推送并检查 CI → 中文汇报 + 交付 debug APK 与源码 zip → 等确认。
+3. ~~**P3 计划**~~ ✅ 2026-11-18 用户已确认（决定见第 0 节）。
+4. ~~**P3a 数据层**~~ ✅ 2026-11-18 完成（`460ac22`、`3a57202`，CI 全绿，报告 `docs/phase-reports/P3a.md`）。
+5. **等用户确认 P3a 后再开始 P3b**（界面）。P3b 建议顺序与待定问题：
+   - 先把设置「播放」拆二级页（K8），顺手修 K1（Coil 台标明文）、K14（前台媒体键）。
+   - 搜索（FTS 防抖 300 ms）：重命名后的名字不在 FTS 里——需决定"LIKE 补查 customName"还是"升 schema v3 把 customName 加进 FTS"（建议前者，零迁移）。
+   - 收藏页 / 最近观看页 + 收藏按钮（`ToggleFavoriteUseCase`），历史清空入口（`WatchHistoryRepository.clear`）。
+   - 虚拟分组「全部 / 收藏 / 最近观看」接入切台、台号、自动下一个、通知 / 耳机 / PiP 上下一个：需要定义收藏 / 最近观看内的切台顺序（建议：与列表显示顺序一致、循环；台号在虚拟分组内按列表序号）——**需用户确认**。
+   - 播放页路由带 uniqueKey（修 K20 剩余部分）。
+   - 三种视图（列表 / 网格 / 紧凑）、TV 左分组右频道双栏与焦点。
+6. 真机验收与开发并行：用户反馈的问题先写失败测试再修，记入当期阶段报告。
+7. 每个子阶段按 `AGENTS.md` 第 3.2 节完成：测试 → 阶段报告 → 更新 README / ARCHITECTURE / implementation-plan / 本文件 → 推送并检查 CI → 中文汇报 + 交付 debug APK 与源码 zip → 等确认。

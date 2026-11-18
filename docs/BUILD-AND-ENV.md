@@ -84,7 +84,8 @@ CI 没有签名 secrets，因此 release 包未签名，仅验证 R8 构建能�
 5. **长时间构建与命令超时**：首次构建要下载依赖、编译 build-logic，耗时较长。如果你的执行环境对单条命令有时间上限，请把 Gradle 放到后台运行（`nohup ./gradlew ... > build.log 2>&1 &`），把退出码写到文件里再轮询，不要在会被超时杀掉的前台命令里等待；每次构建用新的日志文件名，避免读到上一次的结果。
 6. **没有模拟器时**：只能验证编译 + JVM 单测 + 静态检查。播放、PiP、MediaSession、手势、TV 焦点等必须由用户在真机（realme GT6 + Android TV）上验收，阶段报告里要写清楚可勾选的验收步骤。
 7. **detekt 1.23.8 + Kotlin 2.4**：只跑不依赖类型解析的 `detekt` 任务（不是 `detektMain`）。出现兼容错误时先说明，再考虑 detekt 2.x。
-8. **configuration cache**：新写的 Gradle 逻辑（约定插件、自定义任务）要兼容 configuration cache，否则会报错。
+8. **Robolectric（P3a 起，core:database 单测）**：首次运行会从 Maven Central 下载对应 SDK 的 `android-all-instrumented` jar（约 200 MB，SDK 由 `core/database/src/test/resources/robolectric.properties` 固定为 35）。需要能访问 Maven Central；若所在网络的代理需要认证而测试 JVM 下载失败（报 407），可先手动把该 jar 下载到 `~/.m2/repository/org/robolectric/android-all-instrumented/<版本>/`，Robolectric 会优先用本地文件。该模块单测用 JUnit 4 运行（见 AGENTS.md 4.5）。
+9. **configuration cache**：新写的 Gradle 逻辑（约定插件、自定义任务）要兼容 configuration cache，否则会报错。
 
 ## 6. 仅限原开发沙箱（Hark 环境）的细节
 以下只对最初开发本项目的沙箱有意义，其他环境可忽略：
