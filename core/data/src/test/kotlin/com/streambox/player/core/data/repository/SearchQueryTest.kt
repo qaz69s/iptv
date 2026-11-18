@@ -16,7 +16,7 @@ class SearchQueryTest {
     @Test
     fun `each word becomes a quoted prefix term`() {
         val query = checkNotNull(SearchQuery.parse("  CCTV-1 news "))
-        assertEquals("\"CCTV\"* \"1\"* \"news\"*", query.ftsMatch)
+        assertEquals("\"CCTV*\" \"1*\" \"news*\"", query.ftsMatch)
         assertEquals("%CCTV-1 news%", query.likePattern)
         assertFalse(query.substring)
     }
@@ -24,7 +24,7 @@ class SearchQueryTest {
     @Test
     fun `fts operators and quotes typed by the user cannot break the expression`() {
         val query = checkNotNull(SearchQuery.parse("\"a\" OR b* NEAR(c)"))
-        assertEquals("\"a\"* \"OR\"* \"b\"* \"NEAR\"* \"c\"*", query.ftsMatch)
+        assertEquals("\"a*\" \"OR*\" \"b*\" \"NEAR*\" \"c*\"", query.ftsMatch)
     }
 
     @Test
@@ -43,7 +43,7 @@ class SearchQueryTest {
     fun `chinese text also searches names by substring`() {
         val query = checkNotNull(SearchQuery.parse("新闻"))
         assertTrue(query.substring)
-        assertEquals("\"新闻\"*", query.ftsMatch)
+        assertEquals("\"新闻*\"", query.ftsMatch)
         assertEquals("%新闻%", query.likePattern)
     }
 }

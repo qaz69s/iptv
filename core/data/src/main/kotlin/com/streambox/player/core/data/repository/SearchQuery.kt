@@ -2,7 +2,7 @@ package com.streambox.player.core.data.repository
 
 /**
  * Turns what the user typed into the search arguments of the channel DAO.
- * - [ftsMatch]: one quoted prefix term per word (`"cctv"* "news"*`, all must match), built only from
+ * - [ftsMatch]: one quoted prefix term per word (`"cctv*" "news*"`, FTS4 syntax; all must match), built only from
  *   letters and digits so no FTS operator or quote typed by the user can break the expression; null when
  *   the text has no word at all.
  * - [likePattern]: `%text%` with `%`, `_` and the escape character `\` escaped (contains, ASCII case
@@ -17,7 +17,7 @@ internal data class SearchQuery(val ftsMatch: String?, val likePattern: String, 
             val trimmed = text.trim()
             if (trimmed.isEmpty()) return null
             val words = trimmed.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
-            val match = words.takeIf { it.isNotEmpty() }?.joinToString(" ") { "\"$it\"*" }
+            val match = words.takeIf { it.isNotEmpty() }?.joinToString(" ") { "\"$it*\"" }
             val escaped = buildString {
                 trimmed.forEach { char ->
                     if (char == '%' || char == '_' || char == '\\') append('\\')

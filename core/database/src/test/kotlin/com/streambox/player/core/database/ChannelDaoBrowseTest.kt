@@ -119,10 +119,10 @@ class ChannelDaoBrowseTest {
             names = mapOf("a" to "CCTV-1 综合", "b" to "BBC News", "c" to "Discovery"),
         )
 
-        assertEquals(listOf("a"), searchKeys("\"cct\"*", "%cct%"))
-        assertEquals(listOf("b"), searchKeys("\"bbc\"* \"new\"*", "%bbc new%"))
-        assertEquals(listOf("a"), searchKeys("\"综合\"*", "%综合%"))
-        assertTrue(searchKeys("\"overy\"*", "%overy%").isEmpty())
+        assertEquals(listOf("a"), searchKeys("\"cct*\"", "%cct%"))
+        assertEquals(listOf("b"), searchKeys("\"bbc*\" \"new*\"", "%bbc new%"))
+        assertEquals(listOf("a"), searchKeys("\"综合*\"", "%综合%"))
+        assertTrue(searchKeys("\"overy*\"", "%overy%").isEmpty())
     }
 
     @Test
@@ -130,8 +130,8 @@ class ChannelDaoBrowseTest {
         val p = test.playlist()
         test.import(p, listOf("News" to listOf("a", "b")), names = mapOf("a" to "凤凰新闻台", "b" to "体育"))
 
-        assertTrue(searchKeys("\"新闻\"*", "%新闻%").isEmpty())
-        assertEquals(listOf("a"), searchKeys("\"新闻\"*", "%新闻%", substring = true))
+        assertTrue(searchKeys("\"新闻*\"", "%新闻%").isEmpty())
+        assertEquals(listOf("a"), searchKeys("\"新闻*\"", "%新闻%", substring = true))
     }
 
     @Test
@@ -140,9 +140,9 @@ class ChannelDaoBrowseTest {
         test.import(p, listOf("News" to listOf("a", "b")), names = mapOf("a" to "Channel One", "b" to "Two"))
         test.overrides.updateChannel(p, "b") { it.copy(customName = "My Favourite") }
 
-        assertEquals(listOf("b"), searchKeys("\"favo\"*", "%favo%"))
+        assertEquals(listOf("b"), searchKeys("\"favo*\"", "%favo%"))
         // The original name still matches through the index.
-        assertEquals(listOf("b"), searchKeys("\"two\"*", "%two%"))
+        assertEquals(listOf("b"), searchKeys("\"two*\"", "%two%"))
     }
 
     @Test
@@ -152,10 +152,10 @@ class ChannelDaoBrowseTest {
         test.overrides.updateChannel(p, "b") { it.copy(hidden = true) }
         test.import(p, listOf("News" to listOf("a", "b")), names = mapOf("a" to "Sport A", "b" to "Sport B"))
 
-        assertEquals(listOf("a"), searchKeys("\"sport\"*", "%sport%"))
+        assertEquals(listOf("a"), searchKeys("\"sport*\"", "%sport%"))
 
         test.db.openHelper.writableDatabase.execSQL("UPDATE playlists SET enabled = 0 WHERE id = $p")
-        assertTrue(searchKeys("\"sport\"*", "%sport%").isEmpty())
+        assertTrue(searchKeys("\"sport*\"", "%sport%").isEmpty())
     }
 
     @Test

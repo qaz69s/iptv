@@ -121,7 +121,7 @@ class DefaultChannelRepositoryTest {
 
         val results = repository.search("spo", limit = 10)
 
-        coVerify { channelDao.search("\"spo\"*", "%spo%", 0, 10) }
+        coVerify { channelDao.search("\"spo*\"", "%spo%", 0, 10) }
         assertEquals(listOf(ChannelGroupSummary("Sport", 3)), results.groups)
         assertEquals(listOf("Sport 1"), results.channels.map { it.name })
     }
@@ -130,7 +130,7 @@ class DefaultChannelRepositoryTest {
     fun `chinese search also matches names by substring`() = runTest {
         repository.search("新闻", limit = 5)
 
-        coVerify { channelDao.search("\"新闻\"*", "%新闻%", 1, 5) }
+        coVerify { channelDao.search("\"新闻*\"", "%新闻%", 1, 5) }
     }
 
     @Test
