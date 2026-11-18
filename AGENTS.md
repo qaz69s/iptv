@@ -7,7 +7,7 @@
 **StreamBox Player**（`com.streambox.player`）：一款 Android IPTV **纯播放器**，功能对标 Televizo，覆盖手机 / 平板 / Android TV（同一个 APK）。
 - **不内置、不预置任何频道源或内容**。首次启动是空状态，用户自己添加 M3U / M3U8 / Xtream Codes 播放列表和 XMLTV 节目单。
 - 技术栈：Kotlin 2.4 · Jetpack Compose（Material 3）+ Compose for TV · Hilt · Room + Paging · DataStore · OkHttp · Media3 ExoPlayer · Coil 3 · 多模块 Clean Architecture。
-- 当前进度：**P0、P1、P2（P2a + P2b）已完成，均未经真机验收**；下一阶段 **P3**。详见 `docs/DEVELOPMENT-STATUS.md`。
+- 当前进度：**P0、P1、P2（P2a + P2b）已完成，均未经真机验收**；下一阶段 **P3**。**注意：GitHub CI 首次运行在 `:app:lintDebug` 失败（`PlaybackService` 的 MissingClass），需先修（技术债 D5）。** 详见 `docs/DEVELOPMENT-STATUS.md`。
 - GitHub：`https://github.com/qaz69s/iptv`，分支 `main`，push 触发 GitHub Actions CI。
 
 ## 2. 阅读顺序

@@ -18,7 +18,7 @@
 | P8 投屏 / 变现接口 / 性能 / 发布 | 未开始 | — | — | — |
 
 - **重要**：P0–P2 全部只在无模拟器的 aarch64 沙箱里经过「编译 + JVM 单测 + ktlint + detekt」验证，**从未在真机或模拟器上运行过**。
-- GitHub CI：仓库在 P2 结束后才首次推送，CI 第一次运行发生在 2026-11-18（提交 `a669bf0` 及之后的文档提交）。CI 还会跑 `:app:lintDebug` 和 `:app:assembleRelease`（R8），这两项在沙箱中**从未跑过**，首次结果需要确认（见第 5 节）。
+- GitHub CI：仓库在 P2 结束后才首次推送。**第一次 CI（2026-11-18，`a669bf0`，run 44241199582）失败**：ktlint / detekt、单元测试通过，**`:app:lintDebug` 报 1 个 error**，之后的 `assembleDebug` / `assembleRelease` 被跳过（见技术债 D5，**接手后第一件事**）。`:app:lintDebug` 与 `:app:assembleRelease`（R8）此前在沙箱中从未跑过。
 - 用户的真机：**手机 realme GT6（Android 14 / 15）+ 一台 Android TV**。
 
 ## 1. 已开发了什么
@@ -203,7 +203,7 @@
 | D2 | P1 报告称 DAO / 迁移测试在 androidTest，**实际仓库没有任何 androidTest 源码**；core:database、core:model、core:designsystem、core:ui、feature:epg 无单测 | P3 起补 Room DAO / Migration 测试（androidTest 需模拟器，可在 CI 加模拟器 job，或引入 Robolectric——新依赖需先问用户） |
 | D3 | Compose UI 测试（说明书第 10 节：添加列表、搜索、切台、设置修改）一个都没有 | 分阶段补；CI 需要模拟器 job |
 | D4 | `app/build.gradle.kts` 注释引用 `docs/RELEASE.md`，文件不存在 | P8 补写（签名步骤目前见 `docs/BUILD-AND-ENV.md`） |
-| D5 | CI 的 `:app:lintDebug`、`:app:assembleRelease`（R8）在沙箱从未跑过；CI 首次运行结果待确认 | 现在就看 CI，失败则先修 |
+| D5 | **CI 失败（首次运行）**：`:app:lintDebug` 报 `MissingClass`——`app/src/main/AndroidManifest.xml:52` 声明的 `com.streambox.player.core.player.session.PlaybackService` 在 app 的 lint 类路径上找不到（app 不直接依赖 `core:player`，只经 `feature:player` 的 `implementation` 间接引入；运行时 APK 里是有这个类的）。另有 4 个 lint warning 未看。`:app:assembleRelease`（R8）因此还没跑过。 | **P3 之前先修**（属 P2 收尾）。可选修法：把 `<service>` 声明（连同 `FOREGROUND_SERVICE*` 权限）移到 `core/player/src/main/AndroidManifest.xml` 由清单合并带入，或让 app 直接 `implementation(projects.core.player)`。修完本地跑 `:app:lintDebug :app:assembleRelease`，再推送确认 CI 全绿，并向用户汇报 |
 | D6 | detekt 1.23.8 与 Kotlin 2.4 只跑非类型解析规则（R4） | 观察；detekt 2.x 稳定后升级 |
 | D7 | `NavigationCommandsListener` 手写转发全部 `Player.Listener` 回调，Media3 升级新增回调时需补 | 升级 Media3 时检查 |
 | D8 | `PlaybackController` 接口每次变更都要同步 `FakePlaybackController` | 约定（见 AGENTS.md） |
@@ -224,9 +224,10 @@
 
 ## 5. 下一步的具体操作步骤
 1. **读文档**：按 `AGENTS.md` 第 2 节的顺序读完。
-2. **确认构建与 CI**：
+2. **修 CI（P2 收尾，先于 P3）**：
    - 本地：`./gradlew ktlintCheck detekt test :app:assembleDebug --continue` 全绿（应为 348 项测试）。
-   - GitHub：打开 `https://github.com/qaz69s/iptv/actions`，看 `main` 最新一次 CI（含 lintDebug、assembleRelease）是否通过。失败则先修（这属于 P2 收尾），修完向用户汇报。
+   - 修技术债 D5（`:app:lintDebug` 的 `MissingClass`），顺带看那 4 个 lint warning；本地跑 `./gradlew :app:lintDebug :app:assembleRelease` 通过。修复属于代码改动，按 AGENTS.md 的流程先向用户说明再做。
+   - 推送后在 `https://github.com/qaz69s/iptv/actions` 确认 `main` 的 CI 全绿（含 lintDebug、assembleRelease），向用户汇报。
 3. **跟进真机验收**：问用户 P1 / P2a / P2b 真机验收是否已做、有什么问题；有问题先修（先写失败测试）。用户也可以选择边做 P3 边验收——由用户决定。
 4. **P3 开工前**：用中文向用户提交 P3 计划，至少包含：
    - 是否把 P3 拆为子阶段（建议：P3a 数据层——Room v2 迁移、收藏 / 历史 / 覆盖表、以 uniqueKey 为键、上次频道改造、DAO 测试；P3b 界面——搜索、收藏页、最近观看、虚拟分组接入切台 / 台号 / 自动下一个 / 通知上下曲、三种视图、TV 双栏；P3c 编辑器——分组 / 频道隐藏、重命名、排序、自定义分组、播放列表编辑 / 排序 / 启停）。
