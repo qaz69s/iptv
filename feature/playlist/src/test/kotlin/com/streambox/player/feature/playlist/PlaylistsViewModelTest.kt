@@ -60,6 +60,26 @@ class PlaylistsViewModelTest {
         assertEquals(listOf(b.copy(allowCleartext = true)), repository.playlists.first())
     }
 
+    @Test
+    fun `move up and down reorder the playlists, enable switch keeps them listed`() = runTest {
+        val c = Playlist(3, "C", PlaylistType.M3U_URL, "https://c/list.m3u")
+        val repository = FakePlaylistRepository(listOf(a, b, c))
+        val viewModel = PlaylistsViewModel(repository)
+
+        viewModel.uiState.test {
+            awaitLoaded()
+            viewModel.move(3, up = true)
+            assertEquals(listOf(1L, 3L, 2L), awaitLoaded().rows.map { it.playlist.id })
+            viewModel.move(1, up = false)
+            assertEquals(listOf(3L, 1L, 2L), awaitLoaded().rows.map { it.playlist.id })
+            viewModel.move(3, up = true) // already first: nothing happens
+            viewModel.setEnabled(2, false)
+            val rows = awaitLoaded().rows
+            assertEquals(listOf(3L, 1L, 2L), rows.map { it.playlist.id })
+            assertFalse(rows.last().playlist.enabled)
+        }
+    }
+
     private suspend fun ReceiveTurbine<PlaylistsUiState>.awaitLoaded(): PlaylistsUiState.Loaded {
         while (true) {
             val item = awaitItem()

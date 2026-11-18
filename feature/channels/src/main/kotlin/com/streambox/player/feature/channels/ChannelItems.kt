@@ -3,6 +3,8 @@
 package com.streambox.player.feature.channels
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,9 +52,12 @@ import com.streambox.player.core.model.ChannelViewMode
 /** What one channel item needs besides the channel. */
 internal data class ChannelItemState(val isFavorite: Boolean, val allowCleartext: Boolean)
 
+/** An extra entry of the channel item menu (P3c: hide, rename, custom groups). */
+internal data class ChannelMenuEntry(@StringRes val label: Int, @DrawableRes val icon: Int, val onClick: () -> Unit)
+
 /**
  * One channel in [mode]. Click / OK plays it; long-press (touch), long OK or the Menu key (remote)
- * opens a small menu to add / remove the favorite.
+ * opens a small menu to add / remove the favorite, plus the [menuEntries] of the caller.
  */
 @Composable
 internal fun ChannelItem(
@@ -62,6 +67,7 @@ internal fun ChannelItem(
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
+    menuEntries: List<ChannelMenuEntry> = emptyList(),
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -101,6 +107,17 @@ internal fun ChannelItem(
                 },
                 modifier = Modifier.focusRing(),
             )
+            menuEntries.forEach { entry ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(entry.label)) },
+                    leadingIcon = { Icon(painterResource(entry.icon), contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        entry.onClick()
+                    },
+                    modifier = Modifier.focusRing(),
+                )
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.Playlist
 import com.streambox.player.core.model.PlaylistType
+import com.streambox.player.core.testing.FakeChannelOverridesRepository
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
 import com.streambox.player.core.testing.FakeCustomGroupsRepository
@@ -43,6 +44,7 @@ class ChannelsViewModelTest {
     private val history = FakeWatchHistoryRepository(library)
     private val settings = FakeSettingsRepository()
     private val customGroups = FakeCustomGroupsRepository(library.value)
+    private val overrides = FakeChannelOverridesRepository()
 
     private fun viewModel(
         playlists: FakePlaylistRepository = FakePlaylistRepository(listOf(playlist)),
@@ -56,6 +58,7 @@ class ChannelsViewModelTest {
         customGroups,
         settings,
         ToggleFavoriteUseCase(favorites),
+        overrides,
     )
 
     private fun TestScope.collect(viewModel: ChannelsViewModel) {
@@ -114,6 +117,32 @@ class ChannelsViewModelTest {
 
         customGroups.delete(id)
         assertEquals(ChannelSource.All, (viewModel.uiState.value as ChannelsUiState.Content).source)
+    }
+
+    @Test
+    fun `quick edits from the channel menu hide and rename by stable key`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        viewModel.onHideChannel(channel(2))
+        viewModel.onRenameChannel(channel(3), "  Mine ")
+
+        assertTrue(overrides.channels.value.getValue(channel(2).key).hidden)
+        assertEquals("Mine", overrides.channels.value.getValue(channel(3).key).customName)
+    }
+
+    @Test
+    fun `adding to a new group creates it, and membership toggles`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        viewModel.onCreateCustomGroup("Kids", channel(1))
+        val id = customGroups.groups.first().single().id
+        assertEquals(setOf(id), viewModel.customGroupsOf(channel(1)).first())
+
+        viewModel.onSetInCustomGroup(id, channel(2), member = true)
+        viewModel.onSetInCustomGroup(id, channel(1), member = false)
+        assertEquals(listOf(2L), customGroups.channels(id).first().map { it.id })
     }
 
     @Test

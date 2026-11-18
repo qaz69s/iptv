@@ -105,7 +105,7 @@ fun StreamBoxNavHost(
             onGoToChannels = { navController.backToChannels() },
         )
         playlistsScreen(
-            onBack = { navController.popBackStack() },
+            navController = navController,
             onAddPlaylist = { navController.navigateToAddPlaylist() },
             onOpenImport = { playlistId -> navController.navigateToImportProgress(playlistId) },
         )

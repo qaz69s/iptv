@@ -56,6 +56,18 @@ class PlaylistsViewModel @Inject constructor(private val repository: PlaylistRep
         viewModelScope.launch { repository.setAllowCleartext(id, allowed) }
     }
 
+    /** P3c (user decision 5): a disabled playlist keeps its data; its channels are just not shown. */
+    fun setEnabled(id: Long, enabled: Boolean) {
+        viewModelScope.launch { repository.setEnabled(id, enabled) }
+    }
+
+    /** P3c: up / down instead of drag and drop (TV friendly). */
+    fun move(id: Long, up: Boolean) {
+        val rows = (uiState.value as? PlaylistsUiState.Loaded)?.rows ?: return
+        val moved = rows.movedOrNull(rows.indexOfFirst { it.playlist.id == id }, up) ?: return
+        viewModelScope.launch { repository.reorderPlaylists(moved.map { it.playlist.id }) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
     }

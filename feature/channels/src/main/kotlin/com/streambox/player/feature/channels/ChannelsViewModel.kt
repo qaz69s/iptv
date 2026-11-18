@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.streambox.player.core.domain.channel.ChannelSorting
+import com.streambox.player.core.domain.repository.ChannelOverridesRepository
 import com.streambox.player.core.domain.repository.ChannelRepository
 import com.streambox.player.core.domain.repository.CustomGroupsRepository
 import com.streambox.player.core.domain.repository.FavoritesRepository
@@ -88,6 +89,7 @@ class ChannelsViewModel @Inject constructor(
     private val customGroupsRepository: CustomGroupsRepository,
     private val settingsRepository: SettingsRepository,
     private val toggleFavorite: ToggleFavoriteUseCase,
+    private val channelOverrides: ChannelOverridesRepository,
 ) : ViewModel() {
     private val selectedGroup: StateFlow<String?> = savedStateHandle.getStateFlow(KEY_GROUP, null)
     private val selectedVirtual: StateFlow<String?> = savedStateHandle.getStateFlow(KEY_VIRTUAL, null)
@@ -208,6 +210,36 @@ class ChannelsViewModel @Inject constructor(
 
     fun onToggleFavorite(channel: Channel) {
         viewModelScope.launch { toggleFavorite(channel.key) }
+    }
+
+    /** Quick hide from the channel menu (P3c); the list editor shows it again. */
+    fun onHideChannel(channel: Channel) {
+        viewModelScope.launch { channelOverrides.setChannelHidden(channel.key, true) }
+    }
+
+    /** Quick rename from the channel menu; a blank name restores the playlist's name. */
+    fun onRenameChannel(channel: Channel, name: String) {
+        viewModelScope.launch { channelOverrides.renameChannel(channel.key, name) }
+    }
+
+    /** Ids of the custom groups the channel is in (for the "Add to group" dialog). */
+    fun customGroupsOf(channel: Channel): Flow<Set<Long>> = customGroupsRepository.groupsOf(channel.key)
+
+    fun onSetInCustomGroup(groupId: Long, channel: Channel, member: Boolean) {
+        viewModelScope.launch {
+            if (member) {
+                customGroupsRepository.addChannel(groupId, channel.key)
+            } else {
+                customGroupsRepository.removeChannel(groupId, channel.key)
+            }
+        }
+    }
+
+    /** Creates a custom group (or reuses one of that name) and adds the channel to it. */
+    fun onCreateCustomGroup(name: String, channel: Channel) {
+        viewModelScope.launch {
+            customGroupsRepository.create(name)?.let { customGroupsRepository.addChannel(it, channel.key) }
+        }
     }
 
     internal companion object {

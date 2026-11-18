@@ -6,12 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -31,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -54,6 +56,8 @@ internal fun PlaylistsEntry(
     onBack: () -> Unit,
     onAddPlaylist: () -> Unit,
     onOpenImport: (Long) -> Unit,
+    onEdit: (Long) -> Unit,
+    onCustomGroups: () -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,8 +72,22 @@ internal fun PlaylistsEntry(
         },
         onDelete = viewModel::delete,
         onAllowCleartextChange = viewModel::setAllowCleartext,
+        editActions = PlaylistEditActions(
+            onEdit = onEdit,
+            onMove = viewModel::move,
+            onEnabledChange = viewModel::setEnabled,
+            onCustomGroups = onCustomGroups,
+        ),
     )
 }
+
+/** P3c: list editor entry, order (up / down) and enable / disable of each playlist; custom groups. */
+internal data class PlaylistEditActions(
+    val onEdit: (Long) -> Unit = {},
+    val onMove: (Long, up: Boolean) -> Unit = { _, _ -> },
+    val onEnabledChange: (Long, Boolean) -> Unit = { _, _ -> },
+    val onCustomGroups: () -> Unit = {},
+)
 
 @Composable
 internal fun PlaylistsScreen(
@@ -80,10 +98,20 @@ internal fun PlaylistsScreen(
     onRefresh: (Long) -> Unit,
     onDelete: (Long) -> Unit,
     onAllowCleartextChange: (Long, Boolean) -> Unit,
+    editActions: PlaylistEditActions = PlaylistEditActions(),
 ) {
     var pendingDelete by rememberSaveable { mutableStateOf<Long?>(null) }
     Scaffold(
-        topBar = { PlaylistTopBar(stringResource(R.string.feature_playlist_list_title), onBack) },
+        topBar = {
+            PlaylistTopBar(stringResource(R.string.feature_playlist_list_title), onBack) {
+                IconButton(onClick = editActions.onCustomGroups, modifier = Modifier.focusRing()) {
+                    Icon(
+                        painterResource(StreamBoxIcons.NewGroup),
+                        contentDescription = stringResource(R.string.feature_playlist_custom_groups),
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddPlaylist, modifier = Modifier.focusRing()) {
                 Icon(
@@ -115,9 +143,11 @@ internal fun PlaylistsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    items(state.rows, key = { it.playlist.id }) { row ->
+                    itemsIndexed(state.rows, key = { _, row -> row.playlist.id }) { index, row ->
                         PlaylistCard(
                             row = row,
+                            position = index to state.rows.size,
+                            editActions = editActions,
                             onOpen = { onOpenImport(row.playlist.id) },
                             onRefresh = { onRefresh(row.playlist.id) },
                             onDelete = { pendingDelete = row.playlist.id },
@@ -156,6 +186,9 @@ internal fun PlaylistsScreen(
 @Composable
 private fun PlaylistCard(
     row: PlaylistRow,
+    /** Index and size of the list, for the move buttons. */
+    position: Pair<Int, Int>,
+    editActions: PlaylistEditActions,
     onOpen: () -> Unit,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
@@ -163,7 +196,7 @@ private fun PlaylistCard(
 ) {
     val playlist = row.playlist
     Card(modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth()) {
-        Column(Modifier.padding(vertical = 8.dp)) {
+        Column(Modifier.padding(vertical = 8.dp).alpha(if (playlist.enabled) 1f else DISABLED_ALPHA)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,9 +261,61 @@ private fun PlaylistCard(
                     Switch(checked = playlist.allowCleartext, onCheckedChange = null)
                 }
             }
+            SwitchRow(
+                label = stringResource(R.string.feature_playlist_enabled),
+                checked = playlist.enabled,
+                onCheckedChange = { editActions.onEnabledChange(playlist.id, it) },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { editActions.onEdit(playlist.id) }, modifier = Modifier.focusRing()) {
+                    Icon(painterResource(StreamBoxIcons.Edit), contentDescription = null)
+                    Text(stringResource(R.string.feature_playlist_editor), Modifier.padding(start = 8.dp))
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(
+                    onClick = { editActions.onMove(playlist.id, true) },
+                    enabled = position.first > 0,
+                    modifier = Modifier.focusRing(),
+                ) {
+                    Icon(
+                        painterResource(StreamBoxIcons.ArrowUp),
+                        contentDescription = stringResource(R.string.feature_playlist_editor_up),
+                    )
+                }
+                IconButton(
+                    onClick = { editActions.onMove(playlist.id, false) },
+                    enabled = position.first < position.second - 1,
+                    modifier = Modifier.focusRing(),
+                ) {
+                    Icon(
+                        painterResource(StreamBoxIcons.ArrowDown),
+                        contentDescription = stringResource(R.string.feature_playlist_editor_down),
+                    )
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRing()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+private const val DISABLED_ALPHA = 0.6f
 
 @Composable
 private fun StatusLine(row: PlaylistRow) {

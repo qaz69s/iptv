@@ -84,6 +84,8 @@ import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.CustomGroup
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Callbacks of the channel browser, grouped to keep the composables readable. */
 internal data class ChannelsActions(
@@ -96,7 +98,22 @@ internal data class ChannelsActions(
     /** Plays [Channel]; the player zaps through the source it was picked from. */
     val onChannelClick: (Channel, ChannelSource) -> Unit = { _, _ -> },
     val onToggleFavorite: (Channel) -> Unit = {},
+    /** P3c quick edits from the channel menu. */
+    val onHide: (Channel) -> Unit = {},
+    val onRename: (Channel, String) -> Unit = { _, _ -> },
+    val customGroupsOf: (Channel) -> Flow<Set<Long>> = { emptyFlow() },
+    val onSetInCustomGroup: (groupId: Long, Channel, member: Boolean) -> Unit = { _, _, _ -> },
+    val onCreateCustomGroup: (String, Channel) -> Unit = { _, _ -> },
 )
+
+/** A dialog opened from a channel's menu. */
+private sealed interface ChannelDialog {
+    val channel: Channel
+
+    data class Rename(override val channel: Channel) : ChannelDialog
+
+    data class Groups(override val channel: Channel) : ChannelDialog
+}
 
 /**
  * Channel browser. A fresh install has no playlists and therefore no channels; nothing is ever
@@ -124,6 +141,11 @@ internal fun ChannelsEntry(
             onSortOrderSelected = viewModel::onSortOrderSelected,
             onChannelClick = onChannelClick,
             onToggleFavorite = viewModel::onToggleFavorite,
+            onHide = viewModel::onHideChannel,
+            onRename = viewModel::onRenameChannel,
+            customGroupsOf = viewModel::customGroupsOf,
+            onSetInCustomGroup = viewModel::onSetInCustomGroup,
+            onCreateCustomGroup = viewModel::onCreateCustomGroup,
         ),
     )
 }
@@ -139,6 +161,7 @@ internal fun ChannelsScreen(
     val content = state as? ChannelsUiState.Content
     // TV: coming back from the player puts focus on the channel that was played, not on the groups.
     var lastPlayedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var dialog by remember { mutableStateOf<ChannelDialog?>(null) }
     val pickActions = actions.copy(
         onChannelClick = { channel, source ->
             lastPlayedId = channel.id
@@ -149,6 +172,9 @@ internal fun ChannelsScreen(
             actions.onSourceSelected(source)
         },
     )
+    val menuFor: (Channel) -> List<ChannelMenuEntry> = { channel ->
+        channelMenu(channel, content?.source, actions) { dialog = it }
+    }
     val hasPlaylists = state !is ChannelsUiState.NoPlaylists && state !is ChannelsUiState.Loading
     val isTv = LocalFormFactor.current == FormFactor.Tv
     Scaffold(
@@ -218,14 +244,78 @@ internal fun ChannelsScreen(
                         modifier = Modifier.width(280.dp).fillMaxHeight(),
                     )
                     VerticalDivider()
-                    ChannelPane(state, channels, pickActions, lastPlayedId, Modifier.weight(1f).fillMaxHeight())
+                    ChannelPane(
+                        state = state,
+                        channels = channels,
+                        actions = pickActions,
+                        focusChannelId = lastPlayedId,
+                        menuFor = menuFor,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
                 }
             } else {
                 Column(contentModifier) {
                     SourceChips(state, pickActions.onSourceSelected)
-                    ChannelPane(state, channels, pickActions, lastPlayedId, Modifier.weight(1f))
+                    ChannelPane(state, channels, pickActions, lastPlayedId, menuFor, Modifier.weight(1f))
                 }
             }
+        }
+    }
+    ChannelDialogHost(dialog, content?.customGroups.orEmpty(), actions) { dialog = null }
+}
+
+/** The P3c entries of a channel's menu: hide, rename, custom groups (and leaving the group shown). */
+private fun channelMenu(
+    channel: Channel,
+    source: ChannelSource?,
+    actions: ChannelsActions,
+    open: (ChannelDialog) -> Unit,
+): List<ChannelMenuEntry> = buildList {
+    add(ChannelMenuEntry(R.string.feature_channels_hide, StreamBoxIcons.Hidden) { actions.onHide(channel) })
+    add(ChannelMenuEntry(R.string.feature_channels_rename, StreamBoxIcons.Edit) { open(ChannelDialog.Rename(channel)) })
+    add(
+        ChannelMenuEntry(R.string.feature_channels_add_to_group, StreamBoxIcons.NewGroup) {
+            open(ChannelDialog.Groups(channel))
+        },
+    )
+    if (source is ChannelSource.Custom) {
+        add(
+            ChannelMenuEntry(R.string.feature_channels_remove_from_group, StreamBoxIcons.Close) {
+                actions.onSetInCustomGroup(source.groupId, channel, false)
+            },
+        )
+    }
+}
+
+@Composable
+private fun ChannelDialogHost(
+    dialog: ChannelDialog?,
+    customGroups: List<CustomGroup>,
+    actions: ChannelsActions,
+    onClose: () -> Unit,
+) {
+    when (dialog) {
+        null -> Unit
+
+        is ChannelDialog.Rename -> RenameChannelDialog(
+            channel = dialog.channel,
+            onConfirm = {
+                actions.onRename(dialog.channel, it)
+                onClose()
+            },
+            onDismiss = onClose,
+        )
+
+        is ChannelDialog.Groups -> {
+            val membership by remember(dialog.channel.key) { actions.customGroupsOf(dialog.channel) }
+                .collectAsStateWithLifecycle(initialValue = emptySet())
+            CustomGroupsDialog(
+                groups = customGroups,
+                membership = membership,
+                onToggle = { id, member -> actions.onSetInCustomGroup(id, dialog.channel, member) },
+                onCreate = { actions.onCreateCustomGroup(it, dialog.channel) },
+                onDismiss = onClose,
+            )
         }
     }
 }
@@ -338,6 +428,7 @@ private fun ChannelPane(
     channels: LazyPagingItems<Channel>?,
     actions: ChannelsActions,
     focusChannelId: Long?,
+    menuFor: (Channel) -> List<ChannelMenuEntry>,
     modifier: Modifier,
 ) {
     if (channels == null) return
@@ -366,7 +457,7 @@ private fun ChannelPane(
         channels.itemCount == 0 && refresh is LoadState.NotLoading && state.source.isVirtual() ->
             VirtualGroupEmpty(state.source, modifier)
 
-        else -> ChannelCollection(state, channels, actions, focusChannelId, modifier)
+        else -> ChannelCollection(state, channels, actions, focusChannelId, menuFor, modifier)
     }
 }
 
@@ -402,6 +493,7 @@ private fun ChannelCollection(
     channels: LazyPagingItems<Channel>,
     actions: ChannelsActions,
     focusChannelId: Long?,
+    menuFor: (Channel) -> List<ChannelMenuEntry>,
     modifier: Modifier,
 ) {
     val restoreFocus = remember { FocusRequester() }
@@ -419,6 +511,7 @@ private fun ChannelCollection(
             ),
             onClick = { actions.onChannelClick(channel, state.source) },
             onToggleFavorite = { actions.onToggleFavorite(channel) },
+            menuEntries = menuFor(channel),
         )
     }
     val retryRow: @Composable () -> Unit = {
