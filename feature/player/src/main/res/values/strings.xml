@@ -42,4 +42,10 @@
     <string name="feature_player_pip_pause">Pause</string>
     <string name="feature_player_pip_error">Playback error</string>
     <string name="feature_player_pip">Picture-in-picture</string>
+    <string name="feature_player_hint_touch_gestures">Middle: swipe up / down for channel · Left / right side: brightness / volume · Swipe sideways or double-tap a side to seek</string>
+    <string name="feature_player_gesture_seek_target">%1$s / %2$s</string>
+    <string name="feature_player_gesture_brightness">Brightness %1$d%%</string>
+    <string name="feature_player_gesture_volume">Volume %1$d%%</string>
+    <string name="feature_player_gesture_rewind">−10 s</string>
+    <string name="feature_player_gesture_forward">+10 s</string>
 </resources>

@@ -46,6 +46,8 @@ class FakeSettingsRepository(
 
     override suspend fun setPictureInPicture(enabled: Boolean) = updatePlayback { it.copy(pictureInPicture = enabled) }
 
+    override suspend fun setPlaybackGestures(enabled: Boolean) = updatePlayback { it.copy(playbackGestures = enabled) }
+
     private fun updatePlayback(transform: (PlaybackSettings) -> PlaybackSettings) =
         settingsFlow.update { it.copy(playback = transform(it.playback)) }
 

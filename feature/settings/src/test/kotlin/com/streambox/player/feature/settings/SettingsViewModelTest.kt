@@ -93,6 +93,17 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `playback gestures are on by default and toggling persists them`() = runTest {
+        viewModel.uiState.test {
+            assertTrue(awaitSettings { true }.playback.playbackGestures)
+            viewModel.onPlaybackGesturesChanged(false)
+            assertFalse(awaitSettings { !it.playback.playbackGestures }.playback.playbackGestures)
+            viewModel.onPlaybackGesturesChanged(true)
+            assertTrue(awaitSettings { it.playback.playbackGestures }.playback.playbackGestures)
+        }
+    }
+
+    @Test
     fun `toggling software decoding persists it`() = runTest {
         viewModel.uiState.test {
             awaitSettings { true }

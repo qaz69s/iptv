@@ -32,6 +32,8 @@ interface SettingsRepository {
 
     suspend fun setPictureInPicture(enabled: Boolean)
 
+    suspend fun setPlaybackGestures(enabled: Boolean)
+
     suspend fun markWelcomeSeen()
 
     suspend fun acceptDisclaimer()

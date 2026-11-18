@@ -48,6 +48,12 @@ data class PlaybackSettings(
      * player with Home shrinks it into a floating window instead of going audio-only.
      */
     val pictureInPicture: Boolean = true,
+    /**
+     * Touch gestures on the player (phones / tablets only, never on TV): horizontal swipe seeks, vertical
+     * swipe on the left / right third changes brightness / volume, double-tap seeks ±10 s or pauses.
+     * Off: only tap (overlay) and vertical swipe anywhere (zap) remain.
+     */
+    val playbackGestures: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_RECONNECT_ATTEMPTS = 5

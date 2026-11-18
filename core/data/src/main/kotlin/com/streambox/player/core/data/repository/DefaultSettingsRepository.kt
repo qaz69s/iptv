@@ -35,6 +35,8 @@ internal class DefaultSettingsRepository @Inject constructor(private val dataSou
 
     override suspend fun setPictureInPicture(enabled: Boolean) = dataSource.setPictureInPicture(enabled)
 
+    override suspend fun setPlaybackGestures(enabled: Boolean) = dataSource.setPlaybackGestures(enabled)
+
     override suspend fun markWelcomeSeen() = dataSource.markWelcomeSeen()
 
     override suspend fun acceptDisclaimer() = dataSource.acceptDisclaimer()

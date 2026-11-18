@@ -69,6 +69,7 @@ internal fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
             onSubtitleStyleChanged = viewModel::onSubtitleStyleChanged,
             onBackgroundPlaybackChanged = viewModel::onBackgroundPlaybackChanged,
             onPictureInPictureChanged = viewModel::onPictureInPictureChanged,
+            onPlaybackGesturesChanged = viewModel::onPlaybackGesturesChanged,
         ),
     )
 }
@@ -82,6 +83,7 @@ internal data class PlaybackSettingsActions(
     val onSubtitleStyleChanged: (SubtitleStyle) -> Unit = {},
     val onBackgroundPlaybackChanged: (Boolean) -> Unit = {},
     val onPictureInPictureChanged: (Boolean) -> Unit = {},
+    val onPlaybackGesturesChanged: (Boolean) -> Unit = {},
 )
 
 @Composable
@@ -124,6 +126,8 @@ private fun SettingsContent(
     // Hidden on TV and on devices without picture-in-picture support.
     val formFactor = LocalFormFactor.current
     val showPictureInPicture = remember(context, formFactor) { context.supportsPictureInPicture(formFactor) }
+    // Touch gestures do not exist on TV (remote only).
+    val showGestures = formFactor != FormFactor.Tv
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -151,7 +155,7 @@ private fun SettingsContent(
             }
         }
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
-        playbackSection(settings.playback, playbackActions, showPictureInPicture)
+        playbackSection(settings.playback, playbackActions, showPictureInPicture, showGestures)
         item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
         item { SectionHeader(stringResource(R.string.feature_settings_section_about)) }
         item {
@@ -176,6 +180,7 @@ private fun LazyListScope.playbackSection(
     playback: PlaybackSettings,
     actions: PlaybackSettingsActions,
     showPictureInPicture: Boolean,
+    showGestures: Boolean,
 ) {
     item { SectionHeader(stringResource(R.string.feature_settings_section_playback)) }
     item {
@@ -195,16 +200,7 @@ private fun LazyListScope.playbackSection(
             onCheckedChange = actions.onBackgroundPlaybackChanged,
         )
     }
-    if (showPictureInPicture) {
-        item {
-            SwitchRow(
-                label = stringResource(R.string.feature_settings_picture_in_picture),
-                summary = stringResource(R.string.feature_settings_picture_in_picture_summary),
-                checked = playback.pictureInPicture,
-                onCheckedChange = actions.onPictureInPictureChanged,
-            )
-        }
-    }
+    touchOnlyItems(playback, actions, showPictureInPicture, showGestures)
     item {
         SwitchRow(
             label = stringResource(R.string.feature_settings_software_decoding),
@@ -389,5 +385,34 @@ private fun SettingsScreenPreview() {
             onThemeModeSelected = {},
             onDynamicColorChanged = {},
         )
+    }
+}
+
+/** Picture-in-picture and touch gestures: phones / tablets only (hidden on TV). */
+private fun LazyListScope.touchOnlyItems(
+    playback: PlaybackSettings,
+    actions: PlaybackSettingsActions,
+    showPictureInPicture: Boolean,
+    showGestures: Boolean,
+) {
+    if (showPictureInPicture) {
+        item {
+            SwitchRow(
+                label = stringResource(R.string.feature_settings_picture_in_picture),
+                summary = stringResource(R.string.feature_settings_picture_in_picture_summary),
+                checked = playback.pictureInPicture,
+                onCheckedChange = actions.onPictureInPictureChanged,
+            )
+        }
+    }
+    if (showGestures) {
+        item {
+            SwitchRow(
+                label = stringResource(R.string.feature_settings_playback_gestures),
+                summary = stringResource(R.string.feature_settings_playback_gestures_summary),
+                checked = playback.playbackGestures,
+                onCheckedChange = actions.onPlaybackGesturesChanged,
+            )
+        }
     }
 }

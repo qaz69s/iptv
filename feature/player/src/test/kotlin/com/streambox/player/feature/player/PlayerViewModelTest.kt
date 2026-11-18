@@ -11,6 +11,7 @@ import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
 import com.streambox.player.core.testing.FakeSettingsRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -541,5 +542,107 @@ class PlayerViewModelTest {
         viewModel.requestPictureInPicture()
         runCurrent()
         assertTrue(requests.isEmpty())
+    }
+
+    // --- Touch gestures ---------------------------------------------------------------------------
+
+    private fun FakePlaybackController.seekable(seekable: Boolean) = state.update { it.copy(isSeekable = seekable) }
+
+    @Test
+    fun `gesture setting follows the settings`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        assertTrue(viewModel.uiState.value.gesturesEnabled)
+
+        settings.setPlaybackGestures(false)
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.gesturesEnabled)
+    }
+
+    @Test
+    fun `seek swipe seeks by the offset on seekable content`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.seekable(true)
+
+        assertTrue(viewModel.seekByGesture(25_000L))
+        assertTrue(viewModel.seekByGesture(-5_000L))
+        assertFalse(viewModel.seekByGesture(0L))
+
+        assertEquals(listOf(25_000L, -5_000L), controller.seeks)
+    }
+
+    @Test
+    fun `seek swipe is ignored on live content, in PiP and with gestures off`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+
+        controller.seekable(false)
+        assertFalse(viewModel.seekByGesture(10_000L))
+
+        controller.seekable(true)
+        settings.setPlaybackGestures(false)
+        runCurrent()
+        assertFalse(viewModel.seekByGesture(10_000L))
+
+        settings.setPlaybackGestures(true)
+        runCurrent()
+        viewModel.onPictureInPictureModeChanged(inPip = true, stopped = false)
+        assertFalse(viewModel.seekByGesture(10_000L))
+
+        assertTrue(controller.seeks.isEmpty())
+    }
+
+    @Test
+    fun `double-tap sides skip 10 s and the middle toggles play pause`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.seekable(true)
+
+        assertEquals(DoubleTapAction.REWIND, viewModel.onDoubleTap(TouchZone.LEFT))
+        assertEquals(DoubleTapAction.FORWARD, viewModel.onDoubleTap(TouchZone.RIGHT))
+        assertEquals(DoubleTapAction.PLAY_PAUSE, viewModel.onDoubleTap(TouchZone.CENTER))
+
+        assertEquals(listOf(-PlayerViewModel.SEEK_STEP_MS, PlayerViewModel.SEEK_STEP_MS), controller.seeks)
+        assertEquals(1, controller.playPauseToggles)
+    }
+
+    @Test
+    fun `double-tap sides are ignored on live content but the middle still pauses`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.seekable(false)
+
+        assertNull(viewModel.onDoubleTap(TouchZone.LEFT))
+        assertNull(viewModel.onDoubleTap(TouchZone.RIGHT))
+        assertEquals(DoubleTapAction.PLAY_PAUSE, viewModel.onDoubleTap(TouchZone.CENTER))
+
+        assertTrue(controller.seeks.isEmpty())
+        assertEquals(1, controller.playPauseToggles)
+    }
+
+    @Test
+    fun `double-tap does nothing in PiP or with gestures off`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        viewModel.onStart()
+        controller.seekable(true)
+
+        settings.setPlaybackGestures(false)
+        runCurrent()
+        assertNull(viewModel.onDoubleTap(TouchZone.CENTER))
+
+        settings.setPlaybackGestures(true)
+        runCurrent()
+        viewModel.onPictureInPictureModeChanged(inPip = true, stopped = false)
+        assertNull(viewModel.onDoubleTap(TouchZone.RIGHT))
+
+        assertTrue(controller.seeks.isEmpty())
+        assertEquals(0, controller.playPauseToggles)
     }
 }

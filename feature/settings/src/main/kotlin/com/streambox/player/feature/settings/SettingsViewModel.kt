@@ -72,6 +72,10 @@ class SettingsViewModel @Inject constructor(private val settingsRepository: Sett
         viewModelScope.launch { settingsRepository.setPictureInPicture(enabled) }
     }
 
+    fun onPlaybackGesturesChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setPlaybackGestures(enabled) }
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
     }

@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
+/** One DataStore setter per preference; grows with each setting. */
+@Suppress("TooManyFunctions")
 @Singleton
 class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Preferences>) {
     private val safeData: Flow<Preferences> = dataStore.data.catch { error ->
@@ -89,6 +91,10 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.PICTURE_IN_PICTURE] = enabled }
     }
 
+    suspend fun setPlaybackGestures(enabled: Boolean) {
+        dataStore.edit { it[Keys.PLAYBACK_GESTURES] = enabled }
+    }
+
     suspend fun markWelcomeSeen() {
         dataStore.edit { it[Keys.WELCOME_SEEN] = true }
     }
@@ -115,6 +121,7 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
             ),
             backgroundPlayback = this[Keys.BACKGROUND_PLAYBACK] ?: defaults.backgroundPlayback,
             pictureInPicture = this[Keys.PICTURE_IN_PICTURE] ?: defaults.pictureInPicture,
+            playbackGestures = this[Keys.PLAYBACK_GESTURES] ?: defaults.playbackGestures,
         )
     }
 
@@ -136,5 +143,6 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         val SUBTITLE_BACKGROUND = stringPreferencesKey("playback_subtitle_background")
         val BACKGROUND_PLAYBACK = booleanPreferencesKey("playback_background_playback")
         val PICTURE_IN_PICTURE = booleanPreferencesKey("playback_picture_in_picture")
+        val PLAYBACK_GESTURES = booleanPreferencesKey("playback_gestures")
     }
 }

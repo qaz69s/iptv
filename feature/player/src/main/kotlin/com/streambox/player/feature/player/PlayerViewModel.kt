@@ -64,6 +64,8 @@ data class PlayerUiState(
     val pictureInPicture: Boolean = false,
     /** Setting: shrink into a picture-in-picture window when leaving the player with Home. */
     val pictureInPictureEnabled: Boolean = true,
+    /** Setting: touch gestures (seek / brightness / volume swipes, double-tap). Ignored on TV. */
+    val gesturesEnabled: Boolean = true,
 )
 
 /** Buttons of the picture-in-picture window. */
@@ -155,6 +157,7 @@ class PlayerViewModel @Inject constructor(
             backgroundPlayback = prefs.backgroundPlayback,
             pictureInPicture = screen.pictureInPicture,
             pictureInPictureEnabled = prefs.pictureInPicture,
+            gesturesEnabled = prefs.playbackGestures,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 
@@ -331,6 +334,36 @@ class PlayerViewModel @Inject constructor(
             playbackController.adjustVolume(raise = forward)
         }
     }
+
+    // --- Touch gestures (phones / tablets) -------------------------------------------------------
+
+    /**
+     * End of a horizontal seek swipe: seeks by [offsetMs] on seekable content. Ignored for live streams
+     * that cannot seek, in picture-in-picture and with gestures turned off. @return true when it seeked.
+     */
+    fun seekByGesture(offsetMs: Long): Boolean {
+        if (!gesturesActive() || !playbackController.state.value.isSeekable || offsetMs == 0L) return false
+        playbackController.seekBy(offsetMs)
+        return true
+    }
+
+    /**
+     * Double-tap in [zone]: left −10 s, right +10 s (seekable content only), middle play / pause.
+     * @return what was done, or null when ignored (live sides, picture-in-picture, gestures off).
+     */
+    fun onDoubleTap(zone: TouchZone): DoubleTapAction? {
+        val action = PlayerGestures.doubleTapAction(zone, playbackController.state.value.isSeekable)
+            ?.takeIf { gesturesActive() }
+        when (action) {
+            DoubleTapAction.REWIND -> playbackController.seekBy(-SEEK_STEP_MS)
+            DoubleTapAction.PLAY_PAUSE -> playbackController.togglePlayPause()
+            DoubleTapAction.FORWARD -> playbackController.seekBy(SEEK_STEP_MS)
+            null -> Unit
+        }
+        return action
+    }
+
+    private fun gesturesActive(): Boolean = playbackSettings.value.playbackGestures && !local.value.pictureInPicture
 
     // --- Panel: tracks, aspect ratio, subtitles -------------------------------------------------
 

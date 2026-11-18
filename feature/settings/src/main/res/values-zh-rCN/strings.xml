@@ -14,6 +14,8 @@
     <string name="feature_settings_background_playback">后台播放</string>
     <string name="feature_settings_background_playback_summary">离开应用后继续播放声音并显示媒体通知，可用耳机或蓝牙按键控制。</string>
     <string name="feature_settings_picture_in_picture">画中画</string>
+    <string name="feature_settings_playback_gestures">播放手势</string>
+    <string name="feature_settings_playback_gestures_summary">左右滑动调进度，左侧/右侧上下滑调亮度/音量，双击快退快进 10 秒或暂停；屏幕中间上下滑仍可切台</string>
     <string name="feature_settings_picture_in_picture_summary">按 Home 键时以小窗继续播放</string>
     <string name="feature_settings_software_decoding">仅软件解码（软件优先）</string>
     <string name="feature_settings_software_decoding_summary">优先使用软件解码器而非硬件解码器。画面黑屏或花屏时可尝试开启。</string>

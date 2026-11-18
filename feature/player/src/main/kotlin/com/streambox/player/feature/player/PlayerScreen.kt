@@ -18,7 +18,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,11 +83,16 @@ import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
 import com.streambox.player.core.ui.labelRes
+import kotlinx.coroutines.delay
 
 private val SWIPE_THRESHOLD = 72.dp
+private const val FEEDBACK_VISIBLE_MS = 700L
 
 /**
- * Full-screen live player. Touch: tap toggles the overlay, swipe up / down zaps. TV: D-pad up / down
+ * Full-screen live player. Touch: tap toggles the overlay, swipe up / down zaps; with playback gestures on
+ * (phones / tablets) zapping moves to the middle third, the left / right thirds change brightness / volume,
+ * horizontal swipes and side double-taps seek and a double-tap in the middle pauses (see [PlayerGestures]).
+ * No touch handling in picture-in-picture. TV: D-pad up / down
  * and CHANNEL_UP / CHANNEL_DOWN zap, OK shows the overlay. Playback runs only while the screen is
  * started; leaving it releases the player and restores the system bars and orientation. With background
  * playback on, sending the app to the background keeps the audio playing (see [BackgroundPlaybackEffect]).
@@ -172,6 +176,10 @@ internal fun PlayerEntry(onBack: () -> Unit, viewModel: PlayerViewModel = hiltVi
             onSubtitleStyle = viewModel::setSubtitleStyle,
             onPictureInPicture = viewModel::requestPictureInPicture,
         ),
+        gestureActions = PlayerGestureActions(
+            onSeek = viewModel::seekByGesture,
+            onDoubleTap = viewModel::onDoubleTap,
+        ),
     )
 }
 
@@ -203,6 +211,7 @@ internal fun PlayerScreen(
     onCycleAspect: () -> Unit = {},
     panelActions: PlayerPanelActions? = null,
     onVideoBounds: (Rect) -> Unit = {},
+    gestureActions: PlayerGestureActions = PlayerGestureActions(),
 ) {
     val inPip = state.pictureInPicture
     val rootFocus = remember { FocusRequester() }
@@ -211,6 +220,20 @@ internal fun PlayerScreen(
     val zap by rememberUpdatedState(onZap)
     val toggle by rememberUpdatedState(onToggleOverlay)
     val keyActions by rememberUpdatedState(keys)
+    val gestures by rememberUpdatedState(gestureActions)
+    val currentPlayer by rememberUpdatedState(player)
+
+    // Touch: nothing in picture-in-picture (the system owns the window); full gestures only off TV.
+    val touchEnabled = !inPip
+    val gesturesOn = !isTv && state.gesturesEnabled && touchEnabled
+    val levels = rememberDeviceLevels()
+    var feedback by remember { mutableStateOf<GestureFeedback?>(null) }
+    LaunchedEffect(feedback) {
+        if (feedback?.active == false) {
+            delay(FEEDBACK_VISIBLE_MS)
+            feedback = null
+        }
+    }
 
     Box(
         modifier = modifier
@@ -221,24 +244,45 @@ internal fun PlayerScreen(
             }
             .focusRequester(rootFocus)
             .focusable()
-            .pointerInput(Unit) { detectTapGestures(onTap = { toggle() }) }
-            .pointerInput(Unit) {
-                val threshold = SWIPE_THRESHOLD.toPx()
-                var total = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { total = 0f },
-                    onDragEnd = {
-                        when {
-                            total <= -threshold -> zap(ZapDirection.NEXT)
-                            total >= threshold -> zap(ZapDirection.PREVIOUS)
+            .then(
+                if (touchEnabled) {
+                    Modifier
+                        .pointerInput(gesturesOn) {
+                            detectTapGestures(
+                                onTap = { toggle() },
+                                // Only with gestures on, so a single tap is not delayed otherwise.
+                                onDoubleTap = if (gesturesOn) {
+                                    { offset ->
+                                        val wasPlaying = currentState.isPlaying
+                                        val zone = PlayerGestures.zoneOf(offset.x, size.width.toFloat())
+                                        gestures.onDoubleTap(zone)?.let { action ->
+                                            feedback = GestureFeedback.DoubleTap(action, nowPlaying = !wasPlaying)
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
+                            )
                         }
-                    },
-                    onVerticalDrag = { change, dragAmount ->
-                        change.consume()
-                        total += dragAmount
-                    },
-                )
-            },
+                        .pointerInput(gesturesOn, levels) {
+                            val threshold = SWIPE_THRESHOLD.toPx()
+                            detectPlayerDrags(
+                                PlayerDragHandler(
+                                    canSeek = { currentState.isSeekable },
+                                    gesturesEnabled = { gesturesOn },
+                                    player = { currentPlayer },
+                                    levels = levels,
+                                    zapThresholdPx = { threshold },
+                                    onZap = { zap(it) },
+                                    onSeek = { gestures.onSeek(it) },
+                                    onFeedback = { feedback = it },
+                                ),
+                            )
+                        }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         if (player != null) {
             VideoSurface(
@@ -256,6 +300,10 @@ internal fun PlayerScreen(
                     .size(if (inPip) 32.dp else 56.dp),
                 color = Color.White,
             )
+        }
+
+        feedback?.let { current ->
+            if (!inPip) GestureFeedbackBadge(feedback = current, modifier = Modifier.align(Alignment.Center))
         }
 
         AnimatedVisibility(
@@ -279,6 +327,7 @@ internal fun PlayerScreen(
                 Text(
                     text = stringResource(
                         when {
+                            !isTv && state.gesturesEnabled -> R.string.feature_player_hint_touch_gestures
                             !isTv -> R.string.feature_player_hint_touch
                             state.isSeekable -> R.string.feature_player_hint_tv_vod
                             else -> R.string.feature_player_hint_tv_live

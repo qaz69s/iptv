@@ -81,6 +81,7 @@ class SettingsDataSourceTest {
         assertEquals(SubtitleStyle(), playback.subtitleStyle)
         assertTrue(playback.backgroundPlayback)
         assertTrue(playback.pictureInPicture)
+        assertTrue(playback.playbackGestures)
     }
 
     @Test
@@ -99,6 +100,7 @@ class SettingsDataSourceTest {
         source.setSubtitleStyle(style)
         source.setBackgroundPlayback(false)
         source.setPictureInPicture(false)
+        source.setPlaybackGestures(false)
 
         assertEquals(
             PlaybackSettings(
@@ -109,6 +111,7 @@ class SettingsDataSourceTest {
                 subtitleStyle = style,
                 backgroundPlayback = false,
                 pictureInPicture = false,
+                playbackGestures = false,
             ),
             source.settings.first().playback,
         )
@@ -138,6 +141,12 @@ class SettingsDataSourceTest {
         assertTrue(source.settings.first().playback.backgroundPlayback)
         source.setPictureInPicture(true)
         assertTrue(source.settings.first().playback.pictureInPicture)
+
+        source.setPlaybackGestures(false)
+        assertFalse(source.settings.first().playback.playbackGestures)
+        assertTrue(source.settings.first().playback.pictureInPicture)
+        source.setPlaybackGestures(true)
+        assertTrue(source.settings.first().playback.playbackGestures)
 
         source.setSubtitleStyle(SubtitleStyle(size = SubtitleSize.Small))
         assertEquals(SubtitleStyle(size = SubtitleSize.Small), source.settings.first().playback.subtitleStyle)
