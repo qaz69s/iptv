@@ -1,7 +1,9 @@
 package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
+import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
 import com.streambox.player.core.model.AppSettings
+import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.ZapDirection
@@ -11,6 +13,7 @@ import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
 import com.streambox.player.core.testing.FakeLastChannelRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
+import com.streambox.player.core.testing.FakeWatchHistoryRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.update
@@ -26,7 +29,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-/** P2b: sleep timer, remembering the last channel, auto play next. */
+/** P2b: sleep timer, remembering the last channel, auto play next. P3a: watch history. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerViewModelSleepAndNextTest {
     @JvmField
@@ -43,6 +46,7 @@ class PlayerViewModelSleepAndNextTest {
     )
     private val controller = FakePlaybackController()
     private val lastChannel = FakeLastChannelRepository()
+    private val history = FakeWatchHistoryRepository()
     private var settings = FakeSettingsRepository()
 
     private fun autoNext(enabled: Boolean) {
@@ -54,7 +58,7 @@ class PlayerViewModelSleepAndNextTest {
         repository,
         controller,
         settings,
-        lastChannel,
+        RecordPlaybackStartUseCase(lastChannel, history),
         MonotonicClock { mainDispatcher.testDispatcher.scheduler.currentTime },
     )
 
@@ -164,12 +168,45 @@ class PlayerViewModelSleepAndNextTest {
         assertTrue(lastChannel.saves.isEmpty())
 
         controller.startPlaying()
-        assertEquals(listOf(LastPlayedChannel(playlistId = 8, channelId = 4)), lastChannel.saves)
+        assertEquals(listOf(LastPlayedChannel(playlistId = 8, uniqueKey = "url:4")), lastChannel.saves)
 
         // Pause / resume of the same channel does not write again.
         controller.state.update { it.copy(isPlaying = false) }
         controller.startPlaying()
         assertEquals(1, lastChannel.saves.size)
+    }
+
+    // --- Watch history (P3a) ----------------------------------------------------------------------
+
+    @Test
+    fun `a channel enters the watch history once it starts playing, by its stable key`() = runTest {
+        started(channelId = 4)
+        assertTrue(history.recorded.isEmpty())
+
+        controller.startPlaying()
+        controller.state.update { it.copy(isPlaying = false) }
+        controller.startPlaying()
+
+        assertEquals(listOf(ChannelKey(8, "url:4")), history.recorded)
+    }
+
+    @Test
+    fun `zapping adds every channel that starts playing to the history`() = runTest {
+        val viewModel = started(channelId = 1, group = "Movies")
+        controller.startPlaying()
+
+        viewModel.zap(ZapDirection.NEXT)
+        controller.startPlaying()
+
+        assertEquals(listOf(ChannelKey(7, "url:1"), ChannelKey(7, "url:2")), history.recorded)
+    }
+
+    @Test
+    fun `a channel that never plays is not added to the history`() = runTest {
+        started(channelId = 2)
+        controller.fail(com.streambox.player.core.model.PlaybackError.Http(404))
+
+        assertTrue(history.recorded.isEmpty())
     }
 
     @Test
@@ -181,7 +218,7 @@ class PlayerViewModelSleepAndNextTest {
         controller.startPlaying()
 
         assertEquals(
-            listOf(LastPlayedChannel(7, 1), LastPlayedChannel(7, 2)),
+            listOf(LastPlayedChannel(7, "url:1"), LastPlayedChannel(7, "url:2")),
             lastChannel.saves,
         )
     }

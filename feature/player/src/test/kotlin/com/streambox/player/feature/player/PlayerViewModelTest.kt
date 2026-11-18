@@ -1,6 +1,7 @@
 package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
+import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.PlaybackError
@@ -11,6 +12,7 @@ import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
 import com.streambox.player.core.testing.FakeLastChannelRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
+import com.streambox.player.core.testing.FakeWatchHistoryRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.update
@@ -48,7 +50,7 @@ class PlayerViewModelTest {
         repository,
         controller,
         settings,
-        FakeLastChannelRepository(),
+        RecordPlaybackStartUseCase(FakeLastChannelRepository(), FakeWatchHistoryRepository()),
         MonotonicClock { mainDispatcher.testDispatcher.scheduler.currentTime },
     )
 

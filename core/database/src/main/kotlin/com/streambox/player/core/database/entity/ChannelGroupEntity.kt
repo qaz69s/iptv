@@ -22,9 +22,14 @@ data class ChannelGroupEntity(
     val playlistId: Long,
     /** Empty string = entries without a group ("Uncategorized" in the UI). */
     val name: String,
+    /** Hidden by the user (v2, materialized from [GroupOverrideEntity]). */
     val hidden: Boolean = false,
     val sortOrder: Int,
     val locked: Boolean = false,
     val generation: Int,
     val channelCount: Int = 0,
+    /** User's name for the group (v2, materialized from [GroupOverrideEntity]); null = [name]. */
+    val customName: String? = null,
+    /** User's position (v2, materialized from [GroupOverrideEntity]); null = [sortOrder]. */
+    val customSortOrder: Int? = null,
 )

@@ -48,6 +48,7 @@ mockk = "1.14.12"
 turbine = "1.2.1"
 androidx-test-ext = "1.3.0"
 androidx-test-runner = "1.7.0"
+robolectric = "4.18.1"
 
 # Static analysis / debug
 ktlint-gradle = "14.2.0"
@@ -123,6 +124,7 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 leakcanary = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 
@@ -151,5 +153,6 @@ streambox-android-application = { id = "streambox.android.application" }
 streambox-android-library = { id = "streambox.android.library" }
 streambox-android-compose = { id = "streambox.android.compose" }
 streambox-android-feature = { id = "streambox.android.feature" }
+streambox-android-robolectric = { id = "streambox.android.robolectric" }
 streambox-hilt = { id = "streambox.hilt" }
 streambox-jvm-library = { id = "streambox.jvm.library" }

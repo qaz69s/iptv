@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
@@ -214,10 +215,10 @@ class SettingsDataSourceTest {
         val source = createDataSource()
         assertNull(source.lastPlayedChannel.first())
 
-        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 3, channelId = 42))
-        assertEquals(LastPlayedChannel(3, 42), source.lastPlayedChannel.first())
-        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 4, channelId = 7))
-        assertEquals(LastPlayedChannel(4, 7), source.lastPlayedChannel.first())
+        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 3, uniqueKey = "tvg:news"))
+        assertEquals(LastPlayedChannel(3, "tvg:news"), source.lastPlayedChannel.first())
+        source.setLastPlayedChannel(LastPlayedChannel(playlistId = 4, uniqueKey = "url:7"))
+        assertEquals(LastPlayedChannel(4, "url:7"), source.lastPlayedChannel.first())
 
         source.clearLastPlayedChannel()
         assertNull(source.lastPlayedChannel.first())
@@ -228,8 +229,25 @@ class SettingsDataSourceTest {
     @Test
     fun `last played channel survives a new data source on the same file`() = runTest(UnconfinedTestDispatcher()) {
         val store = createDataStore()
-        SettingsDataSource(store).setLastPlayedChannel(LastPlayedChannel(1, 9))
+        SettingsDataSource(store).setLastPlayedChannel(LastPlayedChannel(1, "tvg:9"))
 
-        assertEquals(LastPlayedChannel(1, 9), SettingsDataSource(store).lastPlayedChannel.first())
+        assertEquals(LastPlayedChannel(1, "tvg:9"), SettingsDataSource(store).lastPlayedChannel.first())
     }
+
+    @Test
+    fun `a P2b last channel saved by row id is ignored and dropped on the next save`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val store = createDataStore()
+            store.edit {
+                it[longPreferencesKey("last_played_playlist_id")] = 2L
+                it[longPreferencesKey("last_played_channel_id")] = 77L
+            }
+            val source = SettingsDataSource(store)
+            assertNull(source.lastPlayedChannel.first())
+
+            source.setLastPlayedChannel(LastPlayedChannel(2, "tvg:a"))
+
+            assertEquals(LastPlayedChannel(2, "tvg:a"), source.lastPlayedChannel.first())
+            assertNull(store.data.first()[longPreferencesKey("last_played_channel_id")])
+        }
 }

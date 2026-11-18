@@ -3,6 +3,7 @@ package com.streambox.player.core.domain.repository
 import androidx.paging.PagingData
 import com.streambox.player.core.model.Channel
 import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.ZapDirection
 import kotlinx.coroutines.flow.Flow
@@ -30,4 +31,10 @@ interface ChannelRepository {
      * [groupName] wins; otherwise the first match across all enabled playlists. Null when none.
      */
     suspend fun channelIdByNumber(number: Int, groupName: String?): Long?
+
+    /**
+     * Current id of the channel with this stable key (playlist + uniqueKey) in an enabled playlist;
+     * null when the latest refresh no longer has it. Channel ids change on every refresh, keys do not.
+     */
+    suspend fun channelIdByKey(key: ChannelKey): Long?
 }

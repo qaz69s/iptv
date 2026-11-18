@@ -1,5 +1,6 @@
 package com.streambox.player
 
+import com.streambox.player.core.domain.usecase.ResolveLastChannelUseCase
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.OnboardingState
@@ -34,7 +35,7 @@ class MainActivityViewModelTest {
     private fun viewModel(
         settings: FakeSettingsRepository = FakeSettingsRepository(),
         playlists: FakePlaylistRepository = FakePlaylistRepository(),
-    ) = MainActivityViewModel(settings, playlists, channels, lastChannel)
+    ) = MainActivityViewModel(settings, playlists, ResolveLastChannelUseCase(lastChannel, channels))
 
     private fun resumeOn(enabled: Boolean) =
         FakeSettingsRepository(AppSettings(playback = PlaybackSettings(resumeLastChannel = enabled)))
@@ -73,22 +74,22 @@ class MainActivityViewModelTest {
 
     @Test
     fun `resume opens the last channel when enabled`() = runTest {
-        lastChannel.save(LastPlayedChannel(playlistId = 2, channelId = 6))
+        lastChannel.save(LastPlayedChannel(playlistId = 2, uniqueKey = "url:6"))
 
         assertEquals(6L, viewModel(settings = resumeOn(true)).channelToResume())
     }
 
     @Test
     fun `resume is off by default and keeps the remembered channel`() = runTest {
-        lastChannel.save(LastPlayedChannel(playlistId = 2, channelId = 6))
+        lastChannel.save(LastPlayedChannel(playlistId = 2, uniqueKey = "url:6"))
 
         assertNull(viewModel().channelToResume())
-        assertEquals(LastPlayedChannel(2, 6), lastChannel.lastChannel.value)
+        assertEquals(LastPlayedChannel(2, "url:6"), lastChannel.lastChannel.value)
     }
 
     @Test
     fun `resume answers only once per cold start`() = runTest {
-        lastChannel.save(LastPlayedChannel(playlistId = 2, channelId = 5))
+        lastChannel.save(LastPlayedChannel(playlistId = 2, uniqueKey = "url:5"))
         val viewModel = viewModel(settings = resumeOn(true))
 
         assertEquals(5L, viewModel.channelToResume())
@@ -103,7 +104,7 @@ class MainActivityViewModelTest {
 
     @Test
     fun `a channel that no longer exists is ignored and forgotten`() = runTest {
-        lastChannel.save(LastPlayedChannel(playlistId = 2, channelId = 99))
+        lastChannel.save(LastPlayedChannel(playlistId = 2, uniqueKey = "url:99"))
 
         assertNull(viewModel(settings = resumeOn(true)).channelToResume())
         assertNull(lastChannel.lastChannel.value)
@@ -111,10 +112,20 @@ class MainActivityViewModelTest {
     }
 
     @Test
-    fun `a channel id now belonging to another playlist is ignored and forgotten`() = runTest {
-        lastChannel.save(LastPlayedChannel(playlistId = 3, channelId = 5))
+    fun `a key of another playlist does not match and is forgotten`() = runTest {
+        lastChannel.save(LastPlayedChannel(playlistId = 3, uniqueKey = "url:5"))
 
         assertNull(viewModel(settings = resumeOn(true)).channelToResume())
         assertNull(lastChannel.lastChannel.value)
+    }
+
+    @Test
+    fun `resume survives a refresh that re-imported the channel under a new id (K18)`() = runTest {
+        lastChannel.save(LastPlayedChannel(playlistId = 2, uniqueKey = "url:6"))
+        // Refresh: same channel (same uniqueKey), new row id.
+        channels.channelsFlow.value = listOf("News" to channel(16).copy(playlistId = 2, uniqueKey = "url:6"))
+
+        assertEquals(16L, viewModel(settings = resumeOn(true)).channelToResume())
+        assertEquals(0, lastChannel.clears)
     }
 }

@@ -2,10 +2,9 @@ package com.streambox.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.streambox.player.core.domain.repository.ChannelRepository
-import com.streambox.player.core.domain.repository.LastChannelRepository
 import com.streambox.player.core.domain.repository.PlaylistRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
+import com.streambox.player.core.domain.usecase.ResolveLastChannelUseCase
 import com.streambox.player.core.model.AppSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -25,8 +24,7 @@ sealed interface MainUiState {
 class MainActivityViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val playlistRepository: PlaylistRepository,
-    private val channelRepository: ChannelRepository,
-    private val lastChannelRepository: LastChannelRepository,
+    private val resolveLastChannel: ResolveLastChannelUseCase,
 ) : ViewModel() {
     val uiState: StateFlow<MainUiState> = combine(
         settingsRepository.settings,
@@ -47,22 +45,14 @@ class MainActivityViewModel @Inject constructor(
 
     /**
      * Channel to open on a cold start: the last played one when "continue on launch" is on. Answers
-     * once per ViewModel (later calls return null). A remembered channel that no longer exists (deleted
-     * or re-imported playlist) is forgotten and nothing opens.
+     * once per ViewModel (later calls return null). The channel is remembered by playlist + uniqueKey,
+     * so it is found again after a refresh gave it a new id (P3a, K18 / K20). A channel that no longer
+     * exists (deleted playlist, removed from the source) is forgotten and nothing opens.
      */
     suspend fun channelToResume(): Long? {
         val firstCall = !resumeChecked
         resumeChecked = true
         val enabled = firstCall && settingsRepository.settings.first().playback.resumeLastChannel
-        val last = if (enabled) lastChannelRepository.lastChannel.first() else null
-        return last?.let { remembered ->
-            val item = channelRepository.playbackItem(remembered.channelId)
-            if (item == null || item.playlistId != remembered.playlistId) {
-                lastChannelRepository.clear()
-                null
-            } else {
-                item.channelId
-            }
-        }
+        return if (enabled) resolveLastChannel() else null
     }
 }

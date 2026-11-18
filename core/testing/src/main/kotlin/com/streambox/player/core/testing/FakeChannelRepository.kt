@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import com.streambox.player.core.domain.repository.ChannelRepository
 import com.streambox.player.core.model.Channel
 import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.ZapDirection
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,7 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
                 displayNumber = it.displayNumber,
                 playlistId = it.playlistId,
                 groupName = group,
+                uniqueKey = it.uniqueKey,
             )
         }
 
@@ -65,6 +67,9 @@ class FakeChannelRepository(channels: List<Pair<String, Channel>> = emptyList())
         val inGroup = filtered(groupName).firstOrNull { it.displayNumber == number }
         return (inGroup ?: filtered(null).firstOrNull { it.displayNumber == number })?.id
     }
+
+    override suspend fun channelIdByKey(key: ChannelKey): Long? =
+        channelsFlow.value.firstOrNull { it.second.key == key }?.second?.id
 
     private fun filtered(groupName: String?) =
         channelsFlow.value.filter { groupName == null || it.first == groupName }.map { it.second }

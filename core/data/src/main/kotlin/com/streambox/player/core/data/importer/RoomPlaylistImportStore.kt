@@ -11,6 +11,7 @@ internal class RoomPlaylistImportStore @Inject constructor(private val database:
     PlaylistImportStore {
     private val playlistDao = database.playlistDao()
     private val channelDao = database.channelDao()
+    private val overrideDao = database.overrideDao()
 
     override suspend fun source(playlistId: Long): PlaylistSource? = playlistDao.get(playlistId)?.let {
         PlaylistSource(
@@ -76,6 +77,8 @@ internal class RoomPlaylistImportStore @Inject constructor(private val database:
         if (written != expectedChannels) {
             throw ImportValidationException("expected $expectedChannels channels, found $written")
         }
+        // The user's hide / rename / order edits outlive the refresh: apply them before the swap.
+        overrideDao.applyToGeneration(playlistId, generation)
         channelDao.updateGroupCounts(playlistId, generation)
         val groups = channelDao.countGroups(playlistId, generation)
         val updated = playlistDao.activateGeneration(playlistId, generation, written, groups, epgUrl, updatedAt)

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.streambox.android.library)
+    alias(libs.plugins.streambox.android.robolectric)
     alias(libs.plugins.streambox.hilt)
 }
 

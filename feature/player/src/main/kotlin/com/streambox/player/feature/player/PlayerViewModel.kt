@@ -5,10 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.streambox.player.core.domain.repository.ChannelRepository
-import com.streambox.player.core.domain.repository.LastChannelRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
+import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
 import com.streambox.player.core.model.AspectRatioMode
-import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
@@ -108,7 +107,8 @@ private data class ScreenLocal(
  *
  * P2b: the sleep timer lives here (it keeps running during background playback and PiP, because this
  * ViewModel stays alive as long as the player screen is on the back stack, and dies with the player);
- * every channel that starts playing is remembered as the last channel; finished on-demand content
+ * every channel that starts playing is remembered as the last channel (P3a: and added to the watch
+ * history); finished on-demand content
  * moves on to the next channel of the group when "auto play next" is on.
  */
 @Suppress("TooManyFunctions")
@@ -118,7 +118,7 @@ class PlayerViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
-    private val lastChannelRepository: LastChannelRepository,
+    private val recordPlaybackStart: RecordPlaybackStartUseCase,
     clock: MonotonicClock,
 ) : ViewModel() {
     /** Route arguments of [com.streambox.player.feature.player.navigation.PlayerRoute]. */
@@ -144,7 +144,7 @@ class PlayerViewModel @Inject constructor(
     private var notFoundJob: Job? = null
     private val zapMutex = Mutex()
 
-    /** Channel id last written to [LastChannelRepository], so a channel is saved once per start. */
+    /** Channel id last recorded by [recordPlaybackStart], so a channel is recorded once per start. */
     private var savedChannelId: Long? = null
 
     private val sleepTimer = SleepTimer(
@@ -218,12 +218,15 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** Saves the channel the first time it reports playing (a successful start), once per channel. */
+    /**
+     * The first time a channel reports playing (a successful start), once per channel: remember it as
+     * the last channel and add it to the watch history (both by playlist + uniqueKey, P3a).
+     */
     private suspend fun rememberPlayingChannel(state: PlaybackState) {
         val item = state.item ?: return
         if (!state.isPlaying || item.channelId != current.value?.channelId || item.channelId == savedChannelId) return
         savedChannelId = item.channelId
-        lastChannelRepository.save(LastPlayedChannel(playlistId = item.playlistId, channelId = item.channelId))
+        recordPlaybackStart(item)
     }
 
     /**

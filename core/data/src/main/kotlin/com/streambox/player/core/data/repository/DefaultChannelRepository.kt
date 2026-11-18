@@ -9,6 +9,7 @@ import com.streambox.player.core.database.entity.ChannelEntity
 import com.streambox.player.core.domain.repository.ChannelRepository
 import com.streambox.player.core.model.Channel
 import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.ZapDirection
 import javax.inject.Inject
@@ -39,29 +40,46 @@ internal class DefaultChannelRepository @Inject constructor(private val channelD
             displayNumber = it.number ?: (it.sortOrder + 1),
             playlistId = it.playlistId,
             groupName = it.groupName,
+            uniqueKey = it.uniqueKey,
         )
     }
 
     override suspend fun adjacentChannel(channelId: Long, groupName: String?, direction: ZapDirection): Long? {
         val position = channelDao.position(channelId) ?: return channelDao.first(groupName)
         return when (direction) {
-            ZapDirection.NEXT ->
-                channelDao.nextAfter(groupName, position.playlistSort, position.playlistId, position.channelSort)
-                    ?: channelDao.first(groupName)
+            ZapDirection.NEXT -> channelDao.nextAfter(
+                groupName,
+                position.playlistSort,
+                position.playlistId,
+                position.channelSort,
+                position.importSort,
+            ) ?: channelDao.first(groupName)
 
-            ZapDirection.PREVIOUS ->
-                channelDao.previousBefore(groupName, position.playlistSort, position.playlistId, position.channelSort)
-                    ?: channelDao.last(groupName)
+            ZapDirection.PREVIOUS -> channelDao.previousBefore(
+                groupName,
+                position.playlistSort,
+                position.playlistId,
+                position.channelSort,
+                position.importSort,
+            ) ?: channelDao.last(groupName)
         }
     }
 
     override suspend fun nextChannel(channelId: Long, groupName: String?): Long? {
         val position = channelDao.position(channelId) ?: return null
-        return channelDao.nextAfter(groupName, position.playlistSort, position.playlistId, position.channelSort)
+        return channelDao.nextAfter(
+            groupName,
+            position.playlistSort,
+            position.playlistId,
+            position.channelSort,
+            position.importSort,
+        )
     }
 
     override suspend fun channelIdByNumber(number: Int, groupName: String?): Long? =
         groupName?.let { channelDao.idByNumber(number, it) } ?: channelDao.idByNumber(number, null)
+
+    override suspend fun channelIdByKey(key: ChannelKey): Long? = channelDao.idByKey(key.playlistId, key.uniqueKey)
 
     private companion object {
         const val PAGE_SIZE = 60
@@ -73,7 +91,7 @@ internal fun ChannelEntity.toModel() = Channel(
     playlistId = playlistId,
     groupId = groupId,
     uniqueKey = uniqueKey,
-    name = name,
+    name = customName ?: name,
     logoUrl = logoUrl,
     streamUrl = streamUrl,
     tvgId = tvgId,

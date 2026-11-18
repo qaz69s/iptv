@@ -43,6 +43,10 @@ gradlePlugin {
             id = "streambox.android.feature"
             implementationClass = "AndroidFeatureConventionPlugin"
         }
+        register("androidRobolectric") {
+            id = "streambox.android.robolectric"
+            implementationClass = "AndroidRobolectricConventionPlugin"
+        }
         register("hilt") {
             id = "streambox.hilt"
             implementationClass = "HiltConventionPlugin"

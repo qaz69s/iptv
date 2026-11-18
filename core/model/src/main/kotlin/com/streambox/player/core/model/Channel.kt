@@ -18,6 +18,8 @@ data class Channel(
     val catchupSource: String? = null,
     val catchupDays: Int? = null,
 ) {
+    val key: ChannelKey get() = ChannelKey(playlistId, uniqueKey)
+
     val displayNumber: Int get() = number ?: position
 }
 
@@ -38,9 +40,25 @@ data class PlaybackItem(
     val playlistId: Long = 0,
     /** Name of the channel's own group; null when it has none. */
     val groupName: String? = null,
-)
+    /** Stable key inside the playlist (tvg-id, else URL hash); survives refreshes, unlike [channelId]. */
+    val uniqueKey: String = "",
+) {
+    val key: ChannelKey get() = ChannelKey(playlistId, uniqueKey)
+}
 
-/** The channel that last started playing successfully, remembered for "continue on launch". */
-data class LastPlayedChannel(val playlistId: Long, val channelId: Long)
+/**
+ * The channel that last started playing successfully, remembered for "continue on launch". Keyed by
+ * [ChannelKey] rather than the row id, because a refresh re-imports every channel under a new id.
+ */
+data class LastPlayedChannel(val playlistId: Long, val uniqueKey: String) {
+    val key: ChannelKey get() = ChannelKey(playlistId, uniqueKey)
+}
+
+/**
+ * Identity of a channel that survives playlist refreshes: the playlist plus the channel's
+ * `uniqueKey` (tvg-id first, else a hash of the stream URL; duplicates get a suffix). Favorites,
+ * watch history, user overrides and the last channel are all stored by this key, never by channel id.
+ */
+data class ChannelKey(val playlistId: Long, val uniqueKey: String)
 
 enum class ZapDirection { NEXT, PREVIOUS }

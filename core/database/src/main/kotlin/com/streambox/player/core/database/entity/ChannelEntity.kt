@@ -43,11 +43,19 @@ data class ChannelEntity(
     /** Per-channel #EXTVLCOPT overrides; fall back to the playlist's values when null. */
     val userAgent: String?,
     val referrer: String?,
+    /**
+     * Effectively hidden: the user hid the channel or its group. Materialized from
+     * [ChannelOverrideEntity] / [GroupOverrideEntity] (schema v2), never written by the importer.
+     */
     val hidden: Boolean = false,
-    /** Position inside the playlist (0-based, import order). */
+    /** Position inside the playlist (0-based, import order). Also the fallback display number. */
     val sortOrder: Int,
     val locked: Boolean = false,
     val generation: Int,
+    /** User's name for the channel (v2, materialized from [ChannelOverrideEntity]); null = [name]. */
+    val customName: String? = null,
+    /** User's position (v2, materialized from [ChannelOverrideEntity]); null = [sortOrder]. */
+    val customSortOrder: Int? = null,
 )
 
 /** External-content FTS4 index on channel names (search UI arrives in P3). Room keeps it in sync via triggers. */

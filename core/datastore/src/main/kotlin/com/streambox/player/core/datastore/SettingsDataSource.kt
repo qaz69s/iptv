@@ -51,11 +51,15 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         )
     }.distinctUntilChanged()
 
-    /** Last channel that started playing; null when none was saved (or it was cleared). */
+    /**
+     * Last channel that started playing; null when none was saved (or it was cleared). Stored by
+     * playlist id + channel `uniqueKey` (P3a). A P2b record that only has the channel row id is
+     * ignored: row ids change on every refresh, so it cannot be resolved reliably.
+     */
     val lastPlayedChannel: Flow<LastPlayedChannel?> = safeData.map { prefs ->
         val playlistId = prefs[Keys.LAST_PLAYLIST_ID]
-        val channelId = prefs[Keys.LAST_CHANNEL_ID]
-        if (playlistId != null && channelId != null) LastPlayedChannel(playlistId, channelId) else null
+        val uniqueKey = prefs[Keys.LAST_CHANNEL_KEY]
+        if (playlistId != null && uniqueKey != null) LastPlayedChannel(playlistId, uniqueKey) else null
     }.distinctUntilChanged()
 
     suspend fun setThemeMode(mode: ThemeMode) {
@@ -115,14 +119,16 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
     suspend fun setLastPlayedChannel(channel: LastPlayedChannel) {
         dataStore.edit {
             it[Keys.LAST_PLAYLIST_ID] = channel.playlistId
-            it[Keys.LAST_CHANNEL_ID] = channel.channelId
+            it[Keys.LAST_CHANNEL_KEY] = channel.uniqueKey
+            it.remove(Keys.LEGACY_LAST_CHANNEL_ID)
         }
     }
 
     suspend fun clearLastPlayedChannel() {
         dataStore.edit {
             it.remove(Keys.LAST_PLAYLIST_ID)
-            it.remove(Keys.LAST_CHANNEL_ID)
+            it.remove(Keys.LAST_CHANNEL_KEY)
+            it.remove(Keys.LEGACY_LAST_CHANNEL_ID)
         }
     }
 
@@ -180,6 +186,9 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         val RESUME_LAST_CHANNEL = booleanPreferencesKey("playback_resume_last_channel")
         val AUTO_PLAY_NEXT = booleanPreferencesKey("playback_auto_play_next")
         val LAST_PLAYLIST_ID = longPreferencesKey("last_played_playlist_id")
-        val LAST_CHANNEL_ID = longPreferencesKey("last_played_channel_id")
+        val LAST_CHANNEL_KEY = stringPreferencesKey("last_played_channel_key")
+
+        /** P2b: channel row id (invalid after a refresh); only removed, never read. */
+        val LEGACY_LAST_CHANNEL_ID = longPreferencesKey("last_played_channel_id")
     }
 }
