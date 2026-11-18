@@ -1,6 +1,7 @@
 package com.streambox.player.core.database
 
 import androidx.paging.PagingSource
+import com.streambox.player.core.database.dao.SortCode
 import com.streambox.player.core.database.entity.ChannelEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -28,14 +29,15 @@ class OverrideDaoTest {
     @After
     fun tearDown() = test.close()
 
-    private suspend fun visible(groupName: String? = null): List<ChannelEntity> {
-        val result = channels.pagingSource(groupName).load(
+    private suspend fun visible(groupName: String? = null, sort: Int = SortCode.DEFAULT): List<ChannelEntity> {
+        val result = channels.pagingSource(groupName, sort).load(
             PagingSource.LoadParams.Refresh(key = null, loadSize = 500, placeholdersEnabled = false),
         )
         return (result as PagingSource.LoadResult.Page).data
     }
 
-    private suspend fun visibleKeys(groupName: String? = null) = visible(groupName).map { it.uniqueKey }
+    private suspend fun visibleKeys(groupName: String? = null, sort: Int = SortCode.DEFAULT) =
+        visible(groupName, sort).map { it.uniqueKey }
 
     private suspend fun groupNames() = channels.observeGroups().first().map { it.name }
 
@@ -79,24 +81,21 @@ class OverrideDaoTest {
     }
 
     @Test
-    fun `a custom channel order drives browsing and zapping and survives a refresh`() = runTest {
+    fun `a custom channel order drives the custom sort and zapping and survives a refresh`() = runTest {
         val p = samplePlaylist()
+        val custom = SortCode.CUSTOM
 
         // n3 first, then n1, n2: n3 takes n1's slot (0), n1 -> 1, n2 -> 2.
         overrides.updateChannelPositions(p, mapOf("n3" to 0, "n1" to 1, "n2" to 2))
-        assertEquals(listOf("n3", "n1", "n2"), visibleKeys("News"))
+        assertEquals(listOf("n3", "n1", "n2"), visibleKeys("News", custom))
 
         test.import(p, listOf("News" to listOf("n1", "n2", "n3"), "Sport" to listOf("s1", "s2")))
-        assertEquals(listOf("n3", "n1", "n2", "s1", "s2"), visibleKeys())
+        assertEquals(listOf("n3", "n1", "n2", "s1", "s2"), visibleKeys(sort = custom))
+        // The default sort is the playlist's own order (P3b).
+        assertEquals(listOf("n1", "n2", "n3", "s1", "s2"), visibleKeys())
 
-        val n1 = checkNotNull(channels.position(test.idOf(p, "n1")))
-        assertEquals(test.idOf(p, "n2"), channels.nextAfter("News", n1.playlistSort, p, n1.channelSort, n1.importSort))
-        assertEquals(
-            test.idOf(p, "n3"),
-            channels.previousBefore("News", n1.playlistSort, p, n1.channelSort, n1.importSort),
-        )
-        assertEquals(test.idOf(p, "n3"), channels.first("News"))
-        assertEquals(test.idOf(p, "n2"), channels.last("News"))
+        val ids = listOf("n3", "n1", "n2").map { test.idOf(p, it) }
+        assertEquals(ids, channels.orderedIds("News", custom))
     }
 
     @Test

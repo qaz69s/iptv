@@ -9,9 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.navOptions
+import com.streambox.player.core.model.Channel
+import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.feature.channels.navigation.ChannelsRoute
+import com.streambox.player.feature.channels.navigation.backToChannelsWithGroup
 import com.streambox.player.feature.channels.navigation.channelsScreen
 import com.streambox.player.feature.channels.navigation.favoritesScreen
+import com.streambox.player.feature.channels.navigation.navigateToSearch
+import com.streambox.player.feature.channels.navigation.searchScreen
 import com.streambox.player.feature.epg.navigation.epgScreen
 import com.streambox.player.feature.onboarding.navigation.OnboardingGraphRoute
 import com.streambox.player.feature.onboarding.navigation.onboardingGraph
@@ -42,7 +47,7 @@ fun StreamBoxNavHost(
     // Only after onboarding; resumeChannel answers once per cold start.
     if (onboardingComplete) {
         LaunchedEffect(Unit) {
-            resumeChannel()?.let { channelId -> navController.navigateToPlayer(channelId, groupName = null) }
+            resumeChannel()?.let { channelId -> navController.navigateToPlayer(channelId, source = null) }
         }
     }
     NavHost(
@@ -63,13 +68,23 @@ fun StreamBoxNavHost(
                 }
             },
         )
+        // The player zaps through the list the channel was picked from; the key survives a refresh (K20).
+        val playChannel: (Channel, ChannelSource) -> Unit = { channel, source ->
+            navController.navigateToPlayer(channel.id, source, channel.key)
+        }
         channelsScreen(
             onAddPlaylist = { navController.navigateToAddPlaylist() },
             onManagePlaylists = { navController.navigateToPlaylists() },
-            onChannelClick = { channelId, groupName -> navController.navigateToPlayer(channelId, groupName) },
+            onSearch = { navController.navigateToSearch() },
+            onChannelClick = playChannel,
+        )
+        searchScreen(
+            onBack = { navController.popBackStack() },
+            onChannelClick = playChannel,
+            onGroupClick = { groupName -> navController.backToChannelsWithGroup(groupName) },
         )
         epgScreen()
-        favoritesScreen()
+        favoritesScreen(onChannelClick = playChannel)
         settingsScreen(
             onOpenPlaybackSettings = { navController.navigateToPlaybackSettings() },
             onBack = { navController.popBackStack() },

@@ -5,19 +5,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.streambox.player.core.domain.channel.ChannelSorting
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.FavoritesRepository
 import com.streambox.player.core.domain.repository.PlaylistRepository
+import com.streambox.player.core.domain.repository.SettingsRepository
+import com.streambox.player.core.domain.repository.WatchHistoryRepository
+import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
+import com.streambox.player.core.model.BrowseSettings
 import com.streambox.player.core.model.Channel
 import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelKey
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelSource
+import com.streambox.player.core.model.ChannelViewMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 sealed interface ChannelsUiState {
     data object Loading : ChannelsUiState
@@ -31,27 +44,82 @@ sealed interface ChannelsUiState {
     data class Content(
         val groups: List<ChannelGroupSummary>,
         val totalChannels: Int,
-        /** null = all groups. */
+        /** The group being browsed; null = all channels or a virtual group (see [source]). */
         val selectedGroup: String?,
         /** Playlists that allow plain HTTP; their channels' logos may load over http (K1). */
         val cleartextPlaylists: Set<Long> = emptySet(),
+        /** What the list shows (requirements §4.2: all, a group, or the virtual favorites / recently watched). */
+        val source: ChannelSource = selectedGroup?.let { ChannelSource.Group(it) } ?: ChannelSource.All,
+        val favoriteCount: Int = 0,
+        val recentCount: Int = 0,
+        /** Stable keys of every favorite, for the star on each channel. */
+        val favoriteKeys: Set<ChannelKey> = emptySet(),
+        val viewMode: ChannelViewMode = ChannelViewMode.List,
+        val sortOrder: ChannelSortOrder = ChannelSortOrder.Default,
     ) : ChannelsUiState
 }
 
+/** User data shown next to the channel data; combined first to stay within combine's typed arity. */
+private data class Library(
+    val favorites: List<Channel>,
+    val favoriteKeys: Set<ChannelKey>,
+    val recent: List<Channel>,
+    val browse: BrowseSettings,
+)
+
+/**
+ * Channel browser: groups, the virtual groups "favorites" / "recently watched", view mode and sort order
+ * (persisted in DataStore). The selection lives in [SavedStateHandle] (`selectedGroup` for a group,
+ * `selectedVirtual` for a virtual group), so it survives process death and search can set it.
+ */
 @HiltViewModel
+@Suppress("LongParameterList") // Injected repositories of one screen.
 class ChannelsViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     playlistRepository: PlaylistRepository,
-    channelRepository: ChannelRepository,
+    private val channelRepository: ChannelRepository,
+    private val favoritesRepository: FavoritesRepository,
+    private val watchHistoryRepository: WatchHistoryRepository,
+    private val settingsRepository: SettingsRepository,
+    private val toggleFavorite: ToggleFavoriteUseCase,
 ) : ViewModel() {
     private val selectedGroup: StateFlow<String?> = savedStateHandle.getStateFlow(KEY_GROUP, null)
+    private val selectedVirtual: StateFlow<String?> = savedStateHandle.getStateFlow(KEY_VIRTUAL, null)
+
+    private val browse: Flow<BrowseSettings> = settingsRepository.settings.map { it.browse }.distinctUntilChanged()
+
+    private val library: Flow<Library> = combine(
+        favoritesRepository.favorites,
+        favoritesRepository.favoriteKeys,
+        watchHistoryRepository.history.map { entries -> entries.map { it.channel } },
+        browse,
+        ::Library,
+    )
+
+    /**
+     * The source actually shown: a saved group that vanished after a refresh falls back to "all",
+     * matching the chips (the saved choice comes back if the group reappears).
+     */
+    private val effectiveSource: Flow<ChannelSource> = combine(
+        selectedGroup,
+        selectedVirtual,
+        channelRepository.groups,
+    ) { group, virtual, groups ->
+        when {
+            virtual == VIRTUAL_FAVORITES -> ChannelSource.Favorites
+            virtual == VIRTUAL_RECENT -> ChannelSource.Recent
+            group != null && groups.any { it.name == group } -> ChannelSource.Group(group)
+            else -> ChannelSource.All
+        }
+    }.distinctUntilChanged()
 
     val uiState: StateFlow<ChannelsUiState> = combine(
         playlistRepository.playlists,
         channelRepository.groups,
         channelRepository.channelCount,
-        selectedGroup,
-    ) { playlists, groups, count, selected ->
+        effectiveSource,
+        library,
+    ) { playlists, groups, count, source, library ->
         when {
             playlists.isEmpty() -> ChannelsUiState.NoPlaylists
 
@@ -60,31 +128,74 @@ class ChannelsViewModel @Inject constructor(
             else -> ChannelsUiState.Content(
                 groups = groups,
                 totalChannels = count,
-                // A group can disappear after a refresh; fall back to "all" instead of an empty list.
-                selectedGroup = selected?.takeIf { name -> groups.any { it.name == name } },
+                selectedGroup = (source as? ChannelSource.Group)?.name,
                 cleartextPlaylists = playlists.filter { it.allowCleartext }.mapTo(mutableSetOf()) { it.id },
+                source = source,
+                favoriteCount = library.favorites.size,
+                recentCount = library.recent.size,
+                favoriteKeys = library.favoriteKeys,
+                viewMode = library.browse.viewMode,
+                sortOrder = library.browse.sortOrder,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ChannelsUiState.Loading)
 
-    /**
-     * The group actually applied to the list: a saved selection whose group vanished after a refresh
-     * falls back to "all", matching the chips (the saved choice comes back if the group reappears).
-     */
-    private val effectiveGroup: Flow<String?> = combine(selectedGroup, channelRepository.groups) { selected, groups ->
-        selected?.takeIf { name -> groups.any { it.name == name } }
-    }.distinctUntilChanged()
+    /** The list of the selected source in the chosen order (recently watched: always newest first). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val channels: Flow<PagingData<Channel>> = combine(effectiveSource, browse.map { it.sortOrder }) { source, sort ->
+        source to sort
+    }
+        .distinctUntilChanged()
+        .flatMapLatest { (source, sort) ->
+            when (source) {
+                ChannelSource.All -> channelRepository.pagedChannels(null, sort)
 
-    val channels: Flow<PagingData<Channel>> = effectiveGroup
-        .flatMapLatest { channelRepository.pagedChannels(it) }
+                is ChannelSource.Group -> channelRepository.pagedChannels(source.name, sort)
+
+                ChannelSource.Favorites -> favoritesRepository.favorites.map { list ->
+                    PagingData.from(ChannelSorting.sort(list, sort))
+                }
+
+                ChannelSource.Recent -> watchHistoryRepository.history.map { entries ->
+                    PagingData.from(entries.map { it.channel })
+                }
+            }
+        }
         .cachedIn(viewModelScope)
 
-    fun onGroupSelected(groupName: String?) {
-        savedStateHandle[KEY_GROUP] = groupName
+    fun onSourceSelected(source: ChannelSource) {
+        savedStateHandle[KEY_GROUP] = (source as? ChannelSource.Group)?.name
+        savedStateHandle[KEY_VIRTUAL] = when (source) {
+            ChannelSource.Favorites -> VIRTUAL_FAVORITES
+            ChannelSource.Recent -> VIRTUAL_RECENT
+            else -> null
+        }
     }
 
-    private companion object {
+    /** Kept for callers that pick a group by name; null = all channels. */
+    fun onGroupSelected(groupName: String?) = onSourceSelected(
+        groupName?.let {
+            ChannelSource.Group(it)
+        } ?: ChannelSource.All,
+    )
+
+    fun onViewModeSelected(mode: ChannelViewMode) {
+        viewModelScope.launch { settingsRepository.setChannelViewMode(mode) }
+    }
+
+    fun onSortOrderSelected(order: ChannelSortOrder) {
+        viewModelScope.launch { settingsRepository.setChannelSortOrder(order) }
+    }
+
+    fun onToggleFavorite(channel: Channel) {
+        viewModelScope.launch { toggleFavorite(channel.key) }
+    }
+
+    internal companion object {
         const val KEY_GROUP = "selectedGroup"
-        const val STOP_TIMEOUT_MS = 5_000L
+        const val KEY_VIRTUAL = "selectedVirtual"
+        const val VIRTUAL_FAVORITES = "favorites"
+        const val VIRTUAL_RECENT = "recent"
+        private const val STOP_TIMEOUT_MS = 5_000L
     }
 }

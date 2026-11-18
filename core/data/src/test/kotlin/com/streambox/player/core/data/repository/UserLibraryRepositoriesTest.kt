@@ -169,6 +169,6 @@ class UserLibraryRepositoriesTest {
         val channelDao = mockk<ChannelDao>(relaxed = true)
         coEvery { channelDao.idByKey(4, "tvg:a") } returns 99
 
-        assertEquals(99L, DefaultChannelRepository(channelDao).channelIdByKey(ChannelKey(4, "tvg:a")))
+        assertEquals(99L, DefaultChannelRepository(channelDao, mockk(), mockk()).channelIdByKey(ChannelKey(4, "tvg:a")))
     }
 }

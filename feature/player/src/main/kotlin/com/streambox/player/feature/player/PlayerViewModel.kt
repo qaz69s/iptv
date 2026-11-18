@@ -5,9 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import com.streambox.player.core.domain.repository.ChannelRepository
+import com.streambox.player.core.domain.repository.FavoritesRepository
 import com.streambox.player.core.domain.repository.SettingsRepository
+import com.streambox.player.core.domain.repository.WatchHistoryRepository
 import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
+import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
 import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.ChannelKey
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelSource
 import com.streambox.player.core.model.PlaybackError
 import com.streambox.player.core.model.PlaybackItem
 import com.streambox.player.core.model.PlaybackSettings
@@ -23,8 +29,11 @@ import com.streambox.player.core.player.sleep.MonotonicClock
 import com.streambox.player.core.player.sleep.SleepTimer
 import com.streambox.player.core.player.sleep.SleepTimerOutput
 import com.streambox.player.core.player.sleep.SleepTimerState
+import com.streambox.player.feature.player.navigation.PlayerRoute
+import com.streambox.player.feature.player.navigation.PlayerSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -34,6 +43,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -74,6 +86,8 @@ data class PlayerUiState(
     val gesturesEnabled: Boolean = true,
     /** Running sleep timer (remaining time shown in the panel); null while off. */
     val sleepTimer: SleepTimerState? = null,
+    /** The channel is one of the favorites (panel toggle, P3b). */
+    val isFavorite: Boolean = false,
 )
 
 /** Buttons of the picture-in-picture window. */
@@ -85,6 +99,7 @@ private data class Lookup(
     val isLoading: Boolean,
     val error: PlaybackError?,
     val sleepTimer: SleepTimerState?,
+    val isFavorite: Boolean,
 )
 
 /** Screen-local state that is not owned by the controller or the repositories. */
@@ -111,7 +126,7 @@ private data class ScreenLocal(
  * history); finished on-demand content
  * moves on to the next channel of the group when "auto play next" is on.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList") // One screen, many collaborators; all injected.
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
@@ -119,12 +134,28 @@ class PlayerViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
     private val recordPlaybackStart: RecordPlaybackStartUseCase,
+    private val favoritesRepository: FavoritesRepository,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val watchHistoryRepository: WatchHistoryRepository,
     clock: MonotonicClock,
 ) : ViewModel() {
     /** Route arguments of [com.streambox.player.feature.player.navigation.PlayerRoute]. */
     private val groupName: String? = savedStateHandle.get<String>(KEY_GROUP)
     private var channelId: Long =
         savedStateHandle.get<Long>(KEY_CURRENT) ?: checkNotNull(savedStateHandle.get<Long>(KEY_CHANNEL))
+
+    /** The list the channel was picked from; null = opened without one (continue last channel). */
+    private val routeSource: ChannelSource? =
+        PlayerSource.decode(savedStateHandle.get<String>(KEY_SOURCE), groupName)
+
+    /** Zapping, numbers and auto-play next follow the source list ([ChannelZapper]). */
+    private val zapper = ChannelZapper(
+        channelRepository,
+        routeSource ?: groupName?.let { ChannelSource.Group(it) } ?: ChannelSource.All,
+    )
+
+    /** The browser's sort order: zapping walks the list in the order the user saw it. */
+    private var sortOrder: ChannelSortOrder = ChannelSortOrder.Default
 
     private val current = MutableStateFlow<PlaybackItem?>(null)
     private val loading = MutableStateFlow(true)
@@ -167,7 +198,7 @@ class PlayerViewModel @Inject constructor(
     val pictureInPictureRequests: Flow<Unit> = pipRequests.receiveAsFlow()
 
     val uiState: StateFlow<PlayerUiState> = combine(
-        combine(current, loading, loadError, sleepTimer.state, ::Lookup),
+        combine(current, loading, loadError, sleepTimer.state, favoriteFlow(), ::Lookup),
         playbackController.state,
         local,
         playbackSettings,
@@ -197,18 +228,28 @@ class PlayerViewModel @Inject constructor(
             pictureInPictureEnabled = prefs.pictureInPicture,
             gesturesEnabled = prefs.playbackGestures,
             sleepTimer = lookup.sleepTimer,
+            isFavorite = lookup.isFavorite,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PlayerUiState())
 
     init {
         playbackController.channelNavigator = navigator
         viewModelScope.launch {
+            settingsRepository.settings.map { it.browse.sortOrder }.distinctUntilChanged().collect { sortOrder = it }
+        }
+        viewModelScope.launch {
             settingsRepository.settings.map { it.playback }.distinctUntilChanged().collect { settings ->
                 playbackSettings.value = settings
                 playbackController.applySettings(settings)
             }
         }
-        viewModelScope.launch { zapMutex.withLock { load(channelId) } }
+        viewModelScope.launch {
+            zapMutex.withLock {
+                // Before the first channel plays (and moves to the top of the history).
+                if (zapper.needsSnapshot) zapper.freeze(watchHistoryRepository.history.first().map { it.channel.key })
+                load(initialChannelId())
+            }
+        }
         viewModelScope.launch { playbackController.state.collect(::rememberPlayingChannel) }
         viewModelScope.launch {
             playbackController.state
@@ -231,18 +272,59 @@ class PlayerViewModel @Inject constructor(
 
     /**
      * On-demand content finished (live streams never get here; they reconnect). With "auto play next"
-     * on, plays the following channel of the group the user came from, else of the channel's own group;
-     * stops after the last one (no wrap-around).
+     * on, plays the following channel of the list the user came from (P3b: also favorites / recently
+     * watched, in display order); opened without a list, of the channel's own group. Stops after the
+     * last one (no wrap-around).
      */
     private fun onContentEnded() {
         if (!playbackSettings.value.autoPlayNext) return
         viewModelScope.launch {
             zapMutex.withLock {
-                val group = groupName ?: current.value?.groupName
-                val next = channelRepository.nextChannel(channelId, group)
+                val next = if (routeSource == null) {
+                    val ownGroup = groupName ?: current.value?.groupName
+                    channelRepository.nextChannel(
+                        channelId,
+                        ownGroup?.let { ChannelSource.Group(it) } ?: ChannelSource.All,
+                        sortOrder,
+                    )
+                } else {
+                    zapper.next(channelId, current.value?.key, sortOrder)
+                }
                 if (next != null && next != channelId) load(next)
             }
         }
+    }
+
+    /**
+     * K20: the route's channel id may belong to a generation a refresh has just replaced. When the id
+     * no longer resolves to the channel's stable key, look the key up again (current id first, so a
+     * restored screen keeps the channel the user zapped to).
+     */
+    private suspend fun initialChannelId(): Long {
+        val key = savedKey(KEY_CURRENT_PLAYLIST, KEY_CURRENT_UNIQUE) ?: savedKey(KEY_PLAYLIST, KEY_UNIQUE_KEY)
+        return when {
+            key == null -> channelId
+            channelRepository.playbackItem(channelId)?.key == key -> channelId
+            else -> channelRepository.channelIdByKey(key) ?: channelId
+        }
+    }
+
+    private fun savedKey(playlistKey: String, uniqueKey: String): ChannelKey? {
+        val playlistId = savedStateHandle.get<Long>(playlistKey)?.takeIf { it != PlayerRoute.NO_PLAYLIST }
+        val unique = savedStateHandle.get<String>(uniqueKey)
+        return if (playlistId != null && unique != null) ChannelKey(playlistId, unique) else null
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun favoriteFlow(): Flow<Boolean> = current
+        .map { it?.key }
+        .distinctUntilChanged()
+        .flatMapLatest { key -> key?.let(favoritesRepository::isFavorite) ?: flowOf(false) }
+
+    /** Panel action: adds the current channel to the favorites or removes it. */
+    fun toggleFavorite() {
+        val key = current.value?.key ?: return
+        viewModelScope.launch { toggleFavoriteUseCase(key) }
     }
 
     // --- Sleep timer ----------------------------------------------------------------------------
@@ -354,7 +436,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             // Serialized so quick repeated presses each move one channel from the latest one.
             zapMutex.withLock {
-                val next = channelRepository.adjacentChannel(channelId, groupName, direction)
+                val next = zapper.adjacent(channelId, current.value?.key, sortOrder, direction)
                 if (next != null && next != channelId) load(next)
             }
         }
@@ -510,7 +592,7 @@ class PlayerViewModel @Inject constructor(
     private fun jumpToNumber(number: Int) {
         viewModelScope.launch {
             zapMutex.withLock {
-                val id = channelRepository.channelIdByNumber(number, groupName)
+                val id = zapper.byNumber(number, sortOrder)
                 when {
                     id == null -> showNotFound(number)
                     id != channelId -> load(id)
@@ -536,6 +618,10 @@ class PlayerViewModel @Inject constructor(
         channelId = id
         savedStateHandle[KEY_CURRENT] = id
         val item = channelRepository.playbackItem(id)
+        item?.let {
+            savedStateHandle[KEY_CURRENT_PLAYLIST] = it.playlistId
+            savedStateHandle[KEY_CURRENT_UNIQUE] = it.uniqueKey
+        }
         if (item == null) {
             playbackController.release()
             loadError.value = PlaybackError.ChannelNotFound
@@ -556,7 +642,12 @@ class PlayerViewModel @Inject constructor(
     companion object {
         internal const val KEY_CHANNEL = "channelId"
         internal const val KEY_GROUP = "groupName"
+        internal const val KEY_SOURCE = "source"
+        internal const val KEY_PLAYLIST = "playlistId"
+        internal const val KEY_UNIQUE_KEY = "uniqueKey"
         private const val KEY_CURRENT = "currentChannelId"
+        private const val KEY_CURRENT_PLAYLIST = "currentPlaylistId"
+        private const val KEY_CURRENT_UNIQUE = "currentUniqueKey"
         const val OVERLAY_TIMEOUT_MS = 4_000L
         const val NOT_FOUND_VISIBLE_MS = 2_000L
         const val SEEK_STEP_MS = 10_000L

@@ -1,17 +1,29 @@
 package com.streambox.player.feature.channels
 
 import androidx.lifecycle.SavedStateHandle
+import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
 import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelSource
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.Playlist
 import com.streambox.player.core.model.PlaylistType
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeFavoritesRepository
 import com.streambox.player.core.testing.FakePlaylistRepository
+import com.streambox.player.core.testing.FakeSettingsRepository
+import com.streambox.player.core.testing.FakeWatchHistoryRepository
 import com.streambox.player.core.testing.MainDispatcherExtension
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
@@ -25,10 +37,15 @@ class ChannelsViewModelTest {
         listOf("News" to channel(1), "News" to channel(2), "Sports" to channel(3)),
     )
 
+    private val library = MutableStateFlow(listOf(channel(1), channel(2), channel(3)))
+    private val favorites = FakeFavoritesRepository(library)
+    private val history = FakeWatchHistoryRepository(library)
+    private val settings = FakeSettingsRepository()
+
     private fun viewModel(
         playlists: FakePlaylistRepository = FakePlaylistRepository(listOf(playlist)),
         handle: SavedStateHandle = SavedStateHandle(),
-    ) = ChannelsViewModel(handle, playlists, channels)
+    ) = ChannelsViewModel(handle, playlists, channels, favorites, history, settings, ToggleFavoriteUseCase(favorites))
 
     private fun TestScope.collect(viewModel: ChannelsViewModel) {
         backgroundScope.launch(mainDispatcher.testDispatcher) { viewModel.uiState.collect {} }
@@ -101,5 +118,79 @@ class ChannelsViewModelTest {
 
         assertEquals(null, (viewModel.uiState.value as ChannelsUiState.Content).selectedGroup)
         assertEquals(listOf(null, "Sports", null), channels.requestedGroups)
+    }
+
+    private fun ChannelsViewModel.content() = uiState.value as ChannelsUiState.Content
+
+    @Test
+    fun `virtual groups count favorites and recently watched`() = runTest {
+        favorites.add(channel(2).key)
+        history.record(channel(3).key)
+        history.record(channel(1).key)
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        assertEquals(1, viewModel.content().favoriteCount)
+        assertEquals(2, viewModel.content().recentCount)
+        assertEquals(setOf(channel(2).key), viewModel.content().favoriteKeys)
+    }
+
+    @Test
+    fun `selecting favorites or recently watched is saved and leaves the channel table alone`() = runTest {
+        val handle = SavedStateHandle()
+        val viewModel = viewModel(handle = handle)
+        collect(viewModel)
+
+        viewModel.onSourceSelected(ChannelSource.Favorites)
+        assertEquals(ChannelSource.Favorites, viewModel.content().source)
+        assertNull(viewModel.content().selectedGroup)
+        assertEquals("favorites", handle.get<String>("selectedVirtual"))
+
+        viewModel.onSourceSelected(ChannelSource.Recent)
+        assertEquals(ChannelSource.Recent, viewModel.content().source)
+
+        // Only the initial "all" page came from the channel table.
+        assertEquals(listOf<String?>(null), channels.requestedGroups)
+
+        viewModel.onSourceSelected(ChannelSource.Group("Sports"))
+        assertEquals(ChannelSource.Group("Sports"), viewModel.content().source)
+        assertNull(handle.get<String>("selectedVirtual"))
+        assertEquals(listOf(null, "Sports"), channels.requestedGroups)
+    }
+
+    @Test
+    fun `restores a saved virtual group`() = runTest {
+        val viewModel = viewModel(handle = SavedStateHandle(mapOf("selectedVirtual" to "recent")))
+        collect(viewModel)
+
+        assertEquals(ChannelSource.Recent, viewModel.content().source)
+        assertTrue(channels.requestedGroups.isEmpty())
+    }
+
+    @Test
+    fun `view mode and sort order are persisted and the list reloads in the new order`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+        assertEquals(ChannelViewMode.List, viewModel.content().viewMode)
+
+        viewModel.onViewModeSelected(ChannelViewMode.Grid)
+        viewModel.onSortOrderSelected(ChannelSortOrder.Name)
+
+        assertEquals(ChannelViewMode.Grid, viewModel.content().viewMode)
+        assertEquals(ChannelSortOrder.Name, viewModel.content().sortOrder)
+        assertEquals(ChannelSortOrder.Name, settings.settings.first().browse.sortOrder)
+        assertEquals(listOf(ChannelSortOrder.Default, ChannelSortOrder.Name), channels.requestedSorts)
+    }
+
+    @Test
+    fun `a channel is added to and removed from the favorites`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel)
+
+        viewModel.onToggleFavorite(channel(3))
+        assertEquals(setOf(channel(3).key), viewModel.content().favoriteKeys)
+
+        viewModel.onToggleFavorite(channel(3))
+        assertFalse(channel(3).key in viewModel.content().favoriteKeys)
     }
 }

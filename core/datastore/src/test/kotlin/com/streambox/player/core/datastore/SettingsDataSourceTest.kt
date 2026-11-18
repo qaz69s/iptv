@@ -8,7 +8,10 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BrowseSettings
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.PlaybackSettings
@@ -250,4 +253,18 @@ class SettingsDataSourceTest {
             assertEquals(LastPlayedChannel(2, "tvg:a"), source.lastPlayedChannel.first())
             assertNull(store.data.first()[longPreferencesKey("last_played_channel_id")])
         }
+
+    @Test
+    fun `channel view and sort default to list and playlist order and persist`() = runTest(UnconfinedTestDispatcher()) {
+        val dataStore = createDataStore()
+        val source = SettingsDataSource(dataStore)
+        assertEquals(BrowseSettings(ChannelViewMode.List, ChannelSortOrder.Default), source.settings.first().browse)
+
+        source.setChannelViewMode(ChannelViewMode.Grid)
+        source.setChannelSortOrder(ChannelSortOrder.Name)
+        assertEquals(BrowseSettings(ChannelViewMode.Grid, ChannelSortOrder.Name), source.settings.first().browse)
+
+        dataStore.edit { it[stringPreferencesKey("browse_channel_sort_order")] = "Bogus" }
+        assertEquals(ChannelSortOrder.Default, source.settings.first().browse.sortOrder)
+    }
 }

@@ -2,6 +2,7 @@ package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
 import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
+import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.PlaybackError
@@ -10,6 +11,7 @@ import com.streambox.player.core.model.ZapDirection
 import com.streambox.player.core.player.sleep.MonotonicClock
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeFavoritesRepository
 import com.streambox.player.core.testing.FakeLastChannelRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
 import com.streambox.player.core.testing.FakeWatchHistoryRepository
@@ -44,6 +46,7 @@ class PlayerViewModelTest {
     )
     private val controller = FakePlaybackController()
     private var settings = FakeSettingsRepository()
+    private val favorites = FakeFavoritesRepository()
 
     private fun viewModel(channelId: Long = 1, group: String? = null) = PlayerViewModel(
         SavedStateHandle(mapOf("channelId" to channelId, "groupName" to group)),
@@ -51,6 +54,9 @@ class PlayerViewModelTest {
         controller,
         settings,
         RecordPlaybackStartUseCase(FakeLastChannelRepository(), FakeWatchHistoryRepository()),
+        favorites,
+        ToggleFavoriteUseCase(favorites),
+        FakeWatchHistoryRepository(),
         MonotonicClock { mainDispatcher.testDispatcher.scheduler.currentTime },
     )
 

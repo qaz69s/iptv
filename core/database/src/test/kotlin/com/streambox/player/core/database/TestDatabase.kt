@@ -28,7 +28,12 @@ internal class TestDatabase {
      * activates it like `RoomPlaylistImportStore.verifyAndCommit`: overrides applied, counts, swap,
      * older generations deleted.
      */
-    suspend fun import(playlistId: Long, groups: List<Pair<String, List<String>>>): Int {
+    suspend fun import(
+        playlistId: Long,
+        groups: List<Pair<String, List<String>>>,
+        names: Map<String, String> = emptyMap(),
+        numbers: Map<String, Int> = emptyMap(),
+    ): Int {
         val generation = (playlists.get(playlistId)?.activeGeneration ?: 0) + 1
         val groupIds = channels.insertGroups(
             groups.mapIndexed { index, (name, _) ->
@@ -37,7 +42,10 @@ internal class TestDatabase {
         )
         var position = 0
         val rows = groups.zip(groupIds).flatMap { (group, groupId) ->
-            group.second.map { key -> channel(playlistId, groupId, key, position++, generation) }
+            group.second.map { key ->
+                channel(playlistId, groupId, key, position++, generation)
+                    .copy(name = names[key] ?: "Channel $key", number = numbers[key])
+            }
         }
         channels.insertChannels(rows)
         overrides.applyToGeneration(playlistId, generation)

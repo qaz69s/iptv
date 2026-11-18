@@ -57,4 +57,6 @@
     <string name="feature_player_sleep_custom_title">自定义睡眠定时</string>
     <string name="feature_player_sleep_custom_label">分钟</string>
     <string name="feature_player_sleep_custom_hint">%1$d–%2$d 分钟</string>
+    <string name="feature_player_favorite_add">加入收藏</string>
+    <string name="feature_player_favorite_remove">取消收藏</string>
 </resources>

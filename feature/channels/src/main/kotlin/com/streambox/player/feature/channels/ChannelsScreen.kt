@@ -1,5 +1,8 @@
+@file:Suppress("MatchingDeclarationName")
+
 package com.streambox.player.feature.channels
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,10 +20,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -28,18 +39,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,9 +78,24 @@ import com.streambox.player.core.designsystem.component.focusRing
 import com.streambox.player.core.designsystem.icon.StreamBoxIcons
 import com.streambox.player.core.designsystem.theme.StreamBoxTheme
 import com.streambox.player.core.model.Channel
-import com.streambox.player.core.model.ChannelGroupSummary
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelSource
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.ui.FormFactor
 import com.streambox.player.core.ui.LocalFormFactor
+
+/** Callbacks of the channel browser, grouped to keep the composables readable. */
+internal data class ChannelsActions(
+    val onSourceSelected: (ChannelSource) -> Unit = {},
+    val onAddPlaylist: () -> Unit = {},
+    val onManagePlaylists: () -> Unit = {},
+    val onSearch: () -> Unit = {},
+    val onViewModeSelected: (ChannelViewMode) -> Unit = {},
+    val onSortOrderSelected: (ChannelSortOrder) -> Unit = {},
+    /** Plays [Channel]; the player zaps through the source it was picked from. */
+    val onChannelClick: (Channel, ChannelSource) -> Unit = { _, _ -> },
+    val onToggleFavorite: (Channel) -> Unit = {},
+)
 
 /**
  * Channel browser. A fresh install has no playlists and therefore no channels; nothing is ever
@@ -71,7 +105,8 @@ import com.streambox.player.core.ui.LocalFormFactor
 internal fun ChannelsEntry(
     onAddPlaylist: () -> Unit,
     onManagePlaylists: () -> Unit,
-    onChannelClick: (channelId: Long, groupName: String?) -> Unit,
+    onSearch: () -> Unit,
+    onChannelClick: (Channel, ChannelSource) -> Unit,
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -79,11 +114,16 @@ internal fun ChannelsEntry(
     ChannelsScreen(
         state = state,
         channels = channels,
-        onGroupSelected = viewModel::onGroupSelected,
-        onAddPlaylist = onAddPlaylist,
-        onManagePlaylists = onManagePlaylists,
-        // The player zaps inside the group the user is browsing.
-        onChannelClick = { id -> onChannelClick(id, (state as? ChannelsUiState.Content)?.selectedGroup) },
+        actions = ChannelsActions(
+            onSourceSelected = viewModel::onSourceSelected,
+            onAddPlaylist = onAddPlaylist,
+            onManagePlaylists = onManagePlaylists,
+            onSearch = onSearch,
+            onViewModeSelected = viewModel::onViewModeSelected,
+            onSortOrderSelected = viewModel::onSortOrderSelected,
+            onChannelClick = onChannelClick,
+            onToggleFavorite = viewModel::onToggleFavorite,
+        ),
     )
 }
 
@@ -92,21 +132,42 @@ internal fun ChannelsEntry(
 internal fun ChannelsScreen(
     state: ChannelsUiState,
     channels: LazyPagingItems<Channel>?,
-    onGroupSelected: (String?) -> Unit,
-    onAddPlaylist: () -> Unit,
-    onManagePlaylists: () -> Unit,
-    onChannelClick: (Long) -> Unit,
+    actions: ChannelsActions,
     modifier: Modifier = Modifier,
 ) {
+    val content = state as? ChannelsUiState.Content
+    // TV: coming back from the player puts focus on the channel that was played, not on the groups.
+    var lastPlayedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val pickActions = actions.copy(
+        onChannelClick = { channel, source ->
+            lastPlayedId = channel.id
+            actions.onChannelClick(channel, source)
+        },
+        onSourceSelected = { source ->
+            lastPlayedId = null
+            actions.onSourceSelected(source)
+        },
+    )
     val hasPlaylists = state !is ChannelsUiState.NoPlaylists && state !is ChannelsUiState.Loading
+    val isTv = LocalFormFactor.current == FormFactor.Tv
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.feature_channels_title)) },
                 actions = {
+                    if (content != null) {
+                        IconButton(onClick = actions.onSearch, modifier = Modifier.focusRing()) {
+                            Icon(
+                                painterResource(StreamBoxIcons.Search),
+                                contentDescription = stringResource(R.string.feature_channels_search),
+                            )
+                        }
+                        ViewModeMenu(content.viewMode, actions.onViewModeSelected)
+                        SortMenu(content.sortOrder, actions.onSortOrderSelected)
+                    }
                     if (hasPlaylists) {
-                        IconButton(onClick = onManagePlaylists, modifier = Modifier.focusRing()) {
+                        IconButton(onClick = actions.onManagePlaylists, modifier = Modifier.focusRing()) {
                             Icon(
                                 painterResource(StreamBoxIcons.Playlists),
                                 contentDescription = stringResource(R.string.feature_channels_manage_playlists),
@@ -117,9 +178,9 @@ internal fun ChannelsScreen(
             )
         },
         floatingActionButton = {
-            // The empty state already has a big "Add playlist" button; avoid two identical actions there.
-            if (hasPlaylists) {
-                FloatingActionButton(onClick = onAddPlaylist, modifier = Modifier.focusRing()) {
+            // The empty state already has a big "Add playlist" button; TV adds playlists from the top bar.
+            if (hasPlaylists && !isTv) {
+                FloatingActionButton(onClick = actions.onAddPlaylist, modifier = Modifier.focusRing()) {
                     Icon(
                         painterResource(StreamBoxIcons.Add),
                         contentDescription = stringResource(R.string.feature_channels_add_playlist),
@@ -135,23 +196,324 @@ internal fun ChannelsScreen(
                 modifier = contentModifier,
             )
 
-            ChannelsUiState.NoPlaylists -> NoPlaylistsContent(onAddPlaylist, contentModifier)
+            ChannelsUiState.NoPlaylists -> NoPlaylistsContent(actions.onAddPlaylist, contentModifier)
 
             ChannelsUiState.NoChannels -> EmptyState(
                 title = stringResource(R.string.feature_channels_no_channels_title),
                 message = stringResource(R.string.feature_channels_no_channels_message),
                 icon = StreamBoxIcons.Playlists,
                 actionLabel = stringResource(R.string.feature_channels_manage_playlists),
-                onAction = onManagePlaylists,
+                onAction = actions.onManagePlaylists,
                 modifier = contentModifier,
             )
 
-            is ChannelsUiState.Content -> Column(contentModifier) {
-                GroupChips(state.groups, state.totalChannels, state.selectedGroup, onGroupSelected)
-                if (channels != null) ChannelList(channels, state.cleartextPlaylists, onChannelClick)
+            is ChannelsUiState.Content -> if (isTv) {
+                // TV (requirements §4.2): groups on the left, channels on the right.
+                Row(contentModifier) {
+                    GroupPane(
+                        state = state,
+                        onSelected = pickActions.onSourceSelected,
+                        takeFocus = lastPlayedId == null,
+                        modifier = Modifier.width(280.dp).fillMaxHeight(),
+                    )
+                    VerticalDivider()
+                    ChannelPane(state, channels, pickActions, lastPlayedId, Modifier.weight(1f).fillMaxHeight())
+                }
+            } else {
+                Column(contentModifier) {
+                    SourceChips(state, pickActions.onSourceSelected)
+                    ChannelPane(state, channels, pickActions, lastPlayedId, Modifier.weight(1f))
+                }
             }
         }
     }
+}
+
+/** The virtual groups first, then the playlist groups: one entry of the source list. */
+private data class SourceEntry(val source: ChannelSource, val count: Int)
+
+private fun ChannelsUiState.Content.sourceEntries(): List<SourceEntry> = buildList {
+    add(SourceEntry(ChannelSource.All, totalChannels))
+    add(SourceEntry(ChannelSource.Favorites, favoriteCount))
+    add(SourceEntry(ChannelSource.Recent, recentCount))
+    groups.forEach { add(SourceEntry(ChannelSource.Group(it.name), it.channelCount)) }
+}
+
+private fun ChannelSource.itemKey(): String = when (this) {
+    ChannelSource.All -> "__all__"
+    ChannelSource.Favorites -> "__favorites__"
+    ChannelSource.Recent -> "__recent__"
+    is ChannelSource.Group -> "g:$name"
+}
+
+@Composable
+private fun sourceLabel(entry: SourceEntry): String = when (val source = entry.source) {
+    ChannelSource.All -> stringResource(R.string.feature_channels_group_all, entry.count)
+
+    ChannelSource.Favorites -> stringResource(R.string.feature_channels_group_favorites, entry.count)
+
+    ChannelSource.Recent -> stringResource(R.string.feature_channels_group_recent, entry.count)
+
+    is ChannelSource.Group -> stringResource(
+        R.string.feature_channels_group_label,
+        source.name.ifBlank { stringResource(R.string.feature_channels_group_ungrouped) },
+        entry.count,
+    )
+}
+
+@Composable
+private fun SourceChips(state: ChannelsUiState.Content, onSelected: (ChannelSource) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(state.sourceEntries(), key = { it.source.itemKey() }) { entry ->
+            FilterChip(
+                selected = entry.source == state.source,
+                onClick = { onSelected(entry.source) },
+                label = { Text(sourceLabel(entry), maxLines = 1) },
+                modifier = Modifier.focusRing(shape = RoundedCornerShape(8.dp)),
+            )
+        }
+    }
+}
+
+/**
+ * TV left pane. OK selects a group (no reload while the remote scrolls past groups); Right moves into
+ * the channels, Left opens the app drawer. Coming back from the channels focus returns to the group
+ * that was focused last ([focusRestorer]); on first entry the selected group takes focus.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun GroupPane(
+    state: ChannelsUiState.Content,
+    onSelected: (ChannelSource) -> Unit,
+    takeFocus: Boolean,
+    modifier: Modifier,
+) {
+    val entries = state.sourceEntries()
+    val selectedIndex = entries.indexOfFirst { it.source == state.source }.coerceAtLeast(0)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val selectedFocus = remember { FocusRequester() }
+    if (takeFocus) LaunchedEffect(selectedFocus) { runCatching { selectedFocus.requestFocus() } }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.focusRestorer(),
+        contentPadding = PaddingValues(vertical = 8.dp),
+    ) {
+        itemsIndexed(entries, key = { _, entry -> entry.source.itemKey() }) { index, entry ->
+            val selected = entry.source == state.source
+            val shape = RoundedCornerShape(8.dp)
+            Text(
+                text = sourceLabel(entry),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .then(if (index == selectedIndex) Modifier.focusRequester(selectedFocus) else Modifier)
+                    .focusRing(shape = shape)
+                    .clip(shape)
+                    .clickable(role = Role.Tab, onClick = { onSelected(entry.source) })
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChannelPane(
+    state: ChannelsUiState.Content,
+    channels: LazyPagingItems<Channel>?,
+    actions: ChannelsActions,
+    focusChannelId: Long?,
+    modifier: Modifier,
+) {
+    if (channels == null) return
+    val refresh = channels.loadState.refresh
+    when {
+        refresh is LoadState.Error && channels.itemCount == 0 -> Column(
+            modifier = modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                stringResource(R.string.feature_channels_load_failed, refresh.error.message.orEmpty()),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(onClick = channels::retry, modifier = Modifier.focusRing()) {
+                Text(stringResource(R.string.feature_channels_retry))
+            }
+        }
+
+        refresh is LoadState.Loading && channels.itemCount == 0 -> Box(
+            modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator() }
+
+        channels.itemCount == 0 && refresh is LoadState.NotLoading && state.source.isVirtual() ->
+            VirtualGroupEmpty(state.source, modifier)
+
+        else -> ChannelCollection(state, channels, actions, focusChannelId, modifier)
+    }
+}
+
+private fun ChannelSource.isVirtual() = this == ChannelSource.Favorites || this == ChannelSource.Recent
+
+@Composable
+private fun VirtualGroupEmpty(source: ChannelSource, modifier: Modifier) {
+    val (title, message) = when (source) {
+        ChannelSource.Recent ->
+            R.string.feature_channels_recent_empty_title to
+                R.string.feature_channels_recent_empty_message
+
+        else -> R.string.feature_channels_favorites_empty_title to R.string.feature_channels_favorites_empty_message
+    }
+    EmptyState(
+        title = stringResource(title),
+        message = stringResource(message),
+        icon = if (source == ChannelSource.Recent) StreamBoxIcons.History else StreamBoxIcons.Favorites,
+        modifier = modifier.fillMaxSize(),
+    )
+}
+
+/** The channels of the selected source as a list, a grid or compact rows. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun ChannelCollection(
+    state: ChannelsUiState.Content,
+    channels: LazyPagingItems<Channel>,
+    actions: ChannelsActions,
+    focusChannelId: Long?,
+    modifier: Modifier,
+) {
+    val restoreFocus = remember { FocusRequester() }
+    if (focusChannelId != null && LocalFormFactor.current == FormFactor.Tv) {
+        LaunchedEffect(focusChannelId) { runCatching { restoreFocus.requestFocus() } }
+    }
+    val itemContent: @Composable (Channel) -> Unit = { channel ->
+        ChannelItem(
+            modifier = if (channel.id == focusChannelId) Modifier.focusRequester(restoreFocus) else Modifier,
+            channel = channel,
+            mode = state.viewMode,
+            state = ChannelItemState(
+                isFavorite = channel.key in state.favoriteKeys,
+                allowCleartext = channel.playlistId in state.cleartextPlaylists,
+            ),
+            onClick = { actions.onChannelClick(channel, state.source) },
+            onToggleFavorite = { actions.onToggleFavorite(channel) },
+        )
+    }
+    val retryRow: @Composable () -> Unit = {
+        TextButton(onClick = channels::retry, modifier = Modifier.fillMaxWidth().focusRing()) {
+            Text(stringResource(R.string.feature_channels_retry))
+        }
+    }
+    val appendFailed = channels.loadState.append is LoadState.Error
+    if (state.viewMode == ChannelViewMode.Grid) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 148.dp),
+            modifier = modifier.fillMaxSize().focusRestorer(),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 96.dp),
+        ) {
+            items(count = channels.itemCount, key = channels.itemKey { it.id }) { index ->
+                channels[index]?.let { itemContent(it) }
+            }
+            if (appendFailed) item(span = { GridItemSpan(maxLineSpan) }) { retryRow() }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize().focusRestorer(),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            items(count = channels.itemCount, key = channels.itemKey { it.id }) { index ->
+                val channel = channels[index]
+                if (channel != null) {
+                    itemContent(channel)
+                    if (state.viewMode == ChannelViewMode.List) HorizontalDivider(Modifier.padding(start = 128.dp))
+                }
+            }
+            if (appendFailed) item { retryRow() }
+        }
+    }
+}
+
+@Composable
+private fun ViewModeMenu(current: ChannelViewMode, onSelect: (ChannelViewMode) -> Unit) {
+    OptionsMenu(
+        icon = current.icon(),
+        description = stringResource(R.string.feature_channels_view),
+        options = ChannelViewMode.entries,
+        selected = current,
+        label = { stringResource(it.labelRes()) },
+        onSelect = onSelect,
+    )
+}
+
+@Composable
+private fun SortMenu(current: ChannelSortOrder, onSelect: (ChannelSortOrder) -> Unit) {
+    OptionsMenu(
+        icon = StreamBoxIcons.Sort,
+        description = stringResource(R.string.feature_channels_sort),
+        options = ChannelSortOrder.entries,
+        selected = current,
+        label = { stringResource(it.labelRes()) },
+        onSelect = onSelect,
+    )
+}
+
+/** Top-bar button with a single-choice dropdown (works with touch and D-pad). */
+@Composable
+private fun <T> OptionsMenu(
+    @DrawableRes icon: Int,
+    description: String,
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.focusRing()) {
+            Icon(painterResource(icon), contentDescription = description)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(label(option)) },
+                    leadingIcon = { RadioButton(selected = option == selected, onClick = null) },
+                    onClick = {
+                        open = false
+                        onSelect(option)
+                    },
+                    modifier = Modifier.focusRing(),
+                )
+            }
+        }
+    }
+}
+
+@DrawableRes
+private fun ChannelViewMode.icon(): Int = when (this) {
+    ChannelViewMode.List -> StreamBoxIcons.Playlists
+    ChannelViewMode.Grid -> StreamBoxIcons.GridView
+    ChannelViewMode.Compact -> StreamBoxIcons.CompactView
+}
+
+private fun ChannelViewMode.labelRes(): Int = when (this) {
+    ChannelViewMode.List -> R.string.feature_channels_view_list
+    ChannelViewMode.Grid -> R.string.feature_channels_view_grid
+    ChannelViewMode.Compact -> R.string.feature_channels_view_compact
+}
+
+private fun ChannelSortOrder.labelRes(): Int = when (this) {
+    ChannelSortOrder.Default -> R.string.feature_channels_sort_default
+    ChannelSortOrder.Name -> R.string.feature_channels_sort_name
+    ChannelSortOrder.Number -> R.string.feature_channels_sort_number
+    ChannelSortOrder.Custom -> R.string.feature_channels_sort_custom
 }
 
 /** The primary call to action of a fresh install: a real, focusable button (not a decorative icon). */
@@ -201,154 +563,10 @@ private fun NoPlaylistsContent(onAddPlaylist: () -> Unit, modifier: Modifier = M
     }
 }
 
-@Composable
-private fun GroupChips(
-    groups: List<ChannelGroupSummary>,
-    totalChannels: Int,
-    selectedGroup: String?,
-    onGroupSelected: (String?) -> Unit,
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(key = "__all__") {
-            GroupChip(
-                label = stringResource(R.string.feature_channels_group_all, totalChannels),
-                selected = selectedGroup == null,
-                onClick = { onGroupSelected(null) },
-            )
-        }
-        items(groups, key = { "g:" + it.name }) { group ->
-            GroupChip(
-                label = stringResource(
-                    R.string.feature_channels_group_label,
-                    group.name.ifBlank { stringResource(R.string.feature_channels_group_ungrouped) },
-                    group.channelCount,
-                ),
-                selected = selectedGroup == group.name,
-                onClick = { onGroupSelected(group.name) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun GroupChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label, maxLines = 1) },
-        modifier = Modifier.focusRing(shape = RoundedCornerShape(8.dp)),
-    )
-}
-
-@Composable
-private fun ChannelList(
-    channels: LazyPagingItems<Channel>,
-    cleartextPlaylists: Set<Long>,
-    onChannelClick: (Long) -> Unit,
-) {
-    val refresh = channels.loadState.refresh
-    when {
-        refresh is LoadState.Error && channels.itemCount == 0 -> Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                stringResource(R.string.feature_channels_load_failed, refresh.error.message.orEmpty()),
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = channels::retry, modifier = Modifier.focusRing()) {
-                Text(stringResource(R.string.feature_channels_retry))
-            }
-        }
-
-        refresh is LoadState.Loading && channels.itemCount == 0 -> Box(
-            Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) { CircularProgressIndicator() }
-
-        else -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 96.dp),
-        ) {
-            items(count = channels.itemCount, key = channels.itemKey { it.id }) { index ->
-                val channel = channels[index]
-                if (channel != null) {
-                    ChannelRow(
-                        channel,
-                        allowCleartext = channel.playlistId in cleartextPlaylists,
-                        onClick = { onChannelClick(channel.id) },
-                    )
-                    HorizontalDivider(Modifier.padding(start = 128.dp))
-                }
-            }
-            if (channels.loadState.append is LoadState.Error) {
-                item {
-                    TextButton(
-                        onClick = channels::retry,
-                        modifier = Modifier.fillMaxWidth().focusRing(),
-                    ) { Text(stringResource(R.string.feature_channels_retry)) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChannelRow(channel: Channel, allowCleartext: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRing(shape = RoundedCornerShape(8.dp))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = channel.displayNumber.takeIf { it > 0 }?.toString().orEmpty(),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(40.dp),
-        )
-        Spacer(Modifier.width(16.dp))
-        ChannelLogo(channel, allowCleartext)
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = channel.name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-internal fun FavoritesScreen(modifier: Modifier = Modifier) {
-    EmptyState(
-        title = stringResource(R.string.feature_channels_favorites_empty_title),
-        message = stringResource(R.string.feature_channels_favorites_empty_message),
-        icon = StreamBoxIcons.Favorites,
-        modifier = modifier,
-    )
-}
-
 @Preview
 @Composable
 private fun ChannelsEmptyPreview() {
     StreamBoxTheme {
-        ChannelsScreen(
-            state = ChannelsUiState.NoPlaylists,
-            channels = null,
-            onGroupSelected = {},
-            onAddPlaylist = {},
-            onManagePlaylists = {},
-            onChannelClick = {},
-        )
+        ChannelsScreen(state = ChannelsUiState.NoPlaylists, channels = null, actions = ChannelsActions())
     }
 }

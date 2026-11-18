@@ -10,7 +10,10 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
+import com.streambox.player.core.model.BrowseSettings
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.LastPlayedChannel
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.PlaybackSettings
@@ -41,6 +44,10 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
             themeMode = prefs[Keys.THEME_MODE].toThemeMode(),
             useDynamicColor = prefs[Keys.DYNAMIC_COLOR] ?: false,
             playback = prefs.toPlaybackSettings(),
+            browse = BrowseSettings(
+                viewMode = prefs[Keys.CHANNEL_VIEW_MODE].toEnum(BrowseSettings().viewMode),
+                sortOrder = prefs[Keys.CHANNEL_SORT_ORDER].toEnum(BrowseSettings().sortOrder),
+            ),
         )
     }.distinctUntilChanged()
 
@@ -116,6 +123,14 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.AUTO_PLAY_NEXT] = enabled }
     }
 
+    suspend fun setChannelViewMode(mode: ChannelViewMode) {
+        dataStore.edit { it[Keys.CHANNEL_VIEW_MODE] = mode.name }
+    }
+
+    suspend fun setChannelSortOrder(order: ChannelSortOrder) {
+        dataStore.edit { it[Keys.CHANNEL_SORT_ORDER] = order.name }
+    }
+
     suspend fun setLastPlayedChannel(channel: LastPlayedChannel) {
         dataStore.edit {
             it[Keys.LAST_PLAYLIST_ID] = channel.playlistId
@@ -187,6 +202,8 @@ class SettingsDataSource @Inject constructor(private val dataStore: DataStore<Pr
         val AUTO_PLAY_NEXT = booleanPreferencesKey("playback_auto_play_next")
         val LAST_PLAYLIST_ID = longPreferencesKey("last_played_playlist_id")
         val LAST_CHANNEL_KEY = stringPreferencesKey("last_played_channel_key")
+        val CHANNEL_VIEW_MODE = stringPreferencesKey("browse_channel_view_mode")
+        val CHANNEL_SORT_ORDER = stringPreferencesKey("browse_channel_sort_order")
 
         /** P2b: channel row id (invalid after a refresh); only removed, never read. */
         val LEGACY_LAST_CHANNEL_ID = longPreferencesKey("last_played_channel_id")

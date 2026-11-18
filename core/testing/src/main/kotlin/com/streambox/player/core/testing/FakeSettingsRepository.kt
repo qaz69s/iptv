@@ -4,6 +4,8 @@ import com.streambox.player.core.domain.repository.SettingsRepository
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.PlaybackSettings
 import com.streambox.player.core.model.SubtitleStyle
@@ -52,6 +54,12 @@ class FakeSettingsRepository(
         updatePlayback { it.copy(resumeLastChannel = enabled) }
 
     override suspend fun setAutoPlayNext(enabled: Boolean) = updatePlayback { it.copy(autoPlayNext = enabled) }
+
+    override suspend fun setChannelViewMode(mode: ChannelViewMode) =
+        settingsFlow.update { it.copy(browse = it.browse.copy(viewMode = mode)) }
+
+    override suspend fun setChannelSortOrder(order: ChannelSortOrder) =
+        settingsFlow.update { it.copy(browse = it.browse.copy(sortOrder = order)) }
 
     private fun updatePlayback(transform: (PlaybackSettings) -> PlaybackSettings) =
         settingsFlow.update { it.copy(playback = transform(it.playback)) }

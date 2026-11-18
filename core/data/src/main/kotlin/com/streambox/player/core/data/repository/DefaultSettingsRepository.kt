@@ -5,6 +5,8 @@ import com.streambox.player.core.domain.repository.SettingsRepository
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
@@ -40,6 +42,10 @@ internal class DefaultSettingsRepository @Inject constructor(private val dataSou
     override suspend fun setResumeLastChannel(enabled: Boolean) = dataSource.setResumeLastChannel(enabled)
 
     override suspend fun setAutoPlayNext(enabled: Boolean) = dataSource.setAutoPlayNext(enabled)
+
+    override suspend fun setChannelViewMode(mode: ChannelViewMode) = dataSource.setChannelViewMode(mode)
+
+    override suspend fun setChannelSortOrder(order: ChannelSortOrder) = dataSource.setChannelSortOrder(order)
 
     override suspend fun markWelcomeSeen() = dataSource.markWelcomeSeen()
 

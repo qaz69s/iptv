@@ -78,6 +78,8 @@ internal data class PlayerPanelActions(
     val onPictureInPicture: () -> Unit = {},
     /** Minutes, or null to turn the sleep timer off. */
     val onSleepTimer: (Int?) -> Unit = {},
+    /** Add the channel to the favorites or remove it (P3b). */
+    val onToggleFavorite: () -> Unit = {},
 )
 
 /** Touch: modal bottom sheet. TV: focusable side panel in a dialog; Menu or Back closes it. */
@@ -132,6 +134,21 @@ private fun PanelContent(state: PlayerUiState, actions: PlayerPanelActions, firs
         }
         // First section, so TV focus lands on it; the remaining time updates every second.
         item(key = "sleep") { SleepTimerSection(state.sleepTimer, actions.onSleepTimer, firstFocus) }
+        if (state.channel != null) {
+            item(key = "favorite") {
+                ActionRow(
+                    label = stringResource(
+                        if (state.isFavorite) {
+                            R.string.feature_player_favorite_remove
+                        } else {
+                            R.string.feature_player_favorite_add
+                        },
+                    ),
+                    icon = if (state.isFavorite) StreamBoxIcons.Favorites else StreamBoxIcons.StarOutline,
+                    onClick = actions.onToggleFavorite,
+                )
+            }
+        }
         if (pipSupported && state.pictureInPictureEnabled) {
             item(key = "pip") {
                 ActionRow(

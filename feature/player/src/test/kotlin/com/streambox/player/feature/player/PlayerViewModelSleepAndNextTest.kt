@@ -2,6 +2,7 @@ package com.streambox.player.feature.player
 
 import androidx.lifecycle.SavedStateHandle
 import com.streambox.player.core.domain.usecase.RecordPlaybackStartUseCase
+import com.streambox.player.core.domain.usecase.ToggleFavoriteUseCase
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.ChannelKey
 import com.streambox.player.core.model.LastPlayedChannel
@@ -11,6 +12,7 @@ import com.streambox.player.core.player.sleep.MonotonicClock
 import com.streambox.player.core.player.sleep.SleepTimer
 import com.streambox.player.core.testing.FakeChannelRepository
 import com.streambox.player.core.testing.FakeChannelRepository.Companion.channel
+import com.streambox.player.core.testing.FakeFavoritesRepository
 import com.streambox.player.core.testing.FakeLastChannelRepository
 import com.streambox.player.core.testing.FakeSettingsRepository
 import com.streambox.player.core.testing.FakeWatchHistoryRepository
@@ -59,6 +61,9 @@ class PlayerViewModelSleepAndNextTest {
         controller,
         settings,
         RecordPlaybackStartUseCase(lastChannel, history),
+        FakeFavoritesRepository(),
+        ToggleFavoriteUseCase(FakeFavoritesRepository()),
+        history,
         MonotonicClock { mainDispatcher.testDispatcher.scheduler.currentTime },
     )
 

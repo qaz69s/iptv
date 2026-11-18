@@ -25,19 +25,47 @@ data class PlaybackRow(
     val uniqueKey: String,
 )
 
-/**
- * Where a channel sits in the browse / zap order: playlist order, playlist id, the effective position
- * ([channelSort] = user order, else import order) and the import position as the final tie-breaker.
- */
-data class ChannelPositionRow(val playlistSort: Int, val playlistId: Long, val channelSort: Int, val importSort: Int)
+/** Values of the `sort` argument of [ChannelDao.pagingSource] / [ChannelDao.orderedIds]. */
+object SortCode {
+    /** Playlist order: playlist by playlist, import order inside each. */
+    const val DEFAULT = 0
+
+    /** Display name (user's name if renamed), ASCII case-insensitive, across playlists. */
+    const val NAME = 1
+
+    /** Display number: tvg-chno, else the 1-based playlist position, across playlists. */
+    const val NUMBER = 2
+
+    /** User order (`customSortOrder`, materialized from the overrides), else import order. */
+    const val CUSTOM = 3
+}
+
+private const val VISIBLE_IN_GROUP = """
+    FROM channels c
+    INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
+    WHERE p.enabled = 1 AND c.hidden = 0
+      AND (:groupName IS NULL OR c.groupId IN
+           (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
+"""
+
+/** Ties always fall back to playlist order, then import order, so every order is total and stable. */
+private const val ORDER_BY_SORT = """
+    ORDER BY
+        CASE WHEN :sort = 1 THEN COALESCE(c.customName, c.name) END COLLATE NOCASE,
+        CASE WHEN :sort = 2 THEN COALESCE(c.number, c.sortOrder + 1) END,
+        p.sortOrder, c.playlistId,
+        CASE WHEN :sort = 3 THEN COALESCE(c.customSortOrder, c.sortOrder) END,
+        c.sortOrder
+"""
 
 /**
  * Every read joins `playlists` on `generation = activeGeneration`, so rows of an import that is still
  * running (or failed) are never visible.
  *
  * Schema v2: user overrides are materialized into the rows (see [OverrideDao]), so reads use
- * `c.hidden` / `g.hidden`, the display name `COALESCE(customName, name)` and the effective order
- * `COALESCE(customSortOrder, sortOrder)` with the import order as tie-breaker. Groups are matched by
+ * `c.hidden` / `g.hidden` and the display name `COALESCE(customName, name)`. Channel order (P3b) is
+ * chosen per query ([SortCode]); the user's own order `COALESCE(customSortOrder, sortOrder)` is
+ * [SortCode.CUSTOM]. Groups are matched by
  * their display name, which is also what [observeGroups] returns.
  */
 @Dao
@@ -96,17 +124,13 @@ interface ChannelDao {
     )
     fun observeChannelCount(): Flow<Int>
 
-    @Query(
-        """
-        SELECT c.* FROM channels c
-        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
-        WHERE p.enabled = 1 AND c.hidden = 0
-          AND (:groupName IS NULL OR c.groupId IN
-               (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
-        ORDER BY p.sortOrder, c.playlistId, COALESCE(c.customSortOrder, c.sortOrder), c.sortOrder
-        """,
-    )
-    fun pagingSource(groupName: String?): PagingSource<Int, ChannelEntity>
+    /** Visible channels of [groupName] (null = all) in the order chosen by [sort] (a [SortCode]). */
+    @Query("SELECT c.* $VISIBLE_IN_GROUP $ORDER_BY_SORT")
+    fun pagingSource(groupName: String?, sort: Int): PagingSource<Int, ChannelEntity>
+
+    /** Ids of [pagingSource]'s rows in the same order: the zap order of a group or of all channels. */
+    @Query("SELECT c.id $VISIBLE_IN_GROUP $ORDER_BY_SORT")
+    suspend fun orderedIds(groupName: String?, sort: Int): List<Long>
 
     @Query(
         """
@@ -123,85 +147,6 @@ interface ChannelDao {
     )
     suspend fun playbackRow(channelId: Long): PlaybackRow?
 
-    @Query(
-        """
-        SELECT p.sortOrder AS playlistSort, c.playlistId AS playlistId,
-            COALESCE(c.customSortOrder, c.sortOrder) AS channelSort, c.sortOrder AS importSort
-        FROM channels c INNER JOIN playlists p ON p.id = c.playlistId WHERE c.id = :channelId
-        """,
-    )
-    suspend fun position(channelId: Long): ChannelPositionRow?
-
-    @Query(
-        """
-        SELECT c.id FROM channels c
-        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
-        WHERE p.enabled = 1 AND c.hidden = 0
-          AND (:groupName IS NULL OR c.groupId IN
-               (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
-          AND (p.sortOrder > :playlistSort OR (p.sortOrder = :playlistSort AND
-               (c.playlistId > :playlistId OR (c.playlistId = :playlistId AND
-                 (COALESCE(c.customSortOrder, c.sortOrder) > :channelSort OR
-                  (COALESCE(c.customSortOrder, c.sortOrder) = :channelSort AND c.sortOrder > :importSort))))))
-        ORDER BY p.sortOrder, c.playlistId, COALESCE(c.customSortOrder, c.sortOrder), c.sortOrder LIMIT 1
-        """,
-    )
-    suspend fun nextAfter(
-        groupName: String?,
-        playlistSort: Int,
-        playlistId: Long,
-        channelSort: Int,
-        importSort: Int,
-    ): Long?
-
-    @Query(
-        """
-        SELECT c.id FROM channels c
-        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
-        WHERE p.enabled = 1 AND c.hidden = 0
-          AND (:groupName IS NULL OR c.groupId IN
-               (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
-          AND (p.sortOrder < :playlistSort OR (p.sortOrder = :playlistSort AND
-               (c.playlistId < :playlistId OR (c.playlistId = :playlistId AND
-                 (COALESCE(c.customSortOrder, c.sortOrder) < :channelSort OR
-                  (COALESCE(c.customSortOrder, c.sortOrder) = :channelSort AND c.sortOrder < :importSort))))))
-        ORDER BY p.sortOrder DESC, c.playlistId DESC, COALESCE(c.customSortOrder, c.sortOrder) DESC, c.sortOrder DESC
-        LIMIT 1
-        """,
-    )
-    suspend fun previousBefore(
-        groupName: String?,
-        playlistSort: Int,
-        playlistId: Long,
-        channelSort: Int,
-        importSort: Int,
-    ): Long?
-
-    @Query(
-        """
-        SELECT c.id FROM channels c
-        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
-        WHERE p.enabled = 1 AND c.hidden = 0
-          AND (:groupName IS NULL OR c.groupId IN
-               (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
-        ORDER BY p.sortOrder, c.playlistId, COALESCE(c.customSortOrder, c.sortOrder), c.sortOrder LIMIT 1
-        """,
-    )
-    suspend fun first(groupName: String?): Long?
-
-    @Query(
-        """
-        SELECT c.id FROM channels c
-        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
-        WHERE p.enabled = 1 AND c.hidden = 0
-          AND (:groupName IS NULL OR c.groupId IN
-               (SELECT g.id FROM channel_groups g WHERE COALESCE(g.customName, g.name) = :groupName))
-        ORDER BY p.sortOrder DESC, c.playlistId DESC, COALESCE(c.customSortOrder, c.sortOrder) DESC, c.sortOrder DESC
-        LIMIT 1
-        """,
-    )
-    suspend fun last(groupName: String?): Long?
-
     /** Display number = tvg-chno, else 1-based playlist position; explicit numbers win over positions. */
     @Query(
         """
@@ -217,6 +162,39 @@ interface ChannelDao {
         """,
     )
     suspend fun idByNumber(number: Int, groupName: String?): Long?
+
+    /**
+     * Search (P3b): channels whose name / tvg-name matches the FTS4 expression [match] (word prefixes),
+     * whose user-given name contains the LIKE pattern [like], or, when [substring] is 1, whose name
+     * contains it (CJK names have no word breaks for the simple tokenizer). [like] escapes with '\'.
+     */
+    @Query(
+        """
+        SELECT c.* FROM channels c
+        INNER JOIN playlists p ON p.id = c.playlistId AND c.generation = p.activeGeneration
+        WHERE p.enabled = 1 AND c.hidden = 0
+          AND (c.id IN (SELECT rowid FROM channels_fts WHERE channels_fts MATCH :match)
+               OR c.customName LIKE :like ESCAPE '\'
+               OR (:substring = 1 AND c.name LIKE :like ESCAPE '\'))
+        ORDER BY p.sortOrder, c.playlistId, c.sortOrder
+        LIMIT :limit
+        """,
+    )
+    suspend fun search(match: String, like: String, substring: Int, limit: Int): List<ChannelEntity>
+
+    /** Groups whose display name contains the LIKE pattern [like] (escaped with '\'), as [observeGroups]. */
+    @Query(
+        """
+        SELECT COALESCE(g.customName, g.name) AS name, SUM(g.channelCount) AS channelCount
+        FROM channel_groups g INNER JOIN playlists p ON p.id = g.playlistId AND g.generation = p.activeGeneration
+        WHERE p.enabled = 1 AND g.hidden = 0 AND g.channelCount > 0
+          AND COALESCE(g.customName, g.name) LIKE :like ESCAPE '\'
+        GROUP BY COALESCE(g.customName, g.name)
+        ORDER BY MIN(p.sortOrder * 1000000 + COALESCE(g.customSortOrder, g.sortOrder))
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchGroups(like: String, limit: Int): List<GroupSummaryRow>
 
     /** Current-generation id of the channel with this stable key, in an enabled playlist; null when gone. */
     @Query(

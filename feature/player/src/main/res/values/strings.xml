@@ -57,4 +57,6 @@
     <string name="feature_player_sleep_custom_title">Custom sleep timer</string>
     <string name="feature_player_sleep_custom_label">Minutes</string>
     <string name="feature_player_sleep_custom_hint">%1$d–%2$d minutes</string>
+    <string name="feature_player_favorite_add">Add to favorites</string>
+    <string name="feature_player_favorite_remove">Remove from favorites</string>
 </resources>

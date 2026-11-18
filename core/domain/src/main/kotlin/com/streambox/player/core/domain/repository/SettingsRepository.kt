@@ -3,6 +3,8 @@ package com.streambox.player.core.domain.repository
 import com.streambox.player.core.model.AppSettings
 import com.streambox.player.core.model.AspectRatioMode
 import com.streambox.player.core.model.BufferProfile
+import com.streambox.player.core.model.ChannelSortOrder
+import com.streambox.player.core.model.ChannelViewMode
 import com.streambox.player.core.model.OnboardingState
 import com.streambox.player.core.model.SubtitleStyle
 import com.streambox.player.core.model.ThemeMode
@@ -37,6 +39,10 @@ interface SettingsRepository {
     suspend fun setResumeLastChannel(enabled: Boolean)
 
     suspend fun setAutoPlayNext(enabled: Boolean)
+
+    suspend fun setChannelViewMode(mode: ChannelViewMode)
+
+    suspend fun setChannelSortOrder(order: ChannelSortOrder)
 
     suspend fun markWelcomeSeen()
 

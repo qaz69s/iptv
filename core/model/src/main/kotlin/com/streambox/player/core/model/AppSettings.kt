@@ -9,6 +9,8 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val useDynamicColor: Boolean = false,
     val playback: PlaybackSettings = PlaybackSettings(),
+    /** Channel browser view and sort order (P3b). */
+    val browse: BrowseSettings = BrowseSettings(),
 )
 
 /** First-launch flow progress. Content is never preloaded; the app starts empty. */
