@@ -63,7 +63,7 @@ class GroupEditorViewModel @Inject constructor(
 
     fun move(channel: EditorChannel, up: Boolean) {
         val channels = (uiState.value as? GroupEditorUiState.Loaded)?.channels ?: return
-        val moved = channels.movedOrNull(channels.indexOf(channel), up) ?: return
+        val moved = channels.movedOrNull(channels.indexOfFirst { it.key == channel.key }, up) ?: return
         viewModelScope.launch {
             overrides.reorderChannels(playlistId, moved.map { it.key.uniqueKey })
             settings.setChannelSortOrder(ChannelSortOrder.Custom)

@@ -58,7 +58,7 @@ class PlaylistEditorViewModel @Inject constructor(
 
     fun move(group: EditorGroup, up: Boolean) {
         val groups = (uiState.value as? PlaylistEditorUiState.Loaded)?.groups ?: return
-        val moved = groups.movedOrNull(groups.indexOf(group), up) ?: return
+        val moved = groups.movedOrNull(groups.indexOfFirst { it.name == group.name }, up) ?: return
         viewModelScope.launch { overrides.reorderGroups(playlistId, moved.map { it.name }) }
     }
 
