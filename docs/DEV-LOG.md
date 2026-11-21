@@ -8,6 +8,11 @@
 
 ---
 
+## 2026-11-21 16:10 · P4 计划提交
+- **用户**：16:08「继续开发，记得做好文档记录交接」——视为放行 P3c（真机验收仍待做）。
+- **内容**：P4 拆为 P4a（XMLTV 解析 + Room v4 + 匹配 + 偏移 / 保留）、P4b（当前 / 下一节目、覆盖层、节目列表 / 详情、按节目名搜索、手动匹配、EPG 设置）、P4c（网格 EPG + 提醒 + WorkManager）。完整计划与 6 个待确认问题写在 `docs/DEVELOPMENT-STATUS.md` 的 P4 节。
+- **下一步**：等用户回答 → 记入用户决定 → 开工 P4a。尚无代码改动。
+
 ## 2026-11-21 · P3c part 2 收尾：CI 修复与阶段报告
 - **提交**：`8bf3e37`（detekt：`EditorRowActions` 移到独立文件）、`c810d98`（编辑器上移 / 下移按名称 / 频道键定位行；原先 `indexOf` 按对象相等，已隐藏或已重命名的行无法移动，由 `EditorViewModelsTest` 发现）。**CI run 44875405245 全绿**。
 - **内容**：写 `docs/phase-reports/P3c.md`，更新 DEVELOPMENT-STATUS / README / AGENTS / implementation-plan。
