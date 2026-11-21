@@ -1,7 +1,6 @@
 package com.streambox.player.feature.playlist
 
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,18 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.streambox.player.core.designsystem.component.focusRing
 import com.streambox.player.core.designsystem.icon.StreamBoxIcons
-
-/** Optional buttons of an [EditorRow]; a null callback hides the button. */
-internal data class EditorRowActions(
-    val onToggleVisible: (() -> Unit)? = null,
-    val onRename: (() -> Unit)? = null,
-    val onMoveUp: (() -> Unit)? = null,
-    val onMoveDown: (() -> Unit)? = null,
-    val onDelete: (() -> Unit)? = null,
-    @StringRes val deleteLabel: Int = R.string.feature_playlist_delete,
-    /** Click / OK on the text part (e.g. open a group's channels). */
-    val onOpen: (() -> Unit)? = null,
-)
 
 /**
  * One row of the list editors (P3c). Hidden items are drawn greyed out (user decision 2). Every
