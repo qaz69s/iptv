@@ -8,6 +8,11 @@
 
 ---
 
+## 2026-11-21 · P3c part 2 收尾：CI 修复与阶段报告
+- **提交**：`8bf3e37`（detekt：`EditorRowActions` 移到独立文件）、`c810d98`（编辑器上移 / 下移按名称 / 频道键定位行；原先 `indexOf` 按对象相等，已隐藏或已重命名的行无法移动，由 `EditorViewModelsTest` 发现）。**CI run 44875405245 全绿**。
+- **内容**：写 `docs/phase-reports/P3c.md`，更新 DEVELOPMENT-STATUS / README / AGENTS / implementation-plan。
+- **下一步**：交付 debug APK（CI artifact）与源码 zip，等用户确认 P3c 后提 P4 EPG 计划。
+
 ## 2026-11-18 · P3c part 1：数据层（Room v3 自定义分组、播放列表启用 / 排序、编辑器查询）
 - **状态**：已推送，等 CI。
 - **用户决定**：P3c 7 项决定见 `docs/DEVELOPMENT-STATUS.md` 第 0 节；用户在真机上确认 K26 已解决后要求「按开发文档继续开发，并记录开发记录以便交接」。

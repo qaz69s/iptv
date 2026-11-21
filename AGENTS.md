@@ -7,7 +7,7 @@
 **StreamBox Player**（`com.streambox.player`）：一款 Android IPTV **纯播放器**，功能对标 Televizo，覆盖手机 / 平板 / Android TV（同一个 APK）。
 - **不内置、不预置任何频道源或内容**。首次启动是空状态，用户自己添加 M3U / M3U8 / Xtream Codes 播放列表和 XMLTV 节目单。
 - 技术栈：Kotlin 2.4 · Jetpack Compose（Material 3）+ Compose for TV · Hilt · Room + Paging · DataStore · OkHttp · Media3 ExoPlayer · Coil 3 · 多模块 Clean Architecture。
-- 当前进度：**P0、P1、P2（P2a + P2b）、P3a（数据层）、P3b（界面）已完成，均未经真机验收**；**P3c（列表编辑器）已获用户确认**；当前先修真机 bug K26（有画面无声音），再做 P3c。GitHub CI 已全绿（2026-11-18，P3b `d73695e`，run 44261053492）。 详见 `docs/DEVELOPMENT-STATUS.md`。
+- 当前进度：**P0、P1、P2（P2a + P2b）、P3a、P3b、P3c（列表编辑器，Room v3）已完成，均未经真机验收**（K26 音频修复用户已真机确认）。GitHub CI 已全绿（2026-11-21，`c810d98`，run 44875405245）。**下一步：等用户确认 P3c，再提 P4（EPG）计划。** 详见 `docs/DEVELOPMENT-STATUS.md` 与 `docs/DEV-LOG.md`。
 - GitHub：`https://github.com/qaz69s/iptv`，分支 `main`，push 触发 GitHub Actions CI。
 
 ## 2. 阅读顺序
@@ -70,7 +70,7 @@ core:model    (JVM) 纯数据类（AppSettings、PlaybackSettings、Playlist、C
 core:domain   (JVM) 仓库接口 + UseCase；feature 只依赖这里（paging-common）
 core:parser   (JVM) M3U 流式解析器（P4 的 XMLTV 解析器也放这里）
 core:network  (JVM) OkHttp、PlaylistDownloader、CleartextGuardInterceptor
-core:database       Room（schema 导出在 core/database/schemas/，当前 version 2）；单测用 Robolectric（JUnit 4）
+core:database       Room（schema 导出在 core/database/schemas/，当前 version 3）；单测用 Robolectric（JUnit 4）
 core:datastore      DataStore Preferences（SettingsDataSource）
 core:data           仓库实现、导入管线、Hilt 绑定
 core:player         PlaybackController 单例（Media3）、重连、缓冲、解码回退、MediaSessionService、睡眠定时
