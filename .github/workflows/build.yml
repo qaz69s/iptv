@@ -50,15 +50,14 @@ jobs:
             echo "Release signing: debug key"
           fi
 
-      - name: Build debug + release APK
-        run: gradle assembleDebug assembleRelease --stacktrace
+      - name: Build release APK
+        run: gradle assembleRelease --stacktrace
 
-      - name: Rename APKs
+      - name: Rename APK
         run: |
           mkdir -p dist
-          SHA=$(git rev-parse --short HEAD)
-          cp app/build/outputs/apk/debug/*.apk   "dist/StreamDeckPlayer-debug-$SHA.apk"
-          cp app/build/outputs/apk/release/*.apk "dist/StreamDeckPlayer-release-$SHA.apk"
+          VER=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          cp app/build/outputs/apk/release/*.apk "dist/StreamDeckPlayer-${VER}-$(git rev-parse --short HEAD).apk"
           ls -la dist
 
       - uses: actions/upload-artifact@v4

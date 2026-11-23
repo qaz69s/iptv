@@ -35,7 +35,8 @@ junit5 = "5.11.4"
 mockk = "1.13.13"
 turbine = "1.2.0"
 detekt = "1.23.7"
-ktlint = "12.1.2"
+ktlint = "13.1.0"
+ktlintEngine = "1.5.0"
 
 [libraries]
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
