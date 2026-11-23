@@ -68,4 +68,8 @@
     <string name="group_info">%1$d channels · ▲▼ to zap</string>
     <string name="next_at">Next %1$s</string>
     <string name="channel_list">Channels</string>
+    <string name="favorites_tab">Favorites</string>
+    <string name="previous_channel">Previous</string>
+    <string name="next_channel">Next</string>
+    <string name="close_panel">Close</string>
 </resources>

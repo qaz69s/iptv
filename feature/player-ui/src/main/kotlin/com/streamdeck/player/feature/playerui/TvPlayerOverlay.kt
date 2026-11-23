@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import com.streamdeck.player.core.database.ChannelEntity
+import com.streamdeck.player.core.database.ChannelGroupEntity
 import com.streamdeck.player.core.database.ChannelListItem
 import com.streamdeck.player.core.designsystem.ChannelLogo
 import com.streamdeck.player.core.designsystem.FocusSurface
@@ -78,6 +79,9 @@ fun BoxScope.TvPlayerOverlay(
     channel: ChannelEntity?,
     titleOverride: String?,
     groupItems: List<ChannelListItem>,
+    groups: List<ChannelGroupEntity>,
+    browseGroup: Long?,
+    onSelectGroup: (Long) -> Unit,
     program: OverlayProgram?,
     player: Player?,
     isFavorite: Boolean,
@@ -101,8 +105,11 @@ fun BoxScope.TvPlayerOverlay(
                     .background(Brush.horizontalGradient(0f to p.scrim, 0.45f to Color.Transparent))
                     .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to p.scrim)),
             ) {
-                if (titleOverride == null && groupItems.isNotEmpty()) {
-                    ZapList(channel, groupItems, onPlayChannel, Modifier.align(Alignment.TopStart).padding(start = 32.dp, top = 28.dp))
+                if (titleOverride == null && channel != null) {
+                    ZapList(
+                        channel, groupItems, groups, browseGroup, onSelectGroup, onPlayChannel,
+                        Modifier.align(Alignment.TopStart).padding(start = 32.dp, top = 28.dp),
+                    )
                 }
                 InfoBar(
                     channel, titleOverride, program, player, isFavorite, catchup, sleepLeftMs, canStartOver, primaryFocus,
@@ -114,17 +121,30 @@ fun BoxScope.TvPlayerOverlay(
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
-private fun ZapList(current: ChannelEntity?, items: List<ChannelListItem>, onPlay: (Long) -> Unit, modifier: Modifier) {
+private fun ZapList(
+    current: ChannelEntity?,
+    items: List<ChannelListItem>,
+    groups: List<ChannelGroupEntity>,
+    browseGroup: Long?,
+    onSelectGroup: (Long) -> Unit,
+    onPlay: (Long) -> Unit,
+    modifier: Modifier,
+) {
     val p = SdTheme.palette
+    val tabs = rememberGroupTabs(groups)
+    val selected = browseGroup ?: current?.groupId ?: PlayerViewModel.FAVORITES_GROUP
+    val selectedName = tabs.firstOrNull { it.id == selected }?.name ?: current?.groupName.orEmpty()
     val state = rememberLazyListState()
     val index = items.indexOfFirst { it.channel.id == current?.id }
     LaunchedEffect(index) { if (index > 1) state.scrollToItem(index - 1) }
     Column(modifier.width(360.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(current?.groupName.orEmpty(), color = p.textPrimary, style = MaterialTheme.typography.titleLarge)
+            Text(selectedName, color = p.textPrimary, style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.group_info, items.size), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp, bottom = 2.dp))
         }
+        GroupTabsRow(tabs, selected, onSelectGroup, Modifier.padding(top = 8.dp))
         LazyColumn(state = state, modifier = Modifier.padding(top = 10.dp).heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(items, key = { _, it -> it.channel.id }) { _, item ->
                 val c = item.channel

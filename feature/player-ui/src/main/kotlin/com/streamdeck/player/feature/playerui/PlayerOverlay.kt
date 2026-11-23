@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
@@ -39,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +85,10 @@ fun BoxScope.PlayerOverlay(
     onToggleFavorite: (() -> Unit)? = null,
     catchup: CatchupWindow? = null,
     onGoLive: () -> Unit = {},
+    /** Live channels in full screen (tablet / phone landscape): channel list button and previous/next zapping. */
+    onChannelList: (() -> Unit)? = null,
+    onPrevious: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
 ) {
     AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
         Row(
@@ -110,6 +119,9 @@ fun BoxScope.PlayerOverlay(
                 }
             }
             castButton()
+            onChannelList?.let { open ->
+                IconButton(onClick = open) { Icon(Icons.AutoMirrored.Filled.List, stringResource(R.string.channel_list), tint = Color.White) }
+            }
             if (!tv) IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, stringResource(R.string.player_settings), tint = Color.White) }
         }
     }
@@ -119,10 +131,28 @@ fun BoxScope.PlayerOverlay(
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))))
                 .padding(16.dp),
         ) {
+            if (onPrevious != null && onNext != null) ZapButtons(onPrevious, onNext, onInteraction)
             program?.let { ProgramBar(it) }
             catchup?.let { w -> CatchupBar(w, onGoLive) }
             player?.let { if (!it.isCurrentMediaItemLive && it.isCurrentMediaItemSeekable) VodControls(it, tv, onInteraction) }
         }
+    }
+}
+
+@Composable
+private fun ZapButtons(onPrevious: () -> Unit, onNext: () -> Unit, onInteraction: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        ZapButton(Icons.Default.SkipPrevious, stringResource(R.string.previous_channel)) { onPrevious(); onInteraction() }
+        Box(Modifier.width(48.dp))
+        ZapButton(Icons.Default.SkipNext, stringResource(R.string.next_channel)) { onNext(); onInteraction() }
+    }
+}
+
+@Composable
+private fun ZapButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = onClick, modifier = Modifier.size(52.dp)) { Icon(icon, label, tint = Color.White, modifier = Modifier.size(36.dp)) }
+        Text(label, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.labelSmall)
     }
 }
 

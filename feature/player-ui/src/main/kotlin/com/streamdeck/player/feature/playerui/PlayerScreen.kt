@@ -91,6 +91,9 @@ fun PlayerScreen(
     val vodTitle by vm.vodTitle.collectAsStateWithLifecycle()
     val groupItems by vm.groupItems.collectAsStateWithLifecycle()
     val schedule by vm.schedule.collectAsStateWithLifecycle()
+    val groups by vm.groups.collectAsStateWithLifecycle()
+    val browseGroup by vm.browseGroup.collectAsStateWithLifecycle()
+    val browseItems by vm.browseItems.collectAsStateWithLifecycle()
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // VOD keeps the full-screen layout; live channels on a portrait phone get the detail layout of design 6.
     val fullscreen = tv || inPip || landscape || vodTitle != null
@@ -108,6 +111,7 @@ fun PlayerScreen(
     var panel by remember { mutableStateOf<Set<PanelSection>?>(null) }
     var gestureHint by remember { mutableStateOf<String?>(null) }
     var forcedLandscape by rememberSaveable { mutableStateOf(false) }
+    var channelPanel by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val showOverlay: () -> Unit = { overlayVisible = true; overlayTick++ }
     val openPanel: (Set<PanelSection>) -> Unit = { panel = it }
@@ -144,6 +148,12 @@ fun PlayerScreen(
         forcedLandscape = false
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
+
+    // Registered last → wins: BACK first closes the tablet channel panel.
+    BackHandler(enabled = channelPanel) { channelPanel = false }
+    LaunchedEffect(fullscreen, vodTitle) { if (!fullscreen || vodTitle != null) channelPanel = false }
+    // The channel list always reopens on the playing channel's group.
+    LaunchedEffect(overlayVisible, channelPanel) { if (!channelPanel && !(tv && overlayVisible)) vm.browse(null) }
 
     val keyHandler = rememberUpdatedState { e: KeyEvent ->
         if (tv && overlayVisible) {
@@ -200,7 +210,10 @@ fun PlayerScreen(
                         visible = overlayVisible,
                         channel = channel,
                         titleOverride = vodTitle,
-                        groupItems = groupItems,
+                        groupItems = browseItems,
+                        groups = groups,
+                        browseGroup = browseGroup,
+                        onSelectGroup = vm::browse,
                         program = if (catchup == null) program else null,
                         player = player,
                         isFavorite = favorite,
@@ -231,10 +244,25 @@ fun PlayerScreen(
                         titleOverride = vodTitle,
                         onGoLive = vm::goLive,
                         onToggleFavorite = if (vodTitle == null) vm::toggleFavorite else null,
+                        onChannelList = if (vodTitle == null) ({ channelPanel = true }) else null,
+                        onPrevious = if (vodTitle == null) vm::previous else null,
+                        onNext = if (vodTitle == null) vm::next else null,
                     )
                 }
                 StatusLayer(state, onRetry = vm.controller::retry)
                 CenterHint(numberBuffer.ifEmpty { gestureHint })
+                if (!tv) {
+                    ChannelSidePanel(
+                        visible = channelPanel,
+                        current = channel,
+                        groups = groups,
+                        browseGroup = browseGroup,
+                        items = browseItems,
+                        onSelectGroup = vm::browse,
+                        onPlay = vm::playChannel,
+                        onClose = { channelPanel = false },
+                    )
+                }
             }
         }
     }

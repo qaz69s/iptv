@@ -12,6 +12,7 @@ import com.streamdeck.player.core.data.StreamResolver
 import com.streamdeck.player.core.data.VodRepository
 import com.streamdeck.player.core.data.Program
 import com.streamdeck.player.core.database.ChannelEntity
+import com.streamdeck.player.core.database.ChannelGroupEntity
 import com.streamdeck.player.core.database.ChannelListItem
 import com.streamdeck.player.core.datastore.AppSettings
 import com.streamdeck.player.core.datastore.AspectMode
@@ -31,6 +32,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -111,6 +114,34 @@ class PlayerViewModel @Inject constructor(
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Group the channel list (tablet side panel, TV zap list) is browsing; null = the playing channel's group. */
+    private val _browseGroup = MutableStateFlow<Long?>(null)
+    val browseGroup: StateFlow<Long?> = _browseGroup.asStateFlow()
+
+    /** Visible groups of the playing playlist for the channel-list tabs. Locked groups are hidden while locked. */
+    val groups: StateFlow<List<ChannelGroupEntity>> = _channel.map { it?.playlistId }.distinctUntilChanged().flatMapLatest { pid ->
+        if (pid == null) {
+            flowOf(emptyList())
+        } else {
+            channels.groups(pid).map { list -> if (parental.isUnlocked()) list else list.filter { !it.locked } }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Channels of the browsed group (or favourites) with now/next. */
+    val browseItems: StateFlow<List<ChannelListItem>> = combine(_channel, _browseGroup, ::Pair).flatMapLatest { (c, g) ->
+        if (c == null) {
+            flowOf(emptyList())
+        } else {
+            val source = if (g == FAVORITES_GROUP) channels.favorites(c.playlistId, BROWSE_LIMIT) else channels.groupItems(c.playlistId, g ?: c.groupId)
+            source.map { list -> if (parental.isUnlocked()) list else list.filter { !it.channel.locked && !it.groupLocked } }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Switches the channel list to [groupId] ([FAVORITES_GROUP] for favourites, null for the playing group). */
+    fun browse(groupId: Long?) {
+        _browseGroup.value = groupId
+    }
 
     /** Catch-up is possible for this finished programme (archive window of the channel). */
     fun canCatchup(p: Program, now: Long = System.currentTimeMillis()): Boolean {
@@ -304,6 +335,10 @@ class PlayerViewModel @Inject constructor(
     companion object {
         const val ARG_CHANNEL_ID = "channelId"
         const val NUMBER_TIMEOUT_MS = 2_000L
+
+        /** Pseudo group id of the favourites tab in the channel list. */
+        const val FAVORITES_GROUP = -1L
+        private const val BROWSE_LIMIT = 500
         private const val MAX_DIGITS = 5
         private const val LIVE_EDGE_MS = 15_000L
         private const val PROGRESS_SAVE_MS = 10_000L

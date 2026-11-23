@@ -68,4 +68,8 @@
     <string name="group_info">%1$d 个频道 · ▲▼ 切台</string>
     <string name="next_at">接下来 %1$s</string>
     <string name="channel_list">频道列表</string>
+    <string name="favorites_tab">收藏</string>
+    <string name="previous_channel">上一台</string>
+    <string name="next_channel">下一台</string>
+    <string name="close_panel">关闭</string>
 </resources>
