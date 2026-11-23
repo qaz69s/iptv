@@ -87,6 +87,26 @@ class ChannelsViewModel @Inject constructor(
         if (id == null) flowOf(emptyList()) else channels.groups(id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Name of the selected real group, so the chip survives a playlist refresh that re-creates groups with new ids. */
+    private var selectedGroupName: String? = null
+
+    init {
+        // A refresh or a hidden group leaves the filter pointing at a group id that no longer exists, which showed an
+        // empty list with no chip selected. Follow the group by name, or fall back to “全部”.
+        viewModelScope.launch {
+            combine(groups, filter, ::Pair).collect { (list, f) ->
+                if (f !is GroupFilter.Group || list.isEmpty()) return@collect
+                val match = list.firstOrNull { it.id == f.id }
+                if (match != null) {
+                    selectedGroupName = match.name
+                } else {
+                    val byName = selectedGroupName?.let { n -> list.firstOrNull { it.name == n } }
+                    filter.value = byName?.let { GroupFilter.Group(it.id) } ?: GroupFilter.All
+                }
+            }
+        }
+    }
+
     private val sort = settingsRepo.settings.map { it.channelSort }.distinctUntilChanged()
 
     val items: Flow<PagingData<ChannelListItem>> =
