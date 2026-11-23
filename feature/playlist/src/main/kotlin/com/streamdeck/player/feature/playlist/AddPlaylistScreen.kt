@@ -196,8 +196,10 @@ private fun TvAddForm(form: AddForm, password: String, onPassword: (String) -> U
 private fun MethodCards(form: AddForm, large: Boolean, firstFocus: FocusRequester? = null) {
     val p = SdTheme.palette
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (!large) Text(stringResource(R.string.add_method), color = p.textTertiary, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = 6.dp))
+        if (!large) {
+            Text(stringResource(R.string.add_method), color = p.textTertiary, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 6.dp))
+        }
         listOf(
             Triple(PlaylistType.M3U_URL, R.string.method_url_desc, Icons.Outlined.Link) to p.hueGreen,
             Triple(PlaylistType.M3U_FILE, R.string.method_file_desc, Icons.Outlined.FolderOpen) to p.hueAmber,
@@ -314,8 +316,12 @@ private fun FormCards(form: AddForm, password: String, onPassword: (String) -> U
                 SdTextField(
                     form.headers, { form.headers = it }, stringResource(R.string.headers_label), placeholder = stringResource(R.string.headers_placeholder),
                     singleLine = false, minLines = 3, large = large, isError = bad.isNotEmpty(),
-                    supporting = if (bad.isNotEmpty()) stringResource(R.string.headers_invalid,
-                        bad.joinToString(", ")) else stringResource(R.string.headers_hint),
+                    supporting = if (bad.isNotEmpty()) {
+                        stringResource(R.string.headers_invalid,
+                            bad.joinToString(", "))
+                    } else {
+                        stringResource(R.string.headers_hint)
+                    },
                 )
                 SdTextField(form.epg, { form.epg = it }, stringResource(R.string.epg_url), keyboardType = KeyboardType.Uri, large = large)
             }

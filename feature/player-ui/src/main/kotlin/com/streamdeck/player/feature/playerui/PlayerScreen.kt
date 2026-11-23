@@ -156,14 +156,18 @@ fun PlayerScreen(
             }
         }
     }
-    val gestures: Modifier = if (tv || inPip) Modifier else Modifier.playerGestures(
-        activity = activity,
-        controller = vm.controller,
-        onTap = { if (overlayVisible) overlayVisible = false else showOverlay() },
-        onHint = { gestureHint = it },
-        hintFormatter = HintFormatter(ctx),
-        onLiveSeek = if (vm.supportsCatchup) vm::timeshift else null,
-    )
+    val gestures: Modifier = if (tv || inPip) {
+        Modifier
+    } else {
+        Modifier.playerGestures(
+            activity = activity,
+            controller = vm.controller,
+            onTap = { if (overlayVisible) overlayVisible = false else showOverlay() },
+            onHint = { gestureHint = it },
+            hintFormatter = HintFormatter(ctx),
+            onLiveSeek = if (vm.supportsCatchup) vm::timeshift else null,
+        )
+    }
     val toggleFullscreen: () -> Unit = {
         forcedLandscape = !landscape
         activity?.requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE

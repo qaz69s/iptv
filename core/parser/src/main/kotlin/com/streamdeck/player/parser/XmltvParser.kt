@@ -53,9 +53,11 @@ class XmltvParser(
         while (true) {
             val e = p.next()
             if (e == XmlPullParser.END_DOCUMENT || (e == XmlPullParser.END_TAG && p.depth == depth)) break
-            if (e == XmlPullParser.START_TAG) when (p.name) {
-                "display-name" -> readText(p).takeIf { it.isNotBlank() }?.let(names::add)
-                "icon" -> icon = p.getAttributeValue(null, "src")
+            if (e == XmlPullParser.START_TAG) {
+                when (p.name) {
+                    "display-name" -> readText(p).takeIf { it.isNotBlank() }?.let(names::add)
+                    "icon" -> icon = p.getAttributeValue(null, "src")
+                }
             }
         }
         return if (id.isNullOrEmpty()) null else XmltvChannel(id, names, icon)
@@ -73,11 +75,13 @@ class XmltvParser(
         while (true) {
             val e = p.next()
             if (e == XmlPullParser.END_DOCUMENT || (e == XmlPullParser.END_TAG && p.depth == depth)) break
-            if (e == XmlPullParser.START_TAG) when (p.name) {
-                "title" -> readText(p).let { if (title == null && it.isNotBlank()) title = it }
-                "desc" -> readText(p).let { if (desc == null && it.isNotBlank()) desc = it }
-                "category" -> readText(p).let { if (category == null && it.isNotBlank()) category = it }
-                "icon" -> if (icon == null) icon = p.getAttributeValue(null, "src")
+            if (e == XmlPullParser.START_TAG) {
+                when (p.name) {
+                    "title" -> readText(p).let { if (title == null && it.isNotBlank()) title = it }
+                    "desc" -> readText(p).let { if (desc == null && it.isNotBlank()) desc = it }
+                    "category" -> readText(p).let { if (category == null && it.isNotBlank()) category = it }
+                    "icon" -> if (icon == null) icon = p.getAttributeValue(null, "src")
+                }
             }
         }
         if (channel.isNullOrEmpty() || start == null) return null

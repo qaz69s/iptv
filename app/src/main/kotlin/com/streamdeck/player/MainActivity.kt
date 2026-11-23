@@ -36,8 +36,11 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     @Inject lateinit var pip: PipCoordinator
+
     @Inject lateinit var controller: PlayerController
+
     @Inject lateinit var settings: SettingsRepository
+
     @Inject lateinit var deepLinks: DeepLinkBus
 
     override fun attachBaseContext(newBase: Context) {
@@ -109,8 +112,8 @@ class MainActivity : FragmentActivity() {
 
 /** Splash styles by [theme row × accent], see res/values/splash_themes.xml. */
 private val SPLASH_STYLES = intArrayOf(
-        R.style.Theme_StreamDeck_Starting_S0, R.style.Theme_StreamDeck_Starting_S1, R.style.Theme_StreamDeck_Starting_S2, R.style.Theme_StreamDeck_Starting_S3, R.style.Theme_StreamDeck_Starting_S4,
-        R.style.Theme_StreamDeck_Starting_L0, R.style.Theme_StreamDeck_Starting_L1, R.style.Theme_StreamDeck_Starting_L2, R.style.Theme_StreamDeck_Starting_L3, R.style.Theme_StreamDeck_Starting_L4,
-        R.style.Theme_StreamDeck_Starting_D0, R.style.Theme_StreamDeck_Starting_D1, R.style.Theme_StreamDeck_Starting_D2, R.style.Theme_StreamDeck_Starting_D3, R.style.Theme_StreamDeck_Starting_D4,
-        R.style.Theme_StreamDeck_Starting_A0, R.style.Theme_StreamDeck_Starting_A1, R.style.Theme_StreamDeck_Starting_A2, R.style.Theme_StreamDeck_Starting_A3, R.style.Theme_StreamDeck_Starting_A4,
+    R.style.Theme_StreamDeck_Starting_S0, R.style.Theme_StreamDeck_Starting_S1, R.style.Theme_StreamDeck_Starting_S2, R.style.Theme_StreamDeck_Starting_S3, R.style.Theme_StreamDeck_Starting_S4,
+    R.style.Theme_StreamDeck_Starting_L0, R.style.Theme_StreamDeck_Starting_L1, R.style.Theme_StreamDeck_Starting_L2, R.style.Theme_StreamDeck_Starting_L3, R.style.Theme_StreamDeck_Starting_L4,
+    R.style.Theme_StreamDeck_Starting_D0, R.style.Theme_StreamDeck_Starting_D1, R.style.Theme_StreamDeck_Starting_D2, R.style.Theme_StreamDeck_Starting_D3, R.style.Theme_StreamDeck_Starting_D4,
+    R.style.Theme_StreamDeck_Starting_A0, R.style.Theme_StreamDeck_Starting_A1, R.style.Theme_StreamDeck_Starting_A2, R.style.Theme_StreamDeck_Starting_A3, R.style.Theme_StreamDeck_Starting_A4,
 )

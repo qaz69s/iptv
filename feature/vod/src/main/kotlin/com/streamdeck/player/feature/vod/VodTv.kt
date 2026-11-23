@@ -278,8 +278,12 @@ internal fun TvVodDetail(state: DetailState, progress: Map<String, VodProgressEn
                             if (resumeTarget != null) {
                                 val pr = progress[vm.progressKey(resumeTarget)]
                                 SdButton(
-                                    if (pr.resumable()) stringResource(R.string.resume_episode, resumeTarget.season,
-                                        resumeTarget.episode) else stringResource(R.string.play_episode, resumeTarget.season, resumeTarget.episode),
+                                    if (pr.resumable()) {
+                                        stringResource(R.string.resume_episode, resumeTarget.season,
+                                            resumeTarget.episode)
+                                    } else {
+                                        stringResource(R.string.play_episode, resumeTarget.season, resumeTarget.episode)
+                                    },
                                     { onPlay(vm.episodeKey(resumeTarget)) }, Modifier.focusRequester(primary), icon = Icons.Default.PlayArrow, large = true,
                                 )
                             }

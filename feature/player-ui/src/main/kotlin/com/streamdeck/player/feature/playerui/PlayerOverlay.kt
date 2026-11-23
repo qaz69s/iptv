@@ -101,11 +101,13 @@ fun BoxScope.PlayerOverlay(
                 }
             }
             Clock()
-            if (!tv && onToggleFavorite != null) IconButton(onClick = onToggleFavorite) {
-                Icon(
-                    if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                    stringResource(if (isFavorite) R.string.unfavorite else R.string.favorite), tint = Color.White,
-                )
+            if (!tv && onToggleFavorite != null) {
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        stringResource(if (isFavorite) R.string.unfavorite else R.string.favorite), tint = Color.White,
+                    )
+                }
             }
             castButton()
             if (!tv) IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, stringResource(R.string.player_settings), tint = Color.White) }

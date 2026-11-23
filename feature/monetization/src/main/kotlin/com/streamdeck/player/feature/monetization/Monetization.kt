@@ -69,5 +69,6 @@ class NoBillingProvider @Inject constructor() : BillingProvider {
 @InstallIn(SingletonComponent::class)
 abstract class MonetizationModule {
     @Binds abstract fun ads(impl: NoAdsProvider): AdsProvider
+
     @Binds abstract fun billing(impl: NoBillingProvider): BillingProvider
 }

@@ -39,9 +39,14 @@ object DatabaseModule {
         Room.databaseBuilder(ctx, AppDatabase::class.java, "streamdeck.db").build()
 
     @Provides fun playlistDao(db: AppDatabase) = db.playlistDao()
+
     @Provides fun channelDao(db: AppDatabase) = db.channelDao()
+
     @Provides fun libraryDao(db: AppDatabase) = db.libraryDao()
+
     @Provides fun editorDao(db: AppDatabase) = db.editorDao()
+
     @Provides fun epgDao(db: AppDatabase) = db.epgDao()
+
     @Provides fun vodDao(db: AppDatabase) = db.vodDao()
 }

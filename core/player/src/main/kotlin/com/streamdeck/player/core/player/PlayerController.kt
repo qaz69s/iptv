@@ -67,6 +67,7 @@ class PlayerController @Inject constructor(
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     private val _player = MutableStateFlow<ExoPlayer?>(null)
+
     /** Current player instance; may change when decoder or buffer settings change. */
     val playerFlow: StateFlow<ExoPlayer?> = _player.asStateFlow()
 

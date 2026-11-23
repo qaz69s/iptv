@@ -173,7 +173,9 @@ class EpgRepository @Inject constructor(
     private fun open(p: PlaylistEntity, configured: String): InputStream {
         val url = if (configured == XtreamAccounts.XTREAM_EPG) {
             accounts.of(p)?.let(XtreamUrls::xmltv) ?: throw ImportException("missing Xtream credentials")
-        } else configured
+        } else {
+            configured
+        }
         val raw: InputStream = if (url.startsWith("content://") || url.startsWith("file://")) {
             ctx.contentResolver.openInputStream(Uri.parse(url)) ?: throw ImportException("cannot open file")
         } else {

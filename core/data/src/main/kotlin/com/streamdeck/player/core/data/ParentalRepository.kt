@@ -21,6 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class ParentalRepository @Inject constructor(private val settings: SettingsRepository) {
     private val policy = PinPolicy()
+
     @Volatile private var unlockedUntil = 0L
 
     val hasPin: Flow<Boolean> = settings.pin.map { it != null }

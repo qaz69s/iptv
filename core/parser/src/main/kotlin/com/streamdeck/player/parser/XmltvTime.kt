@@ -18,7 +18,9 @@ object XmltvTime {
                 g[1].toInt(), g[2].toInt(), g[3].toInt(),
                 g[4].ifEmpty { "0" }.toInt(), g[5].ifEmpty { "0" }.toInt(), g[6].ifEmpty { "0" }.toInt(),
             )
-            val offset = if (g[7].isEmpty()) ZoneOffset.UTC else {
+            val offset = if (g[7].isEmpty()) {
+                ZoneOffset.UTC
+            } else {
                 val sign = if (g[7] == "-") -1 else 1
                 ZoneOffset.ofHoursMinutes(sign * g[8].toInt(), sign * g[9].toInt())
             }

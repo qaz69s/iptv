@@ -24,14 +24,21 @@ data class GridChannel(
 @Dao
 interface EpgDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertChannels(list: List<EpgChannelEntity>)
+
     @Insert suspend fun insertPrograms(list: List<ProgramEntity>)
 
     @Query("DELETE FROM program WHERE playlistId = :pid AND pending = 1") suspend fun dropPendingPrograms(pid: Long)
+
     @Query("DELETE FROM epg_channel WHERE playlistId = :pid AND pending = 1") suspend fun dropPendingChannels(pid: Long)
+
     @Query("DELETE FROM program WHERE playlistId = :pid AND pending = 0") suspend fun deleteLivePrograms(pid: Long)
+
     @Query("DELETE FROM epg_channel WHERE playlistId = :pid AND pending = 0") suspend fun deleteLiveChannels(pid: Long)
+
     @Query("UPDATE program SET pending = 0 WHERE playlistId = :pid") suspend fun promotePrograms(pid: Long)
+
     @Query("UPDATE epg_channel SET pending = 0 WHERE playlistId = :pid") suspend fun promoteChannels(pid: Long)
+
     @Query("DELETE FROM program WHERE `end` < :before") suspend fun deleteOlderThan(before: Long)
 
     @Transaction
@@ -51,8 +58,11 @@ interface EpgDao {
     suspend fun searchChannels(pid: Long, q: String): List<EpgChannelEntity>
 
     @Query("DELETE FROM epg_mapping WHERE playlistId = :pid AND manual = 0") suspend fun clearAutoMappings(pid: Long)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertMappings(list: List<EpgMappingEntity>)
+
     @Upsert suspend fun upsertMapping(m: EpgMappingEntity)
+
     @Query("SELECT * FROM epg_mapping WHERE playlistId = :pid AND uniqueKey = :key") suspend fun mapping(pid: Long, key: String): EpgMappingEntity?
 
     @Transaction
@@ -85,11 +95,15 @@ interface EpgDao {
     @Query("SELECT * FROM program WHERE id = :id") suspend fun program(id: Long): ProgramEntity?
 
     @Insert suspend fun insertReminder(r: ReminderEntity): Long
+
     @Query("DELETE FROM reminder WHERE id = :id") suspend fun deleteReminder(id: Long)
+
     @Query("SELECT * FROM reminder WHERE id = :id") suspend fun reminder(id: Long): ReminderEntity?
+
     @Query("SELECT * FROM reminder WHERE startAt > :now ORDER BY startAt") fun upcomingReminders(now: Long): Flow<List<ReminderEntity>>
+
     @Query("SELECT * FROM reminder WHERE playlistId = :pid AND uniqueKey = :key AND startAt = :start LIMIT 1")
     suspend fun findReminder(pid: Long, key: String, start: Long): ReminderEntity?
-    @Query("DELETE FROM reminder WHERE startAt < :before") suspend fun deletePastReminders(before: Long)
 
+    @Query("DELETE FROM reminder WHERE startAt < :before") suspend fun deletePastReminders(before: Long)
 }

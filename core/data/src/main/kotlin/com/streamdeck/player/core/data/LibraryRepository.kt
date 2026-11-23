@@ -14,8 +14,11 @@ class LibraryRepository @Inject constructor(private val dao: LibraryDao) {
     fun isFavorite(c: ChannelEntity): Flow<Boolean> = dao.isFavorite(c.playlistId, c.uniqueKey)
 
     suspend fun setFavorite(c: ChannelEntity, favorite: Boolean) {
-        if (favorite) dao.addFavorite(FavoriteEntity(c.playlistId, c.uniqueKey, System.currentTimeMillis()))
-        else dao.removeFavorite(c.playlistId, c.uniqueKey)
+        if (favorite) {
+            dao.addFavorite(FavoriteEntity(c.playlistId, c.uniqueKey, System.currentTimeMillis()))
+        } else {
+            dao.removeFavorite(c.playlistId, c.uniqueKey)
+        }
     }
 
     suspend fun recordWatch(c: ChannelEntity, positionMs: Long = 0) {

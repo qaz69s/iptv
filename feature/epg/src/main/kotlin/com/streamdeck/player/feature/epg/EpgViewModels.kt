@@ -117,7 +117,9 @@ class ChannelProgramsViewModel @Inject constructor(
     init { viewModelScope.launch { _channel.value = channels.get(channelId) } }
 
     val programs: StateFlow<List<Program>?> = combine(_channel, range) { c, r -> c to r }.flatMapLatest { (c, r) ->
-        if (c == null) flowOf(null) else {
+        if (c == null) {
+            flowOf(null)
+        } else {
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
             val (from, to) = when (r) {

@@ -45,7 +45,9 @@ fun VideoSurface(player: Player?, aspect: AspectMode, style: SubtitleStyle, modi
             AspectMode.RATIO_4_3 -> Modifier.aspectRatio(4f / 3f)
             AspectMode.ORIGINAL -> if (videoSize.width > 0 && videoSize.height > 0) {
                 with(density) { Modifier.requiredSize(videoSize.width.toDp(), videoSize.height.toDp()) }
-            } else Modifier.fillMaxSize()
+            } else {
+                Modifier.fillMaxSize()
+            }
             else -> Modifier.fillMaxSize()
         }
         AndroidView(

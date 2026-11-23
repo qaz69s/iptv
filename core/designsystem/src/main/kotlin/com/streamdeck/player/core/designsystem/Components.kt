@@ -116,47 +116,47 @@ private fun StateLayout(
     val tv = rememberIsTv()
     val focus = remember { FocusRequester() }
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-    Column(
-        Modifier.verticalScroll(rememberScrollState()).padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.size(if (tv) 88.dp else 76.dp).background(tint.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(if (tv) 44.dp else 38.dp))
-        }
-        if (title != null) {
-            Text(
-                title, color = p.textPrimary, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold,
-                style = if (tv) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(top = 18.dp),
-            )
-        }
-        if (message != null) {
-            Text(
-                message, color = p.textSecondary, textAlign = TextAlign.Center,
-                style = if (tv) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = if (title != null) 8.dp else 18.dp).widthIn(max = 480.dp),
-            )
-        }
-        if (detail != null) {
-            Column(
-                Modifier.padding(top = 14.dp).widthIn(max = 520.dp).background(p.cardHigh, RoundedCornerShape(14.dp)).padding(horizontal = 16.dp,
-                    vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(stringResource(R.string.ds_reason), color = p.textTertiary, style = MaterialTheme.typography.labelMedium)
-                Text(detail, color = p.textPrimary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 2.dp))
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.size(if (tv) 88.dp else 76.dp).background(tint.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(if (tv) 44.dp else 38.dp))
             }
-        }
-        if (primary != null || secondary != null) {
-            Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (secondary != null) SdButton(secondary.first, secondary.second, style = SdButtonStyle.Secondary, large = tv)
-                if (primary != null) {
-                    SdButton(primary.first, primary.second, icon = primaryIcon, large = tv, modifier = Modifier.focusRequester(focus))
+            if (title != null) {
+                Text(
+                    title, color = p.textPrimary, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold,
+                    style = if (tv) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(top = 18.dp),
+                )
+            }
+            if (message != null) {
+                Text(
+                    message, color = p.textSecondary, textAlign = TextAlign.Center,
+                    style = if (tv) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = if (title != null) 8.dp else 18.dp).widthIn(max = 480.dp),
+                )
+            }
+            if (detail != null) {
+                Column(
+                    Modifier.padding(top = 14.dp).widthIn(max = 520.dp).background(p.cardHigh, RoundedCornerShape(14.dp)).padding(horizontal = 16.dp,
+                        vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(stringResource(R.string.ds_reason), color = p.textTertiary, style = MaterialTheme.typography.labelMedium)
+                    Text(detail, color = p.textPrimary, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 2.dp))
+                }
+            }
+            if (primary != null || secondary != null) {
+                Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (secondary != null) SdButton(secondary.first, secondary.second, style = SdButtonStyle.Secondary, large = tv)
+                    if (primary != null) {
+                        SdButton(primary.first, primary.second, icon = primaryIcon, large = tv, modifier = Modifier.focusRequester(focus))
+                    }
                 }
             }
         }
-    }
     }
     if (tv && primary != null) LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 }
@@ -193,8 +193,10 @@ fun ProgressState(
             Text(value, color = p.textPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
         }
         Text(title, color = p.textPrimary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 26.dp))
-        if (detail != null) Text(detail, color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 6.dp))
+        if (detail != null) {
+            Text(detail, color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp))
+        }
         if (cancelLabel != null && onCancel != null) {
             SdButton(cancelLabel, onCancel, style = SdButtonStyle.Secondary, large = tv, modifier = Modifier.padding(top = 26.dp).focusRequester(focus))
             if (tv) LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }

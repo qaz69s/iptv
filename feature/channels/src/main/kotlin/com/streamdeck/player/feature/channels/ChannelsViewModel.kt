@@ -64,8 +64,12 @@ class ChannelsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val counts: StateFlow<ChipCounts> = activeId.flatMapLatest { id ->
-        if (id == null) flowOf(ChipCounts()) else combine(channels.groupCounts(id), channels.favoriteCount(id)) { g, f ->
-            ChipCounts(total = g.sumOf { it.count }, favorites = f, groups = g.associate { it.groupId to it.count })
+        if (id == null) {
+            flowOf(ChipCounts())
+        } else {
+            combine(channels.groupCounts(id), channels.favoriteCount(id)) { g, f ->
+                ChipCounts(total = g.sumOf { it.count }, favorites = f, groups = g.associate { it.groupId to it.count })
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChipCounts())
 

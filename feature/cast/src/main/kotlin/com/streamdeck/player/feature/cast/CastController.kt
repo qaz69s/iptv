@@ -25,6 +25,7 @@ sealed interface CastState {
     data object Unavailable : CastState
     data object Idle : CastState
     data class Connected(val deviceName: String, val playing: Boolean) : CastState
+
     /** The stream needs custom headers the Default Media Receiver cannot send (spec §4.8). */
     data object NotCastable : CastState
 }
@@ -43,9 +44,13 @@ class CastController @Inject constructor(
 
     private val castContext: CastContext? by lazy {
         val ok = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx) == ConnectionResult.SUCCESS
-        if (!ok) null else runCatching { CastContext.getSharedInstance(ctx) }.getOrNull()?.also { c ->
-            c.sessionManager.addSessionManagerListener(listener, CastSession::class.java)
-            _state.value = c.sessionManager.currentCastSession?.let { connected(it) } ?: CastState.Idle
+        if (!ok) {
+            null
+        } else {
+            runCatching { CastContext.getSharedInstance(ctx) }.getOrNull()?.also { c ->
+                c.sessionManager.addSessionManagerListener(listener, CastSession::class.java)
+                _state.value = c.sessionManager.currentCastSession?.let { connected(it) } ?: CastState.Idle
+            }
         }
     }
 

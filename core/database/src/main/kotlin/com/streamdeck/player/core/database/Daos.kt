@@ -41,7 +41,9 @@ interface PlaylistDao {
     suspend fun get(id: Long): PlaylistEntity?
 
     @Insert suspend fun insert(p: PlaylistEntity): Long
+
     @Update suspend fun update(p: PlaylistEntity)
+
     @Update suspend fun updateAll(list: List<PlaylistEntity>)
 
     @Query("DELETE FROM playlist WHERE id = :id") suspend fun delete(id: Long)
@@ -68,6 +70,7 @@ private const val SORT =
 @Dao
 interface ChannelDao {
     @Insert suspend fun insertGroup(g: ChannelGroupEntity): Long
+
     @Insert suspend fun insertChannels(list: List<ChannelEntity>)
 
     @Query("SELECT * FROM channel_group WHERE playlistId = :pid AND pending = 0 AND hidden = 0 ORDER BY sortOrder")
@@ -181,10 +184,15 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE playlistId = :pid AND pending = 0") suspend fun liveCount(pid: Long): Int
 
     @Query("DELETE FROM channel WHERE playlistId = :pid AND pending = 1") suspend fun dropPendingChannels(pid: Long)
+
     @Query("DELETE FROM channel_group WHERE playlistId = :pid AND pending = 1") suspend fun dropPendingGroups(pid: Long)
+
     @Query("DELETE FROM channel WHERE playlistId = :pid AND pending = 0") suspend fun deleteLiveChannels(pid: Long)
+
     @Query("DELETE FROM channel_group WHERE playlistId = :pid AND pending = 0") suspend fun deleteLiveGroups(pid: Long)
+
     @Query("UPDATE channel SET pending = 0 WHERE playlistId = :pid") suspend fun promoteChannels(pid: Long)
+
     @Query("UPDATE channel_group SET pending = 0 WHERE playlistId = :pid") suspend fun promoteGroups(pid: Long)
 
     @Query(
@@ -253,14 +261,21 @@ interface ChannelDao {
 @Dao
 interface LibraryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun addFavorite(f: FavoriteEntity)
+
     @Query("DELETE FROM favorite WHERE playlistId = :pid AND uniqueKey = :key") suspend fun removeFavorite(pid: Long, key: String)
+
     @Query("SELECT EXISTS(SELECT 1 FROM favorite WHERE playlistId = :pid AND uniqueKey = :key)") fun isFavorite(pid: Long, key: String): Flow<Boolean>
+
     @Query("SELECT * FROM favorite") suspend fun allFavorites(): List<FavoriteEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertFavorites(list: List<FavoriteEntity>)
 
     @Upsert suspend fun upsertHistory(h: HistoryEntity)
+
     @Query("DELETE FROM history WHERE rowid NOT IN (SELECT rowid FROM history ORDER BY watchedAt DESC LIMIT :keep)") suspend fun trimHistory(keep: Int)
+
     @Query("DELETE FROM history") suspend fun clearHistory()
+
     @Query("SELECT COUNT(*) FROM history") fun historyCount(): Flow<Int>
 
     @Transaction
@@ -270,15 +285,26 @@ interface LibraryDao {
 @Dao
 interface EditorDao {
     @Query("SELECT * FROM channel_override WHERE playlistId = :pid AND uniqueKey = :key") suspend fun channelOverride(pid: Long, key: String): ChannelOverrideEntity?
+
     @Upsert suspend fun upsertChannelOverride(o: ChannelOverrideEntity)
+
     @Query("SELECT * FROM group_override WHERE playlistId = :pid AND name = :name") suspend fun groupOverride(pid: Long, name: String): GroupOverrideEntity?
+
     @Upsert suspend fun upsertGroupOverride(o: GroupOverrideEntity)
+
     @Query("SELECT * FROM channel_override") suspend fun allChannelOverrides(): List<ChannelOverrideEntity>
+
     @Query("SELECT * FROM group_override") suspend fun allGroupOverrides(): List<GroupOverrideEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertChannelOverrides(list: List<ChannelOverrideEntity>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertGroupOverrides(list: List<GroupOverrideEntity>)
+
     @Query("DELETE FROM channel_override WHERE playlistId = :pid") suspend fun deleteChannelOverrides(pid: Long)
+
     @Query("DELETE FROM group_override WHERE playlistId = :pid") suspend fun deleteGroupOverrides(pid: Long)
+
     @Query("DELETE FROM favorite WHERE playlistId = :pid") suspend fun deleteFavorites(pid: Long)
+
     @Query("DELETE FROM history WHERE playlistId = :pid") suspend fun deleteHistory(pid: Long)
 }

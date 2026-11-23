@@ -66,10 +66,18 @@ class VodHomeViewModel @Inject constructor(playlists: PlaylistRepository, privat
 
     private val filters = combine(activeId, category, query.debounce(300)) { id, c, q -> Triple(id, c, q) }
 
-    val movies: Flow<PagingData<VodItemEntity>> = filters.flatMapLatest { (id, c, q) -> if (id == null) emptyFlow() else vod.movies(id, c,
-        q) }.cachedIn(viewModelScope)
-    val series: Flow<PagingData<SeriesEntity>> = filters.flatMapLatest { (id, c, q) -> if (id == null) emptyFlow() else vod.series(id, c,
-        q) }.cachedIn(viewModelScope)
+    val movies: Flow<PagingData<VodItemEntity>> = filters.flatMapLatest { (id, c, q) -> if (id == null) {
+        emptyFlow()
+    } else {
+        vod.movies(id, c,
+            q)
+    } }.cachedIn(viewModelScope)
+    val series: Flow<PagingData<SeriesEntity>> = filters.flatMapLatest { (id, c, q) -> if (id == null) {
+        emptyFlow()
+    } else {
+        vod.series(id, c,
+            q)
+    } }.cachedIn(viewModelScope)
 
     val progress: StateFlow<Map<String, VodProgressEntity>> = activeId.flatMapLatest { id -> if (id == null) flowOf(emptyMap()) else vod.progress(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())

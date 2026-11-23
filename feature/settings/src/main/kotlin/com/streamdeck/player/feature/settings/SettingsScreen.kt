@@ -29,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DataUsage
@@ -273,7 +272,9 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, bottomPadding: androidx.compos
 @Composable
 private fun PlaylistCard(summary: PlaylistSummary?, onClick: () -> Unit) {
     val p = SdTheme.palette
-    val sub = if (summary == null) stringResource(R.string.no_playlist_hint) else {
+    val sub = if (summary == null) {
+        stringResource(R.string.no_playlist_hint)
+    } else {
         val updated = if (summary.lastUpdated > 0) DateUtils.getRelativeTimeSpanString(summary.lastUpdated, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString() else stringResource(R.string.never_updated)
         stringResource(R.string.playlist_summary, summary.name, summary.channels, updated)
     }

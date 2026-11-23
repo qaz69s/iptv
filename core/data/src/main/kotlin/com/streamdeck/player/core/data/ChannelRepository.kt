@@ -63,6 +63,7 @@ class ChannelRepository @Inject constructor(private val dao: ChannelDao, private
 
     suspend fun get(id: Long) = dao.get(id)
     suspend fun group(id: Long) = dao.group(id)
+
     /** Zapping skips locked channels unless the parental PIN was entered recently (spec §4.7). */
     suspend fun next(c: ChannelEntity, includeLocked: Boolean = false) = dao.next(c.playlistId, c.sortOrder, includeLocked)
     suspend fun previous(c: ChannelEntity, includeLocked: Boolean = false) = dao.previous(c.playlistId, c.sortOrder, includeLocked)

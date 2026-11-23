@@ -98,16 +98,18 @@ fun PlayerSettingsDialog(
                     trackItems(menu, player)
                 }
                 if (PanelSection.TEXT in sections) item(key = "sub_add") { Option(stringResource(R.string.load_subtitle), false) { picker.launch(arrayOf("application/x-subrip", "text/vtt", "text/plain", "*/*")) } }
-                if (PanelSection.TEXT in sections) item(key = "sub_style") {
-                    Column {
-                    Header(stringResource(R.string.subtitle_style))
-                    ChipRow(SUB_SCALES, { "${(it * 100).toInt()}%" }, subtitleStyle.scale) { onSubtitleStyle(subtitleStyle.copy(scale = it)) }
-                    ChipRow(SUB_COLORS.indices.toList(), { stringResource(COLOR_NAMES[it]) }, SUB_COLORS.indexOf(subtitleStyle.textColor)) {
-                        onSubtitleStyle(subtitleStyle.copy(textColor = SUB_COLORS[it]))
-                    }
-                    ChipRow(SUB_BACKGROUNDS.indices.toList(), { stringResource(BG_NAMES[it]) }, SUB_BACKGROUNDS.indexOf(subtitleStyle.backgroundColor)) {
-                        onSubtitleStyle(subtitleStyle.copy(backgroundColor = SUB_BACKGROUNDS[it]))
-                    }
+                if (PanelSection.TEXT in sections) {
+                    item(key = "sub_style") {
+                        Column {
+                            Header(stringResource(R.string.subtitle_style))
+                            ChipRow(SUB_SCALES, { "${(it * 100).toInt()}%" }, subtitleStyle.scale) { onSubtitleStyle(subtitleStyle.copy(scale = it)) }
+                            ChipRow(SUB_COLORS.indices.toList(), { stringResource(COLOR_NAMES[it]) }, SUB_COLORS.indexOf(subtitleStyle.textColor)) {
+                                onSubtitleStyle(subtitleStyle.copy(textColor = SUB_COLORS[it]))
+                            }
+                            ChipRow(SUB_BACKGROUNDS.indices.toList(), { stringResource(BG_NAMES[it]) }, SUB_BACKGROUNDS.indexOf(subtitleStyle.backgroundColor)) {
+                                onSubtitleStyle(subtitleStyle.copy(backgroundColor = SUB_BACKGROUNDS[it]))
+                            }
+                        }
                     }
                 }
                 if (PanelSection.ASPECT in sections) {
@@ -115,25 +117,25 @@ fun PlayerSettingsDialog(
                     items(AspectMode.entries, key = { "a_$it" }) { mode -> Option(stringResource(mode.labelRes()), mode == aspect) { onAspect(mode) } }
                 }
                 if (PanelSection.SLEEP in sections) {
-                item(key = "h_sleep") {
-                    Header(
-                        if (sleepLeftMs != null) stringResource(R.string.sleep_remaining, formatDuration(sleepLeftMs)) else stringResource(R.string.sleep_timer),
-                    )
-                }
-                item(key = "sleep_off") { Option(stringResource(R.string.sleep_off), sleepLeftMs == null) { onSleep(null) } }
-                items(SLEEP_PRESETS, key = { "s_$it" }) { m -> Option(stringResource(R.string.minutes, m), false) { onSleep(m); onDismiss() } }
-                item(key = "sleep_custom") {
-                    Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            customMinutes, { v -> customMinutes = v.filter(Char::isDigit).take(3) }, Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.sleep_custom)) }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    item(key = "h_sleep") {
+                        Header(
+                            if (sleepLeftMs != null) stringResource(R.string.sleep_remaining, formatDuration(sleepLeftMs)) else stringResource(R.string.sleep_timer),
                         )
-                        Button(onClick = { customMinutes.toIntOrNull()?.takeIf { it > 0 }?.let { onSleep(it); onDismiss() } }) {
-                            Text(stringResource(R.string.sleep_start))
+                    }
+                    item(key = "sleep_off") { Option(stringResource(R.string.sleep_off), sleepLeftMs == null) { onSleep(null) } }
+                    items(SLEEP_PRESETS, key = { "s_$it" }) { m -> Option(stringResource(R.string.minutes, m), false) { onSleep(m); onDismiss() } }
+                    item(key = "sleep_custom") {
+                        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                customMinutes, { v -> customMinutes = v.filter(Char::isDigit).take(3) }, Modifier.weight(1f),
+                                label = { Text(stringResource(R.string.sleep_custom)) }, singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            )
+                            Button(onClick = { customMinutes.toIntOrNull()?.takeIf { it > 0 }?.let { onSleep(it); onDismiss() } }) {
+                                Text(stringResource(R.string.sleep_start))
+                            }
                         }
                     }
-                }
                 }
             }
         }

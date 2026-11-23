@@ -301,8 +301,12 @@ private fun TimelineRow(prog: Program, t: TimelineContent, large: Boolean) {
         val fgMuted = if (focused && large) p.onFocusFill.copy(alpha = 0.7f) else p.textTertiary
         Row(
             Modifier.fillMaxWidth()
-                .background(if (live && !focused) Brush.horizontalGradient(listOf(p.accent.copy(alpha = 0.18f),
-                    Color.Transparent)) else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)))
+                .background(if (live && !focused) {
+                    Brush.horizontalGradient(listOf(p.accent.copy(alpha = 0.18f),
+                        Color.Transparent))
+                } else {
+                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                })
                 .heightIn(min = if (large) 72.dp else 64.dp)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -323,8 +327,12 @@ private fun TimelineRow(prog: Program, t: TimelineContent, large: Boolean) {
                     style = if (large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    if (live) stringResource(R.string.live_now_left,
-                        ((prog.end - t.now) / 60_000L).toInt().coerceAtLeast(1)) else durationText(prog.end - prog.start),
+                    if (live) {
+                        stringResource(R.string.live_now_left,
+                            ((prog.end - t.now) / 60_000L).toInt().coerceAtLeast(1))
+                    } else {
+                        durationText(prog.end - prog.start)
+                    },
                     color = fgMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1,
                 )
             }

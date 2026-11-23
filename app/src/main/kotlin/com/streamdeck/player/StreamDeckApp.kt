@@ -23,8 +23,11 @@ import javax.inject.Inject
 @HiltAndroidApp
 class StreamDeckApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var workerFactory: HiltWorkerFactory
+
     @Inject lateinit var work: BackgroundWork
+
     @Inject lateinit var settings: SettingsRepository
+
     @Inject lateinit var playlists: PlaylistRepository
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

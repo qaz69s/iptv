@@ -233,8 +233,12 @@ internal fun PhoneVodDetail(
                         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SdButton(
-                                    if (pr.resumable()) stringResource(R.string.resume_at,
-                                        formatPosition(pr?.positionMs ?: 0L)) else stringResource(R.string.play),
+                                    if (pr.resumable()) {
+                                        stringResource(R.string.resume_at,
+                                            formatPosition(pr?.positionMs ?: 0L))
+                                    } else {
+                                        stringResource(R.string.play)
+                                    },
                                     { onPlay(state.key) }, Modifier.weight(1f), icon = Icons.Default.PlayArrow, large = true,
                                 )
                                 WatchedToggle(pr?.watched == true) { vm.toggleWatched(state.key, pr?.watched == true) }
@@ -330,8 +334,10 @@ private fun PhoneEpisodeRow(e: XtreamEpisode, pr: VodProgressEntity?, onPlay: ()
                 )
                 val sub = listOfNotNull(e.durationSec?.takeIf { it > 0 }?.let { stringResource(R.string.minutes_short, it / 60) },
                     if (watched) stringResource(R.string.watched) else null)
-                if (sub.isNotEmpty()) Text(sub.joinToString(" · "), color = p.textTertiary, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 2.dp))
+                if (sub.isNotEmpty()) {
+                    Text(sub.joinToString(" · "), color = p.textTertiary, style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp))
+                }
                 e.plot?.takeIf { it.isNotBlank() }?.let { Text(it, color = p.textTertiary, style = MaterialTheme.typography.bodySmall, maxLines = 2,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
             }

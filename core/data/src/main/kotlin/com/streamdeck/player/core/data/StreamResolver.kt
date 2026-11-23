@@ -43,7 +43,9 @@ class StreamResolver @Inject constructor(private val playlistDao: PlaylistDao, p
         val url = if (c.streamUrl.startsWith(XtreamAccounts.LIVE_PREFIX)) {
             val a = p?.let(accounts::of) ?: throw StreamUnavailableException("missing Xtream credentials")
             XtreamUrls.live(a, c.streamUrl.removePrefix(XtreamAccounts.LIVE_PREFIX).toLong(), XtreamAccounts.LIVE_EXT)
-        } else c.streamUrl
+        } else {
+            c.streamUrl
+        }
         return ResolvedStream(
             url = url,
             userAgent = c.userAgent ?: p?.userAgent,
@@ -62,7 +64,9 @@ class StreamResolver @Inject constructor(private val playlistDao: PlaylistDao, p
         val p = playlistDao.get(c.playlistId)
         val xc = if (p?.type == PlaylistType.XTREAM) {
             accounts.of(p)?.let { a -> XtreamCatchup(a.base, a.username, a.password, c.streamUrl.removePrefix(XtreamAccounts.LIVE_PREFIX)) }
-        } else null
+        } else {
+            null
+        }
         val serverZone = p?.serverTimezone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: ZoneOffset.UTC
         val req = CatchupRequest(
             streamUrl = base.url,
@@ -77,9 +81,13 @@ class StreamResolver @Inject constructor(private val playlistDao: PlaylistDao, p
         return base.copy(url = CatchupUrlBuilder.build(req))
     }
 
-    private fun parseHeaders(json: String?): Map<String, String> = if (json.isNullOrBlank()) emptyMap() else runCatching {
-        Json.parseToJsonElement(json).jsonObject.mapValues { it.value.jsonPrimitive.content }
-    }.getOrDefault(emptyMap())
+    private fun parseHeaders(json: String?): Map<String, String> = if (json.isNullOrBlank()) {
+        emptyMap()
+    } else {
+        runCatching {
+            Json.parseToJsonElement(json).jsonObject.mapValues { it.value.jsonPrimitive.content }
+        }.getOrDefault(emptyMap())
+    }
 
     private companion object { const val DEFAULT_ARCHIVE_DAYS = 1 }
 }

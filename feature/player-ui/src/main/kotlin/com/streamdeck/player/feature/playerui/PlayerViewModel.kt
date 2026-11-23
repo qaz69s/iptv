@@ -81,14 +81,20 @@ class PlayerViewModel @Inject constructor(
 
     /** Now/next for the overlay (spec §4.3 覆盖层). */
     val program: StateFlow<OverlayProgram?> = _channel.flatMapLatest { c ->
-        if (c == null) flowOf(null) else epg.nowNext(c.playlistId, c.uniqueKey).map { nn ->
-            nn.now?.let { OverlayProgram(it.title, it.start, it.end, nn.next?.title, nn.next?.start, it.category) }
+        if (c == null) {
+            flowOf(null)
+        } else {
+            epg.nowNext(c.playlistId, c.uniqueKey).map { nn ->
+                nn.now?.let { OverlayProgram(it.title, it.start, it.end, nn.next?.title, nn.next?.start, it.category) }
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Today's programmes of the channel (phone “节目单” tab), real time, from local midnight to next morning. */
     val schedule: StateFlow<List<Program>> = _channel.flatMapLatest { c ->
-        if (c == null) flowOf(emptyList()) else {
+        if (c == null) {
+            flowOf(emptyList())
+        } else {
             val zone = ZoneId.systemDefault()
             val from = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
             epg.programs(c.playlistId, c.uniqueKey, from, from + SCHEDULE_SPAN_MS)
@@ -97,8 +103,12 @@ class PlayerViewModel @Inject constructor(
 
     /** Channels of the current group with now/next (TV zapping list, phone “同组频道”). Hidden while locked. */
     val groupItems: StateFlow<List<ChannelListItem>> = _channel.flatMapLatest { c ->
-        if (c == null) flowOf(emptyList()) else channels.groupItems(c.playlistId, c.groupId).map { list ->
-            if (parental.isUnlocked()) list else list.filter { !it.channel.locked && !it.groupLocked }
+        if (c == null) {
+            flowOf(emptyList())
+        } else {
+            channels.groupItems(c.playlistId, c.groupId).map { list ->
+                if (parental.isUnlocked()) list else list.filter { !it.channel.locked && !it.groupLocked }
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -220,6 +230,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private val _vodTitle = MutableStateFlow<String?>(null)
+
     /** Title shown instead of a channel for movies / episodes. */
     val vodTitle: StateFlow<String?> = _vodTitle.asStateFlow()
     private var vodKey: String? = null
@@ -262,11 +273,11 @@ class PlayerViewModel @Inject constructor(
 
     init {
         run {
-        val vodKey: String? = savedState[PlayerArgs.VOD_KEY]
-        if (vodKey != null) {
-            viewModelScope.launch { playVod(vodKey) }
-            return@run
-        }
+            val vodKey: String? = savedState[PlayerArgs.VOD_KEY]
+            if (vodKey != null) {
+                viewModelScope.launch { playVod(vodKey) }
+                return@run
+            }
             val id: Long = checkNotNull(savedState[ARG_CHANNEL_ID])
             val start: Long? = savedState[PlayerArgs.CATCHUP_START]
             val end: Long? = savedState[PlayerArgs.CATCHUP_END]

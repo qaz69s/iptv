@@ -383,8 +383,11 @@ fun SettingsRow(
                     if (hint != null) Text(hint, color = p.textTertiary, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 if (value != null) Text(value, color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
-                if (trailing != null) trailing()
-                else if (chevron && onClick != null) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.textTertiary, modifier = Modifier.padding(start = 6.dp).size(20.dp))
+                if (trailing != null) {
+                    trailing()
+                } else if (chevron && onClick != null) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.textTertiary, modifier = Modifier.padding(start = 6.dp).size(20.dp))
+                }
             }
             if (divider) Box(Modifier.fillMaxWidth().padding(start = if (icon != null) 70.dp else 16.dp).height(0.5.dp).background(p.stroke))
         }

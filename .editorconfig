@@ -23,3 +23,5 @@ ktlint_standard_backing-property-naming = disabled
 ktlint_standard_filename = disabled
 ktlint_standard_max-line-length = disabled
 ktlint_standard_import-ordering = disabled
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled

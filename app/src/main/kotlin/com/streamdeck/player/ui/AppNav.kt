@@ -120,8 +120,12 @@ class RootViewModel @Inject constructor(
         viewModelScope.launch {
             val onboarded = settingsRepo.isOnboarded.first()
             val s = settingsRepo.current()
-            val resume = if (onboarded && s.autoResume) settingsRepo.lastChannel.first()?.let { channels.byKey(it.playlistId,
-                it.uniqueKey) }?.takeUnless { channels.isLocked(it) }?.id else null
+            val resume = if (onboarded && s.autoResume) {
+                settingsRepo.lastChannel.first()?.let { channels.byKey(it.playlistId,
+                    it.uniqueKey) }?.takeUnless { channels.isLocked(it) }?.id
+            } else {
+                null
+            }
             _start.value = StartState.Ready(onboarded, resume)
         }
     }
@@ -131,6 +135,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val ADD = "add"
     const val ARG_ADD_TYPE = "type"
+
     /** Optional preselected method (from the onboarding cards); plain "add" still matches this pattern. */
     const val ADD_PATTERN = "add?$ARG_ADD_TYPE={$ARG_ADD_TYPE}"
     fun add(type: PlaylistType) = "add?$ARG_ADD_TYPE=${type.name}"
@@ -154,9 +159,14 @@ object Routes {
     const val SETTINGS = "settings"
     const val TV_HOME = "tv_home"
     const val TV_SEARCH = "tv_search"
+
     /** Catch-up of a finished programme; live playback otherwise. */
-    fun catchupOrLive(channelId: Long, startMs: Long, endMs: Long) = if (endMs <= System.currentTimeMillis()) catchup(channelId, startMs,
-        endMs) else player(channelId)
+    fun catchupOrLive(channelId: Long, startMs: Long, endMs: Long) = if (endMs <= System.currentTimeMillis()) {
+        catchup(channelId, startMs,
+            endMs)
+    } else {
+        player(channelId)
+    }
 }
 
 private data class Tab(val route: String, val label: Int, val icon: ImageVector)
@@ -284,7 +294,7 @@ private fun Graph(
         }
         composable(Routes.PROGRAMS, arguments = listOf(navArgument(EpgViewModelArgs.CHANNEL_ID) { type = NavType.LongType })) {
             ChannelProgramsScreen(onBack = { nav.popBackStack() }, onPlay = { id -> nav.navigate(Routes.player(id)) }, onCatchup = { id, s,
-                e -> nav.navigate(Routes.catchupOrLive(id, s, e)) })
+                                                                                                                                     e -> nav.navigate(Routes.catchupOrLive(id, s, e)) })
         }
         composable(Routes.VOD) {
             // The phone tab bar floats over content; keep the last VOD row above it.

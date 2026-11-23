@@ -7,7 +7,12 @@ import java.time.format.DateTimeFormatter
 
 /** Catch-up flavours from M3U `catchup=` (spec §4.5). Unknown values fall back to [DEFAULT]. */
 enum class CatchupType {
-    DEFAULT, APPEND, SHIFT, FLUSSONIC, XC, VOD;
+    DEFAULT,
+    APPEND,
+    SHIFT,
+    FLUSSONIC,
+    XC,
+    VOD;
 
     companion object {
         fun from(raw: String?): CatchupType? = when (raw?.trim()?.lowercase()) {

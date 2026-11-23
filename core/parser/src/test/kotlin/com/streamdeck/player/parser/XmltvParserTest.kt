@@ -95,15 +95,22 @@ class XmltvTimeTest {
     private fun utc(s: String) = Instant.parse(s).toEpochMilli()
 
     @Test fun `with offset`() { assertEquals(utc("2024-03-10T10:30:00Z"), XmltvTime.parse("20240310123000 +0200")) }
+
     @Test fun `negative offset`() { assertEquals(utc("2024-03-10T17:30:00Z"), XmltvTime.parse("20240310123000 -0500")) }
+
     @Test fun `offset with colon`() { assertEquals(utc("2024-03-10T10:30:00Z"), XmltvTime.parse("20240310123000 +02:00")) }
+
     @Test fun `no offset means UTC`() { assertEquals(utc("2024-03-10T12:30:00Z"), XmltvTime.parse("20240310123000")) }
+
     @Test fun `minutes precision`() { assertEquals(utc("2024-03-10T12:30:00Z"), XmltvTime.parse("202403101230")) }
+
     @Test fun `date only`() { assertEquals(utc("2024-03-10T00:00:00Z"), XmltvTime.parse("20240310")) }
+
     @Test fun `malformed`() {
         assertNull(XmltvTime.parse("yesterday"))
         assertNull(XmltvTime.parse("20241340000000 +0000"))
     }
+
     @Test fun `half hour offsets`() { assertEquals(utc("2024-03-10T07:00:00Z"), XmltvTime.parse("20240310123000 +0530")) }
 }
 
@@ -118,12 +125,19 @@ class EpgMatcherTest {
     private val m = EpgMatcher(epg)
 
     @Test fun `tvg id first`() { assertEquals("bbc1.uk", m.match(MatchChannel("k", "bbc1.uk", null, "whatever"))) }
+
     @Test fun `tvg id case insensitive`() { assertEquals("CNN.us", m.match(MatchChannel("k", "cnn.US", null, "x"))) }
+
     @Test fun `tvg name against display names`() { assertEquals("bbc1.uk", m.match(MatchChannel("k", null, "BBC 1", "x"))) }
+
     @Test fun `normalized name strips prefix and quality`() { assertEquals("bbc1.uk", m.match(MatchChannel("k", null, null, "UK: BBC One HD"))) }
+
     @Test fun `plus one is a different channel`() { assertEquals("film4plus1", m.match(MatchChannel("k", null, null, "Film4 +1 HD"))) }
+
     @Test fun `fuzzy one edit`() { assertEquals("discovery", m.match(MatchChannel("k", null, null, "Discovery Chanel"))) }
+
     @Test fun `unknown returns null`() { assertNull(m.match(MatchChannel("k", "nope", null, "Totally Different"))) }
+
     @Test fun `edit distance helper`() {
         assertEquals(true, EpgMatcher.withinOneEdit("abcdef", "abcdeg"))
         assertEquals(true, EpgMatcher.withinOneEdit("abcdef", "abcdf"))

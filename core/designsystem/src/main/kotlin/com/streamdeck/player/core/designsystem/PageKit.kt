@@ -85,8 +85,10 @@ fun SdTopBar(
         }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.headlineSmall, color = p.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = p.textSecondary, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = p.textSecondary, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), content = actions)
     }
@@ -409,8 +411,10 @@ private fun PanelRow(a: PanelAction, large: Boolean, modifier: Modifier = Modifi
             }
             Column(Modifier.weight(1f)) {
                 Text(a.label, color = fg, style = MaterialTheme.typography.bodyLarge, fontWeight = if (a.selected) FontWeight.Bold else FontWeight.Medium)
-                if (a.hint != null) Text(a.hint, color = if (focused) p.onFocusFill.copy(alpha = 0.7f) else p.textTertiary,
-                    style = MaterialTheme.typography.bodySmall)
+                if (a.hint != null) {
+                    Text(a.hint, color = if (focused) p.onFocusFill.copy(alpha = 0.7f) else p.textTertiary,
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             if (a.selected) Icon(Icons.Default.Check, null, tint = fg, modifier = Modifier.size(20.dp))
         }

@@ -192,8 +192,11 @@ private fun InfoBar(
                 if (titleOverride == null && channel != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                         Text(listOfNotNull(channel.number?.toString(), channel.name).joinToString(" "), color = p.textSecondary, style = MaterialTheme.typography.bodyLarge)
-                        if (catchup == null) LiveBadge(Modifier.padding(horizontal = 8.dp), small = true)
-                        else Text(stringResource(R.string.catchup_badge, formatClock(catchup.start)), color = p.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 8.dp))
+                        if (catchup == null) {
+                            LiveBadge(Modifier.padding(horizontal = 8.dp), small = true)
+                        } else {
+                            Text(stringResource(R.string.catchup_badge, formatClock(catchup.start)), color = p.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 8.dp))
+                        }
                         Text(listOfNotNull(quality, program?.category).joinToString(" · "), color = p.textSecondary, style = MaterialTheme.typography.bodyLarge)
                     }
                 }

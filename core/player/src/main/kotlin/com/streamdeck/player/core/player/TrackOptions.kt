@@ -55,7 +55,13 @@ object TrackOptions {
         else -> listOfNotNull(
             f.label,
             f.language?.takeIf { it != C.LANGUAGE_UNDETERMINED },
-            f.channelCount.takeIf { it > 0 }?.let { if (it == 6) "5.1" else if (it == 8) "7.1" else "${it}ch" },
+            f.channelCount.takeIf { it > 0 }?.let { if (it == 6) {
+                "5.1"
+            } else if (it == 8) {
+                "7.1"
+            } else {
+                "${it}ch"
+            } },
             f.codecs,
         ).distinct().joinToString(" · ")
     }
