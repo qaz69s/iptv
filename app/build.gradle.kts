@@ -15,8 +15,8 @@ android {
         applicationId = "com.streamdeck.player"
         minSdk = 23
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.10.1"
+        versionCode = 12
+        versionName = "0.10.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

@@ -11,10 +11,10 @@
     <string name="err_http">服务器返回 HTTP %1$d</string>
     <string name="err_timeout">连接超时</string>
     <string name="err_network">网络不可用</string>
-    <string name="err_decoder">解码错误（%1$s），可在设置中尝试“仅软件解码”</string>
+    <string name="err_decoder">解码出错（%1$s），可在设置中尝试“仅软件解码”</string>
     <string name="err_cleartext">此播放列表不允许明文 HTTP</string>
     <string name="err_metered">已在设置中禁止使用计费网络播放</string>
-    <string name="err_other">%1$s</string>
+    <string name="err_other">播放出错（%1$s）</string>
     <string name="hint_brightness">亮度 %1$d%%</string>
     <string name="hint_volume">音量 %1$d%%</string>
     <string name="hint_seek">跳转 %1$s</string>
@@ -72,4 +72,15 @@
     <string name="previous_channel">上一台</string>
     <string name="next_channel">下一台</string>
     <string name="close_panel">关闭</string>
+    <string name="err_decoder_capability">设备解码能力不足，无法播放该画质（如 8K / 高码率 HEVC）</string>
+    <string name="err_format_unsupported">无法识别流格式：服务器返回的可能不是视频（频道失效、连接数超限或地区限制）</string>
+    <string name="err_format_malformed">流数据损坏或格式异常</string>
+    <string name="err_not_found">找不到该播放地址</string>
+    <string name="err_no_permission">没有权限访问该地址</string>
+    <string name="err_content_type">服务器返回的内容类型不正确</string>
+    <string name="err_io">读取数据出错，请稍后重试</string>
+    <string name="err_drm">该频道有 DRM 加密，无法播放</string>
+    <string name="err_audio">音频输出初始化失败</string>
+    <string name="err_behind_live">已落后于直播窗口，请重试</string>
+    <string name="err_unknown">未知播放错误</string>
 </resources>

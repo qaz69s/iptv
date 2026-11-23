@@ -165,6 +165,7 @@ class PlayerController @Inject constructor(
     fun play(req: StreamRequest) {
         retryJob?.cancel()
         reconnect.reset()
+        hlsFallbackTried = false
         _current.value = req
         if (!allowMetered && network.isMetered()) {
             _player.value?.stop()
@@ -229,8 +230,26 @@ class PlayerController @Inject constructor(
         updateMulticastLock(null)
     }
 
+    /** Set once the current stream has been re-opened as HLS after its container could not be recognised. */
+    private var hlsFallbackTried = false
+
+    /**
+     * Many IPTV servers serve HLS playlists from URLs without ".m3u8" (Xtream `/live/.../123`, redirects, tokens), which
+     * the progressive extractors can't sniff. Re-open such a stream once as HLS before reporting the error.
+     */
+    private fun tryHlsFallback(e: PlaybackException, p: ExoPlayer): Boolean {
+        val req = _current.value ?: return false
+        if (hlsFallbackTried || e.errorCode !in CONTAINER_ERRORS || req.url.guessMimeType() != null) return false
+        hlsFallbackTried = true
+        p.setMediaItem(req.toMediaItem(MimeTypes.APPLICATION_M3U8), if (req.startPositionMs > 0) req.startPositionMs else C.TIME_UNSET)
+        p.prepare()
+        p.playWhenReady = true
+        return true
+    }
+
     private fun handleError(e: PlaybackException) {
         val p = _player.value ?: return
+        if (tryHlsFallback(e, p)) return
         if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
             p.seekToDefaultPosition()
             p.prepare()
@@ -270,7 +289,7 @@ class PlayerController @Inject constructor(
         }
     }
 
-    private fun StreamRequest.toMediaItem(): MediaItem {
+    private fun StreamRequest.toMediaItem(forcedMime: String? = null): MediaItem {
         val meta = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(subtitle)
@@ -283,15 +302,9 @@ class PlayerController @Inject constructor(
                 .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                 .build()
         }
-        val lower = url.lowercase()
-        val mime = when {
-            ".m3u8" in lower -> MimeTypes.APPLICATION_M3U8
-            ".mpd" in lower -> MimeTypes.APPLICATION_MPD
-            else -> null
-        }
         return MediaItem.Builder()
             .setUri(Uri.parse(url))
-            .setMimeType(mime)
+            .setMimeType(forcedMime ?: url.guessMimeType())
             .setMediaMetadata(meta)
             .setSubtitleConfigurations(subs)
             .build()
@@ -317,6 +330,11 @@ class PlayerController @Inject constructor(
         /** Message used by the network layer when a cleartext request is refused. */
         const val CLEARTEXT_MARKER = "CLEARTEXT_BLOCKED"
 
+        private val CONTAINER_ERRORS = setOf(
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        )
+
         private val DECODER_ERRORS = setOf(
             PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
             PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
@@ -324,6 +342,16 @@ class PlayerController @Inject constructor(
             PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
             PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
         )
+    }
+}
+
+/** HLS / DASH by URL; null leaves it to the progressive extractors' sniffing. */
+internal fun String.guessMimeType(): String? {
+    val lower = lowercase()
+    return when {
+        ".m3u8" in lower -> MimeTypes.APPLICATION_M3U8
+        ".mpd" in lower -> MimeTypes.APPLICATION_MPD
+        else -> null
     }
 }
 

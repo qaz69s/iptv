@@ -14,7 +14,7 @@
     <string name="err_decoder">decoder error (%1$s). Try “software decoding only” in settings</string>
     <string name="err_cleartext">plain HTTP is not allowed for this playlist</string>
     <string name="err_metered">playback on metered networks is disabled in settings</string>
-    <string name="err_other">%1$s</string>
+    <string name="err_other">playback error (%1$s)</string>
     <string name="hint_brightness">Brightness %1$d%%</string>
     <string name="hint_volume">Volume %1$d%%</string>
     <string name="hint_seek">Seek %1$s</string>
@@ -72,4 +72,15 @@
     <string name="previous_channel">Previous</string>
     <string name="next_channel">Next</string>
     <string name="close_panel">Close</string>
+    <string name="err_decoder_capability">this device can\'t decode this quality (e.g. 8K / high-bitrate HEVC)</string>
+    <string name="err_format_unsupported">unrecognised stream format: the server may not be returning video (channel offline, connection limit or geo-block)</string>
+    <string name="err_format_malformed">stream data is corrupt or malformed</string>
+    <string name="err_not_found">stream address not found</string>
+    <string name="err_no_permission">no permission to access this address</string>
+    <string name="err_content_type">server returned an unexpected content type</string>
+    <string name="err_io">error reading the stream, try again later</string>
+    <string name="err_drm">this channel is DRM protected and can\'t be played</string>
+    <string name="err_audio">audio output failed to initialise</string>
+    <string name="err_behind_live">fell behind the live window, try again</string>
+    <string name="err_unknown">unknown playback error</string>
 </resources>

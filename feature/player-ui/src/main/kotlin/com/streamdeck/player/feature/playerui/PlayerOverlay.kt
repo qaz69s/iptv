@@ -266,8 +266,28 @@ fun PlaybackError.message(): String = when (this) {
     is PlaybackError.Http -> stringResource(R.string.err_http, code)
     PlaybackError.Timeout -> stringResource(R.string.err_timeout)
     PlaybackError.Network -> stringResource(R.string.err_network)
-    is PlaybackError.Decoder -> stringResource(R.string.err_decoder, detail)
+    is PlaybackError.Decoder -> if (detail == "ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES") {
+        stringResource(R.string.err_decoder_capability)
+    } else {
+        stringResource(R.string.err_decoder, detail.removePrefix("ERROR_CODE_"))
+    }
     PlaybackError.CleartextBlocked -> stringResource(R.string.err_cleartext)
     PlaybackError.MeteredBlocked -> stringResource(R.string.err_metered)
-    is PlaybackError.Other -> stringResource(R.string.err_other, detail)
+    is PlaybackError.Other -> otherErrorRes(detail)?.let { stringResource(it) } ?: stringResource(R.string.err_other, detail.removePrefix("ERROR_CODE_"))
+}
+
+/** Localised text for Media3 error code names; null for free-text messages. */
+private fun otherErrorRes(detail: String): Int? = when {
+    detail == "ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED" || detail == "ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED" -> R.string.err_format_unsupported
+    detail.startsWith("ERROR_CODE_PARSING_") -> R.string.err_format_malformed
+    detail == "ERROR_CODE_IO_FILE_NOT_FOUND" -> R.string.err_not_found
+    detail == "ERROR_CODE_IO_NO_PERMISSION" -> R.string.err_no_permission
+    detail == "ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE" -> R.string.err_content_type
+    detail.startsWith("ERROR_CODE_IO_") -> R.string.err_io
+    detail.startsWith("ERROR_CODE_DRM_") -> R.string.err_drm
+    detail.startsWith("ERROR_CODE_AUDIO_TRACK_") -> R.string.err_audio
+    detail == "ERROR_CODE_TIMEOUT" -> R.string.err_timeout
+    detail == "ERROR_CODE_BEHIND_LIVE_WINDOW" -> R.string.err_behind_live
+    detail.startsWith("ERROR_CODE_") -> R.string.err_unknown
+    else -> null
 }
