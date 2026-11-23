@@ -1,0 +1,13 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+}
+
+kotlin { jvmToolchain(17) }
+
+dependencies {
+    testImplementation(libs.junit5.api)
+    testImplementation(libs.junit5.params)
+    testRuntimeOnly(libs.junit5.launcher)
+}
+
+tasks.test { useJUnitPlatform() }

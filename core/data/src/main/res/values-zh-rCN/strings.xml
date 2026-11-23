@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reminder_channel">节目提醒</string>
+    <string name="reminder_text">%1$s 正在开始</string>
+</resources>

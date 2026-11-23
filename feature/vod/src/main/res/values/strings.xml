@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vod_title">Movies &amp; series</string>
+    <string name="vod_needs_xtream">Movies and series are available for Xtream Codes playlists. Add one via “Add playlist”.</string>
+    <string name="movies">Movies</string>
+    <string name="series">Series</string>
+    <string name="search_vod">Search titles</string>
+    <string name="all">All</string>
+    <string name="vod_empty">Nothing here yet</string>
+    <string name="poster">Poster</string>
+    <string name="resume">Resume</string>
+    <string name="play">Play</string>
+    <string name="mark_watched">Mark as watched</string>
+    <string name="mark_unwatched">Mark as unwatched</string>
+    <string name="no_episodes">No episodes</string>
+    <string name="season_n">Season %1$d</string>
+    <string name="minutes_short">%1$d min</string>
+    <string name="choose_playlist">Choose playlist</string>
+    <string name="vod_empty_title">No movies or series yet</string>
+    <string name="vod_empty_hint">Try another category or clear the search.</string>
+    <string name="continue_watching">Continue watching</string>
+    <string name="resume_at">Resume · %1$s</string>
+    <string name="detail_failed">Couldn’t load details</string>
+    <string name="seasons_count">%1$d seasons</string>
+    <string name="watched">Watched</string>
+    <string name="episode_title">E%1$d · %2$s</string>
+    <string name="categories">Categories</string>
+    <string name="resume_episode">Resume S%1$d E%2$d</string>
+    <string name="play_episode">Play S%1$d E%2$d</string>
+    <string name="key_ok">OK</string>
+    <string name="key_hold_ok">Hold OK</string>
+    <string name="hint_toggle_watched">Mark watched / unwatched</string>
+</resources>

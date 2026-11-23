@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="epg_title">节目单</string>
+    <string name="update_epg">更新节目单</string>
+    <string name="epg_updating">正在更新节目单… %1$d 条节目</string>
+    <string name="epg_failed">节目单更新失败：%1$s</string>
+    <string name="all">全部</string>
+    <string name="no_epg_source">该播放列表没有 EPG 来源，请在“管理播放列表”中填写 XMLTV 地址。</string>
+    <string name="no_channels">没有频道</string>
+    <string name="no_programme">暂无节目信息</string>
+    <string name="channel_logo">频道 Logo</string>
+    <string name="untitled">（无标题）</string>
+    <string name="poster">海报</string>
+    <string name="auto_switch">开始时自动切换到该频道</string>
+    <string name="watch_live">观看直播</string>
+    <string name="catchup">回看</string>
+    <string name="remind_me">提醒我</string>
+    <string name="cancel_reminder">取消提醒</string>
+    <string name="assign_epg">指定 EPG 频道</string>
+    <string name="search_epg">搜索 EPG 频道</string>
+    <string name="today">今天</string>
+    <string name="tomorrow">明天</string>
+    <string name="week">一周</string>
+    <string name="yesterday">昨天</string>
+    <string name="key_ok">OK</string>
+    <string name="key_long_ok">长按 OK</string>
+    <string name="hint_watch">观看</string>
+    <string name="hint_remind_catchup">预约 / 回看</string>
+    <string name="hint_switch_time">切换时段</string>
+    <string name="pick_day">选择日期</string>
+    <string name="on_air">正在播出</string>
+    <string name="aired">已播出</string>
+    <string name="upcoming">即将播出</string>
+    <string name="live_now_left">直播中 · 还剩 %1$d 分钟</string>
+    <string name="tag_catchup">回看</string>
+    <string name="tag_reminded">已预约</string>
+    <string name="tag_remind">预约</string>
+    <string name="duration_minutes">%1$d 分钟</string>
+    <string name="duration_hours">%1$d 小时</string>
+    <string name="duration_h_m">%1$d 小时 %2$d 分</string>
+    <string name="hint_primary_action">观看 / 回看 / 预约</string>
+    <string name="hint_details">详情</string>
+    <string name="no_programme_hint">这个时段没有节目信息。可以更新节目单，或手动指定 EPG 频道。</string>
+    <string name="assign_epg_hint">选择与该频道对应的节目单频道。</string>
+    <string name="no_epg_matches">没有匹配的节目单频道</string>
+    <string name="close">关闭</string>
+</resources>

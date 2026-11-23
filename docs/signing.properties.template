@@ -1,0 +1,6 @@
+# Copy to <project root>/keystore.properties (git-ignored) and fill in. Never commit real secrets.
+# Create a key:  keytool -genkeypair -v -keystore release.jks -alias streamdeck -keyalg RSA -keysize 4096 -validity 10000
+storeFile=/absolute/path/to/release.jks
+storePassword=
+keyAlias=streamdeck
+keyPassword=

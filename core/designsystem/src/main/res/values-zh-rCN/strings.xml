@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_loading">加载中…</string>
+    <string name="ds_retry">重试</string>
+    <string name="ds_cancel">取消</string>
+    <string name="ds_ok">确定</string>
+    <string name="ds_back">返回</string>
+    <string name="ds_delete">删除</string>
+    <string name="ds_save">保存</string>
+    <string name="ds_live">LIVE</string>
+    <string name="ds_clear">清除</string>
+    <string name="ds_minutes_short">%1$d分</string>
+    <string name="ds_minutes_left">还剩 %1$d 分钟</string>
+    <string name="ds_next_at">接下来 %1$s</string>
+    <string name="ds_error_title">出错了</string>
+    <string name="ds_reason">原因</string>
+    <string name="ds_page_of">第 %1$d 页，共 %2$d 页</string>
+    <string name="ds_more">更多</string>
+    <string name="ds_next">下一步</string>
+    <string name="ds_close">关闭</string>
+</resources>

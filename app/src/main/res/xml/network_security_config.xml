@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IPTV streams are commonly plain HTTP (spec §5). Cleartext permitted at OS level;
+     a per-playlist toggle (P7) gates it in-app. Certificate validation is never disabled. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>

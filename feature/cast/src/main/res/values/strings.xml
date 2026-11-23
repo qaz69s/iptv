@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cast">Cast</string>
+    <string name="cast_toggle">Play / pause on TV</string>
+    <string name="cast_volume_down">Volume down</string>
+    <string name="cast_volume_up">Volume up</string>
+    <string name="cast_stop">Stop casting</string>
+    <string name="cast_not_castable">This stream needs a custom User-Agent, Referer or headers, which Chromecast cannot send. Play it on this device instead.</string>
+</resources>

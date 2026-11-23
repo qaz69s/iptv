@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.StreamDeck.Starting.S0" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/sd_bg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_accent_0</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.S1" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/sd_bg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_accent_1</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.S2" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/sd_bg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_accent_2</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.S3" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/sd_bg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_accent_3</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.S4" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/sd_bg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_accent_4</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.L0" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FFF3F5F9</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF1C8E7A</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_onlight</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.L1" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FFF3F5F9</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF2F579E</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_onlight</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.L2" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FFF3F5F9</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF604C9E</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_onlight</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.L3" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FFF3F5F9</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF9E4468</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_onlight</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.L4" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FFF3F5F9</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF9E5F25</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_onlight</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.D0" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF0A0E14</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF2EE6C5</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.D1" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF0A0E14</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF4C8DFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.D2" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF0A0E14</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF9B7BFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.D3" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF0A0E14</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FFFF6FA8</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.D4" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF0A0E14</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FFFF9A3D</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.A0" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF000000</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF2EE6C5</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.A1" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF000000</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF4C8DFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.A2" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF000000</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FF9B7BFF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.A3" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF000000</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FFFF6FA8</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+    <style name="Theme.StreamDeck.Starting.A4" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">#FF000000</item>
+        <item name="windowSplashScreenIconBackgroundColor">#FFFF9A3D</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_glyph_ondark</item>
+        <item name="postSplashScreenTheme">@style/Theme.StreamDeck</item>
+    </style>
+</resources>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="epg_title">TV guide</string>
+    <string name="update_epg">Update guide</string>
+    <string name="epg_updating">Updating guide… %1$d programmes</string>
+    <string name="epg_failed">Guide update failed: %1$s</string>
+    <string name="all">All</string>
+    <string name="no_epg_source">This playlist has no EPG source. Add an XMLTV URL in “Manage playlists”.</string>
+    <string name="no_channels">No channels</string>
+    <string name="no_programme">No programme information</string>
+    <string name="channel_logo">Channel logo</string>
+    <string name="untitled">(untitled)</string>
+    <string name="poster">Poster</string>
+    <string name="auto_switch">Switch to this channel when it starts</string>
+    <string name="watch_live">Watch live</string>
+    <string name="catchup">Watch catch-up</string>
+    <string name="remind_me">Remind me</string>
+    <string name="cancel_reminder">Cancel reminder</string>
+    <string name="assign_epg">Assign EPG channel</string>
+    <string name="search_epg">Search EPG channels</string>
+    <string name="today">Today</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="week">This week</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="key_ok">OK</string>
+    <string name="key_long_ok">Hold OK</string>
+    <string name="hint_watch">Watch</string>
+    <string name="hint_remind_catchup">Remind / catch-up</string>
+    <string name="hint_switch_time">Change time</string>
+    <string name="pick_day">Choose day</string>
+    <string name="on_air">On now</string>
+    <string name="aired">Aired</string>
+    <string name="upcoming">Upcoming</string>
+    <string name="live_now_left">On now · %1$d min left</string>
+    <string name="tag_catchup">Catch-up</string>
+    <string name="tag_reminded">Reminder set</string>
+    <string name="tag_remind">Remind</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours">%1$d h</string>
+    <string name="duration_h_m">%1$d h %2$d min</string>
+    <string name="hint_primary_action">Watch / catch-up / remind</string>
+    <string name="hint_details">Details</string>
+    <string name="no_programme_hint">The guide has nothing for this period. Update the guide or assign the EPG channel manually.</string>
+    <string name="assign_epg_hint">Pick the guide channel that belongs to this channel.</string>
+    <string name="no_epg_matches">No matching guide channels</string>
+    <string name="close">Close</string>
+</resources>

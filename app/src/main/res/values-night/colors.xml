@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sd_bg">#FF0A0E14</color>
+    <color name="splash_glyph">#FF04211C</color>
+    <color name="splash_accent_0">#FF2EE6C5</color>
+    <color name="splash_accent_1">#FF4C8DFF</color>
+    <color name="splash_accent_2">#FF9B7BFF</color>
+    <color name="splash_accent_3">#FFFF6FA8</color>
+    <color name="splash_accent_4">#FFFF9A3D</color>
+</resources>

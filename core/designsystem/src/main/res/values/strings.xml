@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_loading">Loading…</string>
+    <string name="ds_retry">Retry</string>
+    <string name="ds_cancel">Cancel</string>
+    <string name="ds_ok">OK</string>
+    <string name="ds_back">Back</string>
+    <string name="ds_delete">Delete</string>
+    <string name="ds_save">Save</string>
+    <string name="ds_live">LIVE</string>
+    <string name="ds_clear">Clear</string>
+    <string name="ds_minutes_short">%1$d min</string>
+    <string name="ds_minutes_left">%1$d min left</string>
+    <string name="ds_next_at">Next %1$s</string>
+    <string name="ds_error_title">Something went wrong</string>
+    <string name="ds_reason">Reason</string>
+    <string name="ds_page_of">Page %1$d of %2$d</string>
+    <string name="ds_more">More</string>
+    <string name="ds_next">Next</string>
+    <string name="ds_close">Close</string>
+</resources>

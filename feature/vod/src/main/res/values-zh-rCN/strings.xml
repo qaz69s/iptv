@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vod_title">点播</string>
+    <string name="vod_needs_xtream">电影和剧集需要 Xtream Codes 播放列表，请通过“添加播放列表”添加。</string>
+    <string name="movies">电影</string>
+    <string name="series">剧集</string>
+    <string name="search_vod">搜索片名</string>
+    <string name="all">全部</string>
+    <string name="vod_empty">暂无内容</string>
+    <string name="poster">海报</string>
+    <string name="resume">继续播放</string>
+    <string name="play">播放</string>
+    <string name="mark_watched">标记为已看</string>
+    <string name="mark_unwatched">标记为未看</string>
+    <string name="no_episodes">没有剧集</string>
+    <string name="season_n">第 %1$d 季</string>
+    <string name="minutes_short">%1$d 分钟</string>
+    <string name="choose_playlist">选择播放列表</string>
+    <string name="vod_empty_title">还没有电影或剧集</string>
+    <string name="vod_empty_hint">换个分类试试，或清空搜索。</string>
+    <string name="continue_watching">继续观看</string>
+    <string name="resume_at">继续播放 · %1$s</string>
+    <string name="detail_failed">详情加载失败</string>
+    <string name="seasons_count">%1$d 季</string>
+    <string name="watched">已看</string>
+    <string name="episode_title">第 %1$d 集 · %2$s</string>
+    <string name="categories">分类</string>
+    <string name="resume_episode">继续 第 %1$d 季 第 %2$d 集</string>
+    <string name="play_episode">播放 第 %1$d 季 第 %2$d 集</string>
+    <string name="key_ok">OK</string>
+    <string name="key_hold_ok">长按 OK</string>
+    <string name="hint_toggle_watched">标记已看 / 未看</string>
+</resources>

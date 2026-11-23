@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cast">投屏</string>
+    <string name="cast_toggle">电视端播放 / 暂停</string>
+    <string name="cast_volume_down">音量减</string>
+    <string name="cast_volume_up">音量加</string>
+    <string name="cast_stop">停止投屏</string>
+    <string name="cast_not_castable">该流需要自定义 User-Agent、Referer 或请求头，Chromecast 无法发送，请在本机播放。</string>
+</resources>

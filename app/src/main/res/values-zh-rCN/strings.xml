@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_channels">频道</string>
+    <string name="nav_epg">节目单</string>
+    <string name="nav_vod">点播</string>
+    <string name="nav_favorites">收藏</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_live">直播</string>
+    <string name="nav_mine">我的</string>
+    <string name="nav_search">搜索</string>
+    <string name="rail_logo">S</string>
+</resources>
