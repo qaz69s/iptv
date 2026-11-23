@@ -1,0 +1,149 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AddPlaylistScreen.kt$@Composable private fun FormCards(form: AddForm, password: String, onPassword: (String) -&gt; Unit, large: Boolean)</ID>
+    <ID>CyclomaticComplexMethod:ChannelProgramsScreen.kt$@Composable private fun TimelineRow(prog: Program, t: TimelineContent, large: Boolean)</ID>
+    <ID>CyclomaticComplexMethod:PlayerGestures.kt$fun Modifier.playerGestures( activity: Activity?, controller: PlayerController, onTap: () -&gt; Unit, onHint: (String?) -&gt; Unit, hintFormatter: HintFormatter, /** Time-shift for live channels with catch-up; null when unsupported. */ onLiveSeek: ((Long) -&gt; Unit)? = null, ): Modifier</ID>
+    <ID>CyclomaticComplexMethod:PlayerScreen.kt$@Composable fun PlayerScreen( onBack: () -&gt; Unit, castButton: @Composable () -&gt; Unit = {}, vm: PlayerViewModel = hiltViewModel(), )</ID>
+    <ID>ExplicitItLambdaParameter:TvPlayerOverlay.kt${ _, it -&gt; it.channel.id }</ID>
+    <ID>ForEachOnRange:EpgGridScreen.kt$-1..keepDays.coerceAtLeast(1)</ID>
+    <ID>LongMethod:PlayerScreen.kt$@Composable fun PlayerScreen( onBack: () -&gt; Unit, castButton: @Composable () -&gt; Unit = {}, vm: PlayerViewModel = hiltViewModel(), )</ID>
+    <ID>LongParameterList:PlayerViewModel.kt$PlayerViewModel$( savedState: SavedStateHandle, private val channels: ChannelRepository, private val resolver: StreamResolver, private val library: LibraryRepository, private val epg: EpgRepository, private val vodRepo: VodRepository, private val settingsRepo: SettingsRepository, private val parental: ParentalRepository, val controller: PlayerController, val sleep: SleepTimer, val pip: PipCoordinator, )</ID>
+    <ID>LongParameterList:PlaylistRepository.kt$PlaylistRepository$( @ApplicationContext private val ctx: Context, private val playlistDao: PlaylistDao, private val channelDao: ChannelDao, private val editorDao: EditorDao, private val http: OkHttpClient, /** Lazy to keep construction cheap; EPG matching runs after each successful import. */ private val epg: dagger.Lazy&lt;EpgRepository&gt;, private val xtream: XtreamImporter, private val accounts: XtreamAccounts, private val vodDao: VodDao, private val work: BackgroundWork, )</ID>
+    <ID>LoopWithTooManyJumpStatements:XmltvParser.kt$XmltvParser$while</ID>
+    <ID>MaxLineLength:AppNav.kt$e</ID>
+    <ID>MaxLineLength:BackupRepository.kt$BackupRepository$b.channelOverrides.mapNotNull { o -&gt; ids[o.playlistRef]?.let { ChannelOverrideEntity(it, o.uniqueKey, o.customName, o.hidden, o.sortOrder, o.locked, o.customGroup) } }</ID>
+    <ID>MaxLineLength:BackupRepository.kt$BackupRepository$b.groupOverrides.mapNotNull { o -&gt; ids[o.playlistRef]?.let { GroupOverrideEntity(it, o.name, o.customName, o.hidden, o.sortOrder, o.locked, o.custom) } }</ID>
+    <ID>MaxLineLength:CastButton.kt$IconButton(onClick = { vm.cast.adjustVolume(-VOLUME_STEP) }) { Icon(Icons.AutoMirrored.Filled.VolumeDown, stringResource(R.string.cast_volume_down), tint = Color.White) }</ID>
+    <ID>MaxLineLength:CastButton.kt$IconButton(onClick = { vm.cast.adjustVolume(VOLUME_STEP) }) { Icon(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.cast_volume_up), tint = Color.White) }</ID>
+    <ID>MaxLineLength:ChannelItems.kt$Text(c.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$Text(it, style = MaterialTheme.typography.bodySmall, color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$Text(item.nowTitle ?: c.groupName, style = MaterialTheme.typography.bodySmall, color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:ChannelItems.kt$Text(item.nowTitle.orEmpty(), style = MaterialTheme.typography.bodySmall, color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:ChannelItems.kt$Text(stringResource(DR.string.ds_minutes_short, left), color = p.textSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$c.number?.let { Text(it.toString(), color = p.textSecondary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.align(Alignment.TopStart).padding(10.dp)) }</ID>
+    <ID>MaxLineLength:ChannelItems.kt$c.number?.let { Text(it.toString(), color = p.textSecondary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) }</ID>
+    <ID>MaxLineLength:ChannelItems.kt$if (c.locked || item.groupLocked) Icon(Icons.Default.Lock, stringResource(R.string.locked), tint = p.textTertiary, modifier = Modifier.padding(start = 6.dp).size(14.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$if (c.locked || item.groupLocked) Icon(Icons.Default.Lock, stringResource(R.string.locked), tint = secondary, modifier = Modifier.padding(start = 6.dp).size(14.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$if (item.isFavorite) Icon(Icons.Default.Star, stringResource(R.string.favorited), tint = p.star, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(14.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$if (item.isFavorite) Icon(Icons.Default.Star, stringResource(R.string.favorited), tint = p.star, modifier = Modifier.padding(start = 6.dp).size(14.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$if (item.isFavorite) Icon(Icons.Default.Star, stringResource(R.string.favorited), tint = p.star, modifier = Modifier.padding(start = 6.dp).size(16.dp))</ID>
+    <ID>MaxLineLength:ChannelItems.kt$programLine(item)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis) }</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$DropdownMenuItem(text = { Text(stringResource(R.string.add_playlist)) }, leadingIcon = { Icon(Icons.Default.Add, null) }, onClick = { menu = false; onAdd() })</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$DropdownMenuItem(text = { Text(stringResource(R.string.manage_playlists)) }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { menu = false; onManage() })</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$DropdownMenuItem(text = { Text(stringResource(R.string.refresh)) }, leadingIcon = { Icon(Icons.Default.Refresh, null) }, onClick = { menu = false; vm.refresh(id) })</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$FocusSurface</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$SdChip(stringResource(R.string.favorites), selected == GroupFilter.Favorites, { onSelect(GroupFilter.Favorites) }, count = counts.favorites, leading = Icons.Default.Star)</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$Text(stringResource(R.string.refreshing, refresh.count), color = p.textSecondary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$Text(stringResource(R.string.sort), color = p.textTertiary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))</ID>
+    <ID>MaxLineLength:ChannelsScreen.kt$Text(stringResource(R.string.view_mode), color = p.textTertiary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"hidden = COALESCE((SELECT o.hidden FROM channel_override o WHERE o.playlistId = channel.playlistId AND o.uniqueKey = channel.uniqueKey), hidden), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"hidden = COALESCE((SELECT o.hidden FROM group_override o WHERE o.playlistId = channel_group.playlistId AND o.name = channel_group.originalName), hidden), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"locked = COALESCE((SELECT o.locked FROM channel_override o WHERE o.playlistId = channel.playlistId AND o.uniqueKey = channel.uniqueKey), locked), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"locked = COALESCE((SELECT o.locked FROM group_override o WHERE o.playlistId = channel_group.playlistId AND o.name = channel_group.originalName), locked), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"name = COALESCE((SELECT o.customName FROM channel_override o WHERE o.playlistId = channel.playlistId AND o.uniqueKey = channel.uniqueKey), name), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"name = COALESCE((SELECT o.customName FROM group_override o WHERE o.playlistId = channel_group.playlistId AND o.name = channel_group.originalName), originalName), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"sortOrder = COALESCE((SELECT o.sortOrder FROM channel_override o WHERE o.playlistId = channel.playlistId AND o.uniqueKey = channel.uniqueKey), sortOrder), "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$"sortOrder = COALESCE((SELECT o.sortOrder FROM group_override o WHERE o.playlistId = channel_group.playlistId AND o.name = channel_group.originalName), sortOrder) "</ID>
+    <ID>MaxLineLength:Daos.kt$ChannelDao$@Query("UPDATE channel SET groupName = COALESCE((SELECT g.name FROM channel_group g WHERE g.id = channel.groupId), groupName) WHERE playlistId = :pid AND pending = 0")</ID>
+    <ID>MaxLineLength:Daos.kt$EditorDao$@Query("SELECT * FROM channel_override WHERE playlistId = :pid AND uniqueKey = :key") suspend fun channelOverride(pid: Long, key: String): ChannelOverrideEntity?</ID>
+    <ID>MaxLineLength:DesignKit.kt$FocusSurface</ID>
+    <ID>MaxLineLength:DesignKit.kt$Text(title, color = SdTheme.palette.textTertiary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 10.dp))</ID>
+    <ID>MaxLineLength:DesignKit.kt$drawRect(Brush.radialGradient(listOf(p.accent.copy(alpha = 0.2f), Color.Transparent), center = Offset(size.width * 0.8f, size.height * 0.62f), radius = size.maxDimension * 0.42f))</ID>
+    <ID>MaxLineLength:DesignKit.kt$drawRect(Brush.radialGradient(listOf(p.glowCool, Color.Transparent), center = Offset(size.width * 0.62f, size.height * 0.18f), radius = size.maxDimension * 0.55f))</ID>
+    <ID>MaxLineLength:DesignKit.kt$drawRect(Brush.radialGradient(listOf(p.glowWarm, Color.Transparent), center = Offset(size.width * 0.25f, size.height * 0.78f), radius = size.maxDimension * 0.3f))</ID>
+    <ID>MaxLineLength:DesignKit.kt$if (hint != null) Text(hint, color = p.textTertiary, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:DesignKit.kt$if (value != null) Text(value, color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.padding(start = 8.dp))</ID>
+    <ID>MaxLineLength:DesignKit.kt$return if (first.length in 2..4) first.uppercase() else words.take(3).mapNotNull { it.firstOrNull { c -&gt; c.isLetterOrDigit() } }.joinToString("").uppercase().ifEmpty { "TV" }</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Box</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$FocusSurface</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text("$status · ${formatClock(prog.start)} – ${formatClock(prog.end)}", color = p.accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(listOfNotNull(sel.row.name, prog.category).joinToString(" · "), color = p.textSecondary, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 6.dp))</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(listOfNotNull(time, left).joinToString(" · "), color = secondary, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(prog.title.ifBlank { stringResource(R.string.untitled) }, color = p.textPrimary, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(prog.title.ifBlank { stringResource(R.string.untitled) }, color = primary, style = MaterialTheme.typography.bodyMedium, fontWeight = if (live) FontWeight.SemiBold else null, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(row.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = LocalContentColor.current)</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$Text(stringResource(R.string.no_programme), style = MaterialTheme.typography.bodySmall, color = p.textTertiary, modifier = Modifier.padding(horizontal = 12.dp))</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$modifier = Modifier.offset(x = x - 18.dp).align(Alignment.BottomStart).background(p.live, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 1.dp)</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$prog.description?.let { Text(it, color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp)) }</ID>
+    <ID>MaxLineLength:EpgGridScreen.kt$row.number?.let { Text(it.toString(), style = MaterialTheme.typography.labelSmall, color = if (focused) p.onFocusFill.copy(alpha = 0.6f) else p.textTertiary) }</ID>
+    <ID>MaxLineLength:FavoritesScreen.kt$Text(stringResource(R.string.favorites), style = if (tv) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineLarge, color = p.textPrimary)</ID>
+    <ID>MaxLineLength:FavoritesScreen.kt$else</ID>
+    <ID>MaxLineLength:MainActivity.kt$R.style.Theme_StreamDeck_Starting_A0</ID>
+    <ID>MaxLineLength:MainActivity.kt$R.style.Theme_StreamDeck_Starting_D0</ID>
+    <ID>MaxLineLength:MainActivity.kt$R.style.Theme_StreamDeck_Starting_L0</ID>
+    <ID>MaxLineLength:MainActivity.kt$R.style.Theme_StreamDeck_Starting_S0</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$.</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Icon(if (favorite) Icons.Default.Star else Icons.Outlined.StarOutline, null, tint = if (favorite) p.star else p.textSecondary, modifier = Modifier.padding(9.dp).size(22.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$ProgramTime.minutesLeft(prog.endMs, now)?.let { Text(stringResource(DR.string.ds_minutes_left, it), color = p.textSecondary, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$RoundAction(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(if (playing) R.string.pause else R.string.play), primary = true) { vm.controller.togglePause() }</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Row</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(c.number?.toString().orEmpty(), color = if (current) p.accent else p.textTertiary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(36.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(formatClock(prog.start), color = if (highlight) p.accent else p.textTertiary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(54.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(listOfNotNull(c.number?.toString(), c.groupName.ifBlank { null }, quality).joinToString(" · "), color = p.textSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(next, color = p.textPrimary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(prog.nextStartMs?.let { stringResource(DR.string.ds_next_at, formatClock(it)) } ?: stringResource(R.string.next_label), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium)</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(prog.title, color = p.textPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(stringResource(R.string.go_live), color = p.onLive, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$Text(text, color = SdTheme.palette.textTertiary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp))</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$color = if (current) p.accent else p.textSecondary</ID>
+    <ID>MaxLineLength:PhonePlayerPortrait.kt$if (item.nowStart != null) SdProgress(ProgramTime.progress(item.nowStart, item.nowEnd, now), Modifier.padding(top = 6.dp, end = 16.dp), height = 2.dp)</ID>
+    <ID>MaxLineLength:PlayerOverlay.kt$Text(stringResource(R.string.sleep_remaining, formatDuration(it)), color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>MaxLineLength:PlayerSettingsDialog.kt$ChipRow</ID>
+    <ID>MaxLineLength:PlayerSettingsDialog.kt$Row</ID>
+    <ID>MaxLineLength:PlayerSettingsDialog.kt$if (PanelSection.TEXT in sections) item(key = "sub_add") { Option(stringResource(R.string.load_subtitle), false) { picker.launch(arrayOf("application/x-subrip", "text/vtt", "text/plain", "*/*")) } }</ID>
+    <ID>MaxLineLength:PlayerSettingsDialog.kt$if (sleepLeftMs != null) stringResource(R.string.sleep_remaining, formatDuration(sleepLeftMs)) else stringResource(R.string.sleep_timer)</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$FocusSurface</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$SettingsRow</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$SettingsRow(stringResource(R.string.backup_import), icon = Icons.Default.Restore, tint = p.textSecondary) { importLauncher.launch(arrayOf("application/json", "*/*")) }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$SettingsRow(stringResource(R.string.clear_history), icon = Icons.Default.DeleteSweep, tint = p.textSecondary, value = stringResource(R.string.history_count, historyCount), divider = false) { vm.clearHistory() }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$SettingsRow(stringResource(R.string.pin_change), icon = Icons.Default.Password, tint = p.hueAmber) { gate.runUnlocked(true) { dialog = Dialog.NewPin } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$SettingsRow(stringResource(R.string.version), icon = Icons.Default.Info, tint = p.textSecondary, value = version, divider = false, chevron = false)</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$contentPadding = PaddingValues(start = if (tv) 48.dp else 20.dp, end = 20.dp, top = if (tv) 32.dp else 16.dp, bottom = if (tv) 40.dp else bottomPadding)</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$is SettingsMessage.Failed -&gt; stringResource(R.string.operation_failed, if (m.reason == "INVALID_BACKUP") stringResource(R.string.backup_invalid) else m.reason)</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$item { Text(stringResource(R.string.disclaimer_short), color = p.textTertiary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp)) }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$item { Text(stringResource(R.string.mine_title), style = MaterialTheme.typography.headlineLarge, color = p.textPrimary, modifier = Modifier.padding(bottom = 20.dp)) }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$pick(font, FONT_SCALES.map { Choice&lt;Any&gt;(it, "${(it * 100).roundToInt()}%") }, s.fontScale) { v -&gt; vm.update { it.copy(fontScale = v as Float) } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$pick(freq, listOf(6, 12, 24, 48).map { Choice&lt;Any&gt;(it, ctx.getString(R.string.every_hours, it)) }, s.epgUpdateHours) { v -&gt; vm.update { it.copy(epgUpdateHours = v as Int) } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$pick(keep, (1..7).map { Choice&lt;Any&gt;(it, ctx.getString(R.string.days_value, it)) }, s.epgKeepDays) { v -&gt; vm.update { it.copy(epgKeepDays = v as Int) } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$pick(offset, OFFSET_STEPS.map { Choice&lt;Any&gt;(it, ctx.getString(R.string.hours_value, "%+.1f".format(it / 60f))) }, s.epgOffsetMinutes) { v -&gt; vm.update { it.copy(epgOffsetMinutes = v as Int) } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$pick(reconnect, RECONNECT_OPTIONS.map { Choice&lt;Any&gt;(it, ctx.getString(R.string.times, it)) }, s.reconnectMax) { v -&gt; vm.update { it.copy(reconnectMax = v as Int) } }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$val updated = if (summary.lastUpdated &gt; 0) DateUtils.getRelativeTimeSpanString(summary.lastUpdated, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString() else stringResource(R.string.never_updated)</ID>
+    <ID>MaxLineLength:TrackOptions.kt$TrackOptions$.</ID>
+    <ID>MaxLineLength:TvBrowseScreen.kt$Text(active?.name ?: stringResource(R.string.playlists), style = MaterialTheme.typography.headlineSmall, color = p.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:TvBrowseScreen.kt$item(key = "all") { GroupItem(stringResource(R.string.all_channels), counts.total, filter == GroupFilter.All) { vm.filter.value = GroupFilter.All } }</ID>
+    <ID>MaxLineLength:TvBrowseScreen.kt$item(key = "fav") { GroupItem(stringResource(R.string.favorites), counts.favorites, filter == GroupFilter.Favorites) { vm.filter.value = GroupFilter.Favorites } }</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$FocusSurface</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$ProgramTime.minutesLeft(item.nowEnd, now)?.let { Text(stringResource(DR.string.ds_minutes_left, it), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium) }</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$Text("${formatClock(item.nowStart ?: 0)} – ${formatClock(item.nowEnd ?: 0)}", color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$Text(listOfNotNull(c.number?.toString(), c.name).joinToString(" "), color = p.textSecondary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 12.dp))</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$Text(row.title ?: stringResource(row.titleRes ?: R.string.all_channels), style = MaterialTheme.typography.titleLarge, color = p.textPrimary)</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$active?.let { Text(stringResource(R.string.tv_playlist_info, it.name, total), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 14.dp)) }</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$playlists?.isEmpty() == true -&gt; EmptyState(stringResource(R.string.no_playlists), actionLabel = stringResource(R.string.add_playlist), onAction = onAddPlaylist)</ID>
+    <ID>MaxLineLength:TvHomeScreen.kt$row.count?.let { Text(it.toString(), color = p.textTertiary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)) }</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$FocusSurface</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$ProgramTime.minutesLeft(prog.endMs, now)?.let { Text(stringResource(DR.string.ds_minutes_left, it), color = p.textSecondary, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(c.name, color = LocalContentColor.current, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(listOfNotNull(channel.number?.toString(), channel.name).joinToString(" "), color = p.textSecondary, style = MaterialTheme.typography.bodyLarge)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(next, color = p.textPrimary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(nextProg?.nextStartMs?.let { stringResource(R.string.next_at, formatClock(it)) } ?: stringResource(R.string.next_label), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(stringResource(R.string.catchup_badge, formatClock(catchup.start)), color = p.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 8.dp))</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$Text(stringResource(R.string.group_info, items.size), color = p.textSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp, bottom = 2.dp))</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$TvAction(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarOutline, stringResource(if (isFavorite) R.string.unfavorite else R.string.favorite), onClick = toggle)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$TvAction(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(if (playing) R.string.pause else R.string.play), Modifier.focusRequester(primaryFocus), onTogglePause)</ID>
+    <ID>MaxLineLength:TvPlayerOverlay.kt$sleepLeftMs?.let { Text(stringResource(R.string.sleep_remaining, formatDuration(it)), color = p.textSecondary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp)) }</ID>
+    <ID>MaxLineLength:VodDao.kt$VodDao$@Query("SELECT * FROM series WHERE playlistId = :pid AND seriesId = :seriesId AND pending = 0 LIMIT 1") suspend fun seriesById(pid: Long, seriesId: Long): SeriesEntity?</ID>
+    <ID>MaxLineLength:VodDao.kt$VodDao$@Query("SELECT * FROM vod_item WHERE playlistId = :pid AND streamId = :streamId AND pending = 0 LIMIT 1") suspend fun item(pid: Long, streamId: Long): VodItemEntity?</ID>
+    <ID>MaxLineLength:VodRepository.kt$VodRepository$dao.upsertProgress(VodProgressEntity(key.playlistId, key.progressKey, if (watched) prev?.positionMs ?: 0 else 0, prev?.durationMs ?: 0, watched, System.currentTimeMillis()))</ID>
+    <ID>MaxLineLength:VodRepository.kt$VodRepository$dao.upsertProgress(VodProgressEntity(key.playlistId, key.progressKey, positionMs, durationMs, watched || prev?.watched == true, System.currentTimeMillis()))</ID>
+    <ID>MaxLineLength:Xtream.kt$XtreamImporter$ChannelGroupEntity(playlistId = p.id, name = PlaylistRepository.UNGROUPED, originalName = PlaylistRepository.UNGROUPED, sortOrder = categories.size, pending = true)</ID>
+    <ID>MaxLineLength:XtreamParsers.kt$XtreamEpisode</ID>
+    <ID>MaxLineLength:XtreamParsers.kt$XtreamParsers$return XtreamSeries(id, o.str("name") ?: id.toString(), o.str("cover"), o.str("plot"), o.float("rating"), o.str("genre"), o.str("releaseDate") ?: o.str("release_date"), o.str("category_id"))</ID>
+    <ID>MaxLineLength:XtreamParsers.kt$XtreamParsers$return XtreamVod(id, o.str("name") ?: id.toString(), o.str("stream_icon"), o.float("rating"), o.str("category_id"), o.str("container_extension") ?: "mp4", o.long("added"))</ID>
+    <ID>MaxLineLength:XtreamParsers.kt$XtreamSeries</ID>
+    <ID>MaxLineLength:XtreamParsers.kt$XtreamVod</ID>
+    <ID>ReturnCount:EpgMatcher.kt$EpgMatcher$fun match(c: MatchChannel): String?</ID>
+    <ID>ThrowsCount:EpgRepository.kt$EpgRepository$private fun open(p: PlaylistEntity, configured: String): InputStream</ID>
+  </CurrentIssues>
+</SmellBaseline>

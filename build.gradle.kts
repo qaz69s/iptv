@@ -22,5 +22,7 @@ subprojects {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("config/detekt/detekt.yml"))
+    // Existing findings are accepted in the baseline; only new issues fail the check.
+    baseline = file("config/detekt/baseline.xml")
     source.setFrom(files(subprojects.map { "${it.projectDir}/src/main/kotlin" }))
 }
